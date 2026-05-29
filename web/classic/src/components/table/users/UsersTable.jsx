@@ -112,12 +112,22 @@ const UsersTable = (usersData) => {
 
   // Modal confirm handlers
   const handlePromoteConfirm = () => {
-    manageUser(modalUser.id, 'promote', modalUser);
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const action =
+      currentUser.role >= 100 && modalUser.role !== 100
+        ? 'promote_root'
+        : 'promote';
+    manageUser(modalUser.id, action, modalUser);
     setShowPromoteModal(false);
   };
 
   const handleDemoteConfirm = () => {
-    manageUser(modalUser.id, 'demote', modalUser);
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const action =
+      currentUser.role >= 100 && modalUser.role === 100
+        ? 'demote_root'
+        : 'demote';
+    manageUser(modalUser.id, action, modalUser);
     setShowDemoteModal(false);
   };
 

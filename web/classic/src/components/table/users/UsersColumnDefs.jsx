@@ -229,6 +229,16 @@ const renderOperations = (
     currentUser.role >= 100 &&
     currentUser.id !== record.id &&
     record.status === 1;
+  const canManageProtectedRoot = record.id !== 1 || currentUser.id === 1;
+  const canPromote =
+    canManageProtectedRoot &&
+    currentUser.id !== record.id &&
+    (record.role < 10 || (currentUser.role >= 100 && record.role < 100));
+  const canDemote =
+    canManageProtectedRoot &&
+    currentUser.id !== record.id &&
+    record.role >= 10 &&
+    (record.role < 100 || currentUser.role >= 100);
 
   const moreMenu = [
     ...(canImpersonate
@@ -304,6 +314,7 @@ const renderOperations = (
         type='warning'
         size='small'
         onClick={() => showPromoteModal(record)}
+        disabled={!canPromote}
       >
         {t('提升')}
       </Button>
@@ -311,6 +322,7 @@ const renderOperations = (
         type='secondary'
         size='small'
         onClick={() => showDemoteModal(record)}
+        disabled={!canDemote}
       >
         {t('降级')}
       </Button>

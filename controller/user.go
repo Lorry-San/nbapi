@@ -280,6 +280,13 @@ func canManageTargetRole(myRole int, targetRole int) bool {
 	return myRole == common.RoleRootUser || myRole > targetRole
 }
 
+func canManageTargetUser(operator *model.User, target *model.User) bool {
+	if target.Id == 1 && operator.Id != 1 {
+		return false
+	}
+	return canManageTargetRole(operator.Role, target.Role)
+}
+
 func getCurrentUserForPrivilegedAction(c *gin.Context) (*model.User, bool) {
 	operator, err := model.GetUserById(c.GetInt("id"), false)
 	if err != nil {
@@ -304,8 +311,11 @@ func GetUser(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	myRole := c.GetInt("role")
-	if !canManageTargetRole(myRole, user.Role) {
+	operator, ok := getCurrentUserForPrivilegedAction(c)
+	if !ok {
+		return
+	}
+	if !canManageTargetUser(operator, &user) {
 		common.ApiErrorI18n(c, i18n.MsgUserNoPermissionSameLevel)
 		return
 	}
@@ -595,12 +605,15 @@ func UpdateUser(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	myRole := c.GetInt("role")
-	if !canManageTargetRole(myRole, originUser.Role) {
+	operator, ok := getCurrentUserForPrivilegedAction(c)
+	if !ok {
+		return
+	}
+	if !canManageTargetUser(operator, originUser) {
 		common.ApiErrorI18n(c, i18n.MsgUserNoPermissionHigherLevel)
 		return
 	}
-	if !canManageTargetRole(myRole, updatedUser.Role) {
+	if !canManageTargetRole(operator.Role, updatedUser.Role) {
 		common.ApiErrorI18n(c, i18n.MsgUserCannotCreateHigherLevel)
 		return
 	}
@@ -638,8 +651,11 @@ func AdminClearUserBinding(c *gin.Context) {
 		return
 	}
 
-	myRole := c.GetInt("role")
-	if !canManageTargetRole(myRole, user.Role) {
+	operator, ok := getCurrentUserForPrivilegedAction(c)
+	if !ok {
+		return
+	}
+	if !canManageTargetUser(operator, &user) {
 		common.ApiErrorI18n(c, i18n.MsgUserNoPermissionSameLevel)
 		return
 	}
@@ -800,8 +816,11 @@ func DeleteUser(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	myRole := c.GetInt("role")
-	if myRole <= originUser.Role {
+	operator, ok := getCurrentUserForPrivilegedAction(c)
+	if !ok {
+		return
+	}
+	if !canManageTargetUser(operator, originUser) {
 		common.ApiErrorI18n(c, i18n.MsgUserNoPermissionHigherLevel)
 		return
 	}
@@ -907,7 +926,7 @@ func ManageUser(c *gin.Context) {
 		return
 	}
 	myRole := operator.Role
-	if !canManageTargetRole(myRole, user.Role) {
+	if !canManageTargetUser(operator, &user) {
 		common.ApiErrorI18n(c, i18n.MsgUserNoPermissionHigherLevel)
 		return
 	}
