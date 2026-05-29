@@ -31,6 +31,8 @@ const LogsFilters = ({
   formApi,
   setLogType,
   loading,
+  exporting,
+  exportLogs,
   isAdminUser,
   t,
 }) => {
@@ -160,6 +162,14 @@ const LogsFilters = ({
               size='small'
             >
               {t('查询')}
+            </Button>
+            <Button
+              type='tertiary'
+              onClick={exportLogs}
+              loading={exporting}
+              size='small'
+            >
+              {t('导出')}
             </Button>
             <Button
               type='tertiary'

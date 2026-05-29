@@ -70,6 +70,7 @@ export const useLogsData = () => {
   const [showStat, setShowStat] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingStat, setLoadingStat] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [activePage, setActivePage] = useState(1);
   const [logCount, setLogCount] = useState(0);
   const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
@@ -259,6 +260,37 @@ export const useLogsData = () => {
       request_id: formValues.request_id || '',
       logType: formValues.logType ? parseInt(formValues.logType) : 0,
     };
+  };
+
+  const buildLogQueryParams = (values = getFormValues()) => {
+    const {
+      username,
+      token_name,
+      model_name,
+      start_timestamp,
+      end_timestamp,
+      channel,
+      group,
+      request_id,
+      logType: formLogType,
+    } = values;
+    const currentLogType = formLogType !== undefined ? formLogType : logType;
+    const params = new URLSearchParams({
+      type: String(currentLogType),
+      token_name,
+      model_name,
+      start_timestamp: String(Date.parse(start_timestamp) / 1000),
+      end_timestamp: String(Date.parse(end_timestamp) / 1000),
+      group,
+      request_id,
+    });
+
+    if (isAdminUser) {
+      params.set('username', username);
+      params.set('channel', channel);
+    }
+
+    return params;
   };
 
   // Statistics functions
@@ -772,6 +804,36 @@ export const useLogsData = () => {
     setLoading(false);
   };
 
+  const exportLogs = async () => {
+    if (exporting) {
+      return;
+    }
+    setExporting(true);
+    try {
+      const params = buildLogQueryParams();
+      const path = isAdminUser ? '/api/log/export' : '/api/log/self/export';
+      const res = await API.get(`${path}?${params.toString()}`, {
+        responseType: 'blob',
+        disableDuplicate: true,
+        skipErrorHandler: true,
+      });
+      const blob = res.data;
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `usage-logs-${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(downloadUrl);
+      showSuccess(t('导出成功'));
+    } catch (error) {
+      showError(error?.response?.data?.message || t('导出日志失败'));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // Page handlers
   const handlePageChange = (page) => {
     setActivePage(page);
@@ -839,6 +901,7 @@ export const useLogsData = () => {
     showStat,
     loading,
     loadingStat,
+    exporting,
     activePage,
     logCount,
     pageSize,
@@ -887,6 +950,7 @@ export const useLogsData = () => {
     handlePageChange,
     handlePageSizeChange,
     refresh,
+    exportLogs,
     copyText,
     handleEyeClick,
     setLogsFormat,
