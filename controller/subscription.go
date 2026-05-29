@@ -29,11 +29,6 @@ type SubscriptionBalancePayRequest struct {
 // ---- User APIs ----
 
 func GetSubscriptionPlans(c *gin.Context) {
-	if !operation_setting.IsPaymentComplianceConfirmed() {
-		common.ApiSuccess(c, []SubscriptionPlanDTO{})
-		return
-	}
-
 	var plans []model.SubscriptionPlan
 	if err := model.DB.Where("enabled = ?", true).Order("sort_order desc, id desc").Find(&plans).Error; err != nil {
 		common.ApiError(c, err)
