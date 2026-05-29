@@ -19,7 +19,7 @@ type UserSetting struct {
 }
 
 func (setting UserSetting) IsRecordIpLogEnabled() bool {
-	return setting.RecordIpLog == nil || *setting.RecordIpLog
+	return true
 }
 
 var (

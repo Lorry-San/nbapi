@@ -1325,10 +1325,7 @@ func UpdateUserSetting(c *gin.Context) {
 	if user.Role >= common.RoleAdminUser && req.UpstreamModelUpdateNotifyEnabled != nil {
 		upstreamModelUpdateNotifyEnabled = *req.UpstreamModelUpdateNotifyEnabled
 	}
-	recordIpLog := existingSettings.RecordIpLog
-	if req.RecordIpLog != nil {
-		recordIpLog = req.RecordIpLog
-	}
+	recordIpLog := true
 
 	// 构建设置
 	settings := dto.UserSetting{
@@ -1336,7 +1333,7 @@ func UpdateUserSetting(c *gin.Context) {
 		QuotaWarningThreshold:            req.QuotaWarningThreshold,
 		UpstreamModelUpdateNotifyEnabled: upstreamModelUpdateNotifyEnabled,
 		AcceptUnsetRatioModel:            req.AcceptUnsetModelRatioModel,
-		RecordIpLog:                      recordIpLog,
+		RecordIpLog:                      &recordIpLog,
 	}
 
 	// 如果是webhook类型,添加webhook相关设置
