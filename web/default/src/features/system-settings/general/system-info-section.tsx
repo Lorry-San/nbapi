@@ -20,6 +20,7 @@ import * as z from 'zod'
 import type { Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
+import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -139,6 +140,22 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
       },
     })
 
+  const currentFrontendTheme = form.watch('theme.frontend')
+
+  const switchToClassic = async () => {
+    const result = await updateOption.mutateAsync({
+      key: 'theme.frontend',
+      value: 'classic',
+    })
+
+    if (result.success) {
+      form.setValue('theme.frontend', 'classic', { shouldDirty: false })
+      window.setTimeout(() => {
+        window.location.href = '/'
+      }, 500)
+    }
+  }
+
   return (
     <>
       <FormNavigationGuard when={isDirty} />
@@ -195,6 +212,22 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
                         'Switch between the new frontend and the classic frontend. Changes take effect after page reload.'
                       )}
                     </FormDescription>
+                    <div className='pt-1'>
+                      <Button
+                        type='button'
+                        variant='outline'
+                        size='sm'
+                        onClick={switchToClassic}
+                        disabled={
+                          currentFrontendTheme === 'classic' ||
+                          updateOption.isPending
+                        }
+                      >
+                        {updateOption.isPending
+                          ? t('Switching...')
+                          : t('Switch to Classic now')}
+                      </Button>
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
