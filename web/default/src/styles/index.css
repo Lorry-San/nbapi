@@ -126,7 +126,28 @@ For commercial licensing, please contact support@quantumnous.com
 .custom-home-html {
   position: relative;
   isolation: isolate;
+  min-height: 100svh;
   overflow-x: hidden;
+  padding-top: 72px;
+  padding-bottom: 28px;
+}
+
+body:has(.custom-home-html) header nav {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(42, 42, 42, 0.34);
+  color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(18px) saturate(1.05);
+}
+
+body:has(.custom-home-html) header nav a,
+body:has(.custom-home-html) header nav button {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+body:has(.custom-home-html) header nav a:hover,
+body:has(.custom-home-html) header nav button:hover {
+  color: #fff;
 }
 
 .custom-home-html .lc-home::before {
@@ -139,6 +160,8 @@ For commercial licensing, please contact support@quantumnous.com
 
 .custom-home-html .lc-home {
   z-index: 0;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
 }
 
 .custom-home-html .lc-panel,
@@ -150,12 +173,30 @@ For commercial licensing, please contact support@quantumnous.com
 .custom-home-html .lc-scenery {
   position: fixed !important;
   display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
   height: 36px !important;
   width: auto !important;
   min-width: 112px !important;
+  padding: 0 16px !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
   border-radius: 7px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
   color: rgba(255, 255, 255, 0.88) !important;
   background: rgba(255, 255, 255, 0.08) !important;
+  text-decoration: none !important;
+  transform: none !important;
+  z-index: 60 !important;
+}
+
+@media (max-width: 680px) {
+  .custom-home-html {
+    padding-top: 68px;
+    padding-bottom: 18px;
+  }
 }
 
 @utility container {
