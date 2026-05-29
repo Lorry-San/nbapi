@@ -32,6 +32,7 @@ import DeleteUserModal from './modals/DeleteUserModal';
 import ResetPasskeyModal from './modals/ResetPasskeyModal';
 import ResetTwoFAModal from './modals/ResetTwoFAModal';
 import UserSubscriptionsModal from './modals/UserSubscriptionsModal';
+import ImpersonateUserModal from './modals/ImpersonateUserModal';
 
 const UsersTable = (usersData) => {
   const {
@@ -47,6 +48,7 @@ const UsersTable = (usersData) => {
     setEditingUser,
     setShowEditUser,
     manageUser,
+    impersonateUser,
     refresh,
     resetUserPasskey,
     resetUserTwoFA,
@@ -64,6 +66,7 @@ const UsersTable = (usersData) => {
   const [showResetTwoFAModal, setShowResetTwoFAModal] = useState(false);
   const [showUserSubscriptionsModal, setShowUserSubscriptionsModal] =
     useState(false);
+  const [showImpersonateModal, setShowImpersonateModal] = useState(false);
 
   // Modal handlers
   const showPromoteUserModal = (user) => {
@@ -102,6 +105,11 @@ const UsersTable = (usersData) => {
     setShowUserSubscriptionsModal(true);
   };
 
+  const showImpersonateUserModal = (user) => {
+    setModalUser(user);
+    setShowImpersonateModal(true);
+  };
+
   // Modal confirm handlers
   const handlePromoteConfirm = () => {
     manageUser(modalUser.id, 'promote', modalUser);
@@ -128,6 +136,11 @@ const UsersTable = (usersData) => {
     setShowResetTwoFAModal(false);
   };
 
+  const handleImpersonateConfirm = async () => {
+    await impersonateUser(modalUser);
+    setShowImpersonateModal(false);
+  };
+
   // Get all columns
   const columns = useMemo(() => {
     return getUsersColumns({
@@ -141,6 +154,7 @@ const UsersTable = (usersData) => {
       showResetPasskeyModal: showResetPasskeyUserModal,
       showResetTwoFAModal: showResetTwoFAUserModal,
       showUserSubscriptionsModal: showUserSubscriptionsUserModal,
+      showImpersonateModal: showImpersonateUserModal,
     });
   }, [
     t,
@@ -153,6 +167,7 @@ const UsersTable = (usersData) => {
     showResetPasskeyUserModal,
     showResetTwoFAUserModal,
     showUserSubscriptionsUserModal,
+    showImpersonateUserModal,
   ]);
 
   // Handle compact mode by removing fixed positioning
@@ -259,6 +274,14 @@ const UsersTable = (usersData) => {
         user={modalUser}
         t={t}
         onSuccess={() => refresh?.()}
+      />
+
+      <ImpersonateUserModal
+        visible={showImpersonateModal}
+        onCancel={() => setShowImpersonateModal(false)}
+        onConfirm={handleImpersonateConfirm}
+        user={modalUser}
+        t={t}
       />
     </>
   );

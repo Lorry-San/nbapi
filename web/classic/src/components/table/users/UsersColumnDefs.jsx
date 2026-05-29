@@ -216,6 +216,7 @@ const renderOperations = (
     showResetPasskeyModal,
     showResetTwoFAModal,
     showUserSubscriptionsModal,
+    showImpersonateModal,
     t,
   },
 ) => {
@@ -223,7 +224,25 @@ const renderOperations = (
     return <></>;
   }
 
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const canImpersonate =
+    currentUser.role >= 100 &&
+    currentUser.id !== record.id &&
+    record.status === 1;
+
   const moreMenu = [
+    ...(canImpersonate
+      ? [
+          {
+            node: 'item',
+            name: t('登录'),
+            onClick: () => showImpersonateModal(record),
+          },
+          {
+            node: 'divider',
+          },
+        ]
+      : []),
     {
       node: 'item',
       name: t('订阅管理'),
@@ -316,6 +335,7 @@ export const getUsersColumns = ({
   showResetPasskeyModal,
   showResetTwoFAModal,
   showUserSubscriptionsModal,
+  showImpersonateModal,
 }) => {
   return [
     {
@@ -383,6 +403,7 @@ export const getUsersColumns = ({
           showResetPasskeyModal,
           showResetTwoFAModal,
           showUserSubscriptionsModal,
+          showImpersonateModal,
           t,
         }),
     },

@@ -19,7 +19,13 @@ For commercial licensing, please contact support@quantumnous.com
 
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { API, showError, showSuccess } from '../../helpers';
+import {
+  API,
+  setUserData,
+  showError,
+  showSuccess,
+  updateAPI,
+} from '../../helpers';
 import { ITEMS_PER_PAGE } from '../../constants';
 import { useTableCompactMode } from '../common/useTableCompactMode';
 
@@ -188,6 +194,26 @@ export const useUsersData = () => {
     }
   };
 
+  const impersonateUser = async (user) => {
+    if (!user) {
+      return;
+    }
+    try {
+      const res = await API.post(`/api/user/${user.id}/impersonate`);
+      const { success, message, data } = res.data;
+      if (success) {
+        setUserData(data);
+        updateAPI();
+        showSuccess(t('登录成功！'));
+        window.location.href = '/console';
+      } else {
+        showError(message || t('登录失败'));
+      }
+    } catch (error) {
+      showError(t('登录失败'));
+    }
+  };
+
   // Handle page change
   const handlePageChange = (page) => {
     setActivePage(page);
@@ -307,6 +333,7 @@ export const useUsersData = () => {
     manageUser,
     resetUserPasskey,
     resetUserTwoFA,
+    impersonateUser,
     handlePageChange,
     handlePageSizeChange,
     handleRow,
