@@ -315,7 +315,7 @@ func GetUser(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if !canManageTargetUser(operator, &user) {
+	if !canManageTargetUser(operator, user) {
 		common.ApiErrorI18n(c, i18n.MsgUserNoPermissionSameLevel)
 		return
 	}
@@ -655,7 +655,7 @@ func AdminClearUserBinding(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if !canManageTargetUser(operator, &user) {
+	if !canManageTargetUser(operator, user) {
 		common.ApiErrorI18n(c, i18n.MsgUserNoPermissionSameLevel)
 		return
 	}
