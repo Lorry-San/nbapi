@@ -123,6 +123,41 @@ For commercial licensing, please contact support@quantumnous.com
   }
 }
 
+.custom-home-html {
+  position: relative;
+  isolation: isolate;
+  overflow-x: hidden;
+}
+
+.custom-home-html .lc-home::before {
+  z-index: -1 !important;
+}
+
+.custom-home-html .lc-home::after {
+  z-index: -1 !important;
+}
+
+.custom-home-html .lc-home {
+  z-index: 0;
+}
+
+.custom-home-html .lc-panel,
+.custom-home-html .lc-scenery {
+  position: relative;
+  z-index: 1;
+}
+
+.custom-home-html .lc-scenery {
+  position: fixed !important;
+  display: inline-flex !important;
+  height: 36px !important;
+  width: auto !important;
+  min-width: 112px !important;
+  border-radius: 7px !important;
+  color: rgba(255, 255, 255, 0.88) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
 @utility container {
   margin-inline: auto;
   padding-inline: 2rem;
