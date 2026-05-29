@@ -20,8 +20,9 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useQueryClient, useIsFetching } from '@tanstack/react-query'
 import { useNavigate, getRouteApi } from '@tanstack/react-router'
 import { type Table } from '@tanstack/react-table'
-import { Eye, EyeOff } from 'lucide-react'
+import { Download, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { useIsAdmin } from '@/hooks/use-admin'
 import { Button } from '@/components/ui/button'
 import {
@@ -37,9 +38,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { exportLogsCsv } from '../api'
 import { LOG_TYPE_ALL_VALUE, LOG_TYPE_FILTERS } from '../constants'
 import { buildSearchParams } from '../lib/filter'
-import { getDefaultTimeRange } from '../lib/utils'
+import { buildCommonLogExportParams, getDefaultTimeRange } from '../lib/utils'
 import type { CommonLogFilters } from '../types'
 import { CommonLogsStats } from './common-logs-stats'
 import { CompactDateTimeRangePicker } from './compact-date-time-range-picker'
@@ -79,6 +81,7 @@ export function CommonLogsFilterBar<TData>(
     return { startTime: start, endTime: end }
   })
   const [logType, setLogType] = useState<LogTypeValue>(LOG_TYPE_ALL_VALUE)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     const { start, end } = getDefaultTimeRange()
@@ -165,6 +168,34 @@ export function CommonLogsFilterBar<TData>(
     },
     [handleApply]
   )
+
+  const handleExport = useCallback(async () => {
+    setExporting(true)
+    try {
+      const filterParams = buildSearchParams(filters, 'common')
+      const params = buildCommonLogExportParams({
+        searchParams: {
+          ...filterParams,
+          type: [logType],
+        },
+        isAdmin,
+      })
+      const blob = await exportLogsCsv(isAdmin, params)
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `usage-logs-${new Date().toISOString().replace(/[:.]/g, '-')}.csv`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+      toast.success(t('Download'))
+    } catch (_error) {
+      toast.error(t('Failed to load logs'))
+    } finally {
+      setExporting(false)
+    }
+  }, [filters, isAdmin, logType, t])
 
   const hasExpandedFilters =
     !!filters.token ||
@@ -362,6 +393,17 @@ export function CommonLogsFilterBar<TData>(
       onSearch={handleApply}
       searchLoading={fetchingLogs > 0}
       onReset={handleReset}
+      actions={
+        <Button
+          type='button'
+          variant='outline'
+          onClick={handleExport}
+          disabled={exporting}
+        >
+          {exporting ? <Loader2 className='animate-spin' /> : <Download />}
+          CSV
+        </Button>
+      }
     />
   )
 }

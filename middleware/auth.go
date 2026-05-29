@@ -128,6 +128,49 @@ func authHelper(c *gin.Context, minRole int) {
 		c.Abort()
 		return
 	}
+	if !useAccessToken {
+		userCache, err := model.GetUserCache(id.(int))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": common.TranslateMessage(c, i18n.MsgAuthUserInfoInvalid),
+			})
+			c.Abort()
+			return
+		}
+		if userCache.Status == common.UserStatusDisabled {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": common.TranslateMessage(c, i18n.MsgAuthUserBanned),
+			})
+			c.Abort()
+			return
+		}
+		if userCache.Role == common.RoleGuestUser {
+			currentUser, err := model.GetUserById(id.(int), false)
+			if err != nil {
+				c.JSON(http.StatusOK, gin.H{
+					"success": false,
+					"message": common.TranslateMessage(c, i18n.MsgAuthUserInfoInvalid),
+				})
+				c.Abort()
+				return
+			}
+			_ = model.InvalidateUserCache(currentUser.Id)
+			userCache = currentUser.ToBaseUser()
+		}
+		if userCache.Status == common.UserStatusDisabled {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": common.TranslateMessage(c, i18n.MsgAuthUserBanned),
+			})
+			c.Abort()
+			return
+		}
+		role = userCache.Role
+		status = userCache.Status
+		username = userCache.Username
+	}
 	if role.(int) < minRole {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,

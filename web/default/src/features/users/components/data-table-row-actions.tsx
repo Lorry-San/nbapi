@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { type Row } from '@tanstack/react-table'
 import {
   MoreHorizontal,
@@ -28,11 +29,14 @@ import {
   ArrowDown,
   KeyRound,
   ShieldAlert,
+  LogIn,
   Link2,
   CreditCard,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
+import { getSelf } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -43,8 +47,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { saveUserId } from '@/features/auth/lib/storage'
 import { UserSubscriptionsDialog } from '@/features/subscriptions/components/dialogs/user-subscriptions-dialog'
-import { manageUser, resetUserPasskey, resetUserTwoFA } from '../api'
+import {
+  impersonateUser,
+  manageUser,
+  resetUserPasskey,
+  resetUserTwoFA,
+} from '../api'
 import {
   USER_STATUS,
   USER_ROLE,
@@ -62,10 +72,15 @@ interface DataTableRowActionsProps {
 
 export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const authUser = useAuthStore((state) => state.auth.user)
+  const setAuthUser = useAuthStore((state) => state.auth.setUser)
   const user = row.original
   const { setOpen, setCurrentRow, triggerRefresh } = useUsers()
   const [resetPasskeyOpen, setResetPasskeyOpen] = useState(false)
   const [resetTwoFAOpen, setResetTwoFAOpen] = useState(false)
+  const [impersonateOpen, setImpersonateOpen] = useState(false)
+  const [impersonating, setImpersonating] = useState(false)
   const [bindingDialogOpen, setBindingDialogOpen] = useState(false)
   const [subscriptionsDialogOpen, setSubscriptionsDialogOpen] = useState(false)
 
@@ -127,9 +142,41 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
     }
   }
 
+  const handleImpersonate = async () => {
+    setImpersonating(true)
+    try {
+      const result = await impersonateUser(user.id)
+      if (result.success && result.data) {
+        saveUserId(result.data.id)
+        try {
+          const self = await getSelf()
+          if (self?.success && self.data) {
+            setAuthUser(self.data)
+          } else {
+            setAuthUser(result.data)
+          }
+        } catch (_error) {
+          setAuthUser(result.data)
+        }
+        toast.success(t('Signed in successfully!'))
+        setImpersonateOpen(false)
+        await navigate({ to: '/dashboard', replace: true })
+      } else {
+        toast.error(result.message || t('Login failed'))
+      }
+    } catch (_error) {
+      toast.error(t('Login failed'))
+    } finally {
+      setImpersonating(false)
+    }
+  }
+
   const isDisabled = user.status === USER_STATUS.DISABLED
   const isAdmin = user.role >= USER_ROLE.ADMIN
   const isRoot = user.role === USER_ROLE.ROOT
+  const currentUserIsRoot = authUser?.role === USER_ROLE.ROOT
+  const isSelf = authUser?.id === user.id
+  const canImpersonate = currentUserIsRoot && !isSelf && !isDisabled
 
   if (isUserDeleted(user)) {
     return null
@@ -149,7 +196,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           <MoreHorizontal className='h-4 w-4' />
           <span className='sr-only'>{t('Open menu')}</span>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align='end' className='w-[180px]'>
+        <DropdownMenuContent align='end' className='w-[220px]'>
           <DropdownMenuItem onClick={handleEdit}>
             {t('Edit')}
             <DropdownMenuShortcut>
@@ -192,6 +239,38 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               {t('Promote')}
               <DropdownMenuShortcut>
                 <ArrowUp size={16} />
+              </DropdownMenuShortcut>
+            </DropdownMenuItem>
+          )}
+
+          {currentUserIsRoot && !isRoot && (
+            <DropdownMenuItem onClick={() => handleManage('promote_root')}>
+              {t('Super Admin')}
+              <DropdownMenuShortcut>
+                <ShieldAlert size={16} />
+              </DropdownMenuShortcut>
+            </DropdownMenuItem>
+          )}
+
+          {currentUserIsRoot && isRoot && !isSelf && (
+            <DropdownMenuItem onClick={() => handleManage('demote_root')}>
+              {t('Admin')}
+              <DropdownMenuShortcut>
+                <ArrowDown size={16} />
+              </DropdownMenuShortcut>
+            </DropdownMenuItem>
+          )}
+
+          {canImpersonate && (
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault()
+                setImpersonateOpen(true)
+              }}
+            >
+              {t('Sign in')}
+              <DropdownMenuShortcut>
+                <LogIn size={16} />
               </DropdownMenuShortcut>
             </DropdownMenuItem>
           )}
@@ -279,6 +358,16 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         desc={`Reset 2FA for ${user.username}? The user must set up 2FA again to continue using it.`}
         confirmText='Reset 2FA'
         handleConfirm={handleResetTwoFA}
+      />
+
+      <ConfirmDialog
+        open={impersonateOpen}
+        onOpenChange={setImpersonateOpen}
+        title={t('Sign in')}
+        desc={`${t('Sign in')} ${user.username}?`}
+        confirmText={t('Sign in')}
+        handleConfirm={handleImpersonate}
+        isLoading={impersonating}
       />
 
       <UserBindingDialog

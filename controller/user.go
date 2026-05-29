@@ -280,6 +280,19 @@ func canManageTargetRole(myRole int, targetRole int) bool {
 	return myRole == common.RoleRootUser || myRole > targetRole
 }
 
+func getCurrentUserForPrivilegedAction(c *gin.Context) (*model.User, bool) {
+	operator, err := model.GetUserById(c.GetInt("id"), false)
+	if err != nil {
+		common.ApiError(c, err)
+		return nil, false
+	}
+	if operator.Status != common.UserStatusEnabled {
+		common.ApiErrorI18n(c, i18n.MsgAuthUserBanned)
+		return nil, false
+	}
+	return operator, true
+}
+
 func GetUser(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -889,7 +902,11 @@ func ManageUser(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgUserNotExists)
 		return
 	}
-	myRole := c.GetInt("role")
+	operator, ok := getCurrentUserForPrivilegedAction(c)
+	if !ok {
+		return
+	}
+	myRole := operator.Role
 	if !canManageTargetRole(myRole, user.Role) {
 		common.ApiErrorI18n(c, i18n.MsgUserNoPermissionHigherLevel)
 		return
@@ -930,6 +947,16 @@ func ManageUser(c *gin.Context) {
 			return
 		}
 		user.Role = common.RoleAdminUser
+	case "promote_root":
+		if myRole != common.RoleRootUser {
+			common.ApiErrorI18n(c, i18n.MsgAuthInsufficientPrivilege)
+			return
+		}
+		if user.Role == common.RoleRootUser {
+			common.ApiErrorMsg(c, "user is already root")
+			return
+		}
+		user.Role = common.RoleRootUser
 	case "demote":
 		if user.Role == common.RoleRootUser {
 			common.ApiErrorI18n(c, i18n.MsgUserCannotDemoteRootUser)
@@ -940,6 +967,20 @@ func ManageUser(c *gin.Context) {
 			return
 		}
 		user.Role = common.RoleCommonUser
+	case "demote_root":
+		if myRole != common.RoleRootUser {
+			common.ApiErrorI18n(c, i18n.MsgAuthInsufficientPrivilege)
+			return
+		}
+		if user.Id == c.GetInt("id") {
+			common.ApiErrorMsg(c, "cannot demote yourself")
+			return
+		}
+		if user.Role != common.RoleRootUser {
+			common.ApiErrorMsg(c, "user is not root")
+			return
+		}
+		user.Role = common.RoleAdminUser
 	case "add_quota":
 		adminName := c.GetString("username")
 		adminId := c.GetInt("id")
@@ -997,7 +1038,7 @@ func ManageUser(c *gin.Context) {
 	// 避免在 Redis TTL 过期前仍使用旧状态（尤其是禁用后仍可发起请求的问题）。
 	// InvalidateUserCache 会让下一次 GetUserCache 从数据库重新加载，
 	// InvalidateUserTokensCache 则确保令牌侧的缓存也同步刷新。
-	if req.Action == "disable" || req.Action == "promote" || req.Action == "demote" {
+	if req.Action == "disable" || req.Action == "promote" || req.Action == "demote" || req.Action == "promote_root" || req.Action == "demote_root" {
 		if err := model.InvalidateUserCache(user.Id); err != nil {
 			common.SysLog(fmt.Sprintf("failed to invalidate user cache for user %d: %s", user.Id, err.Error()))
 		}
@@ -1015,6 +1056,45 @@ func ManageUser(c *gin.Context) {
 		"data":    clearUser,
 	})
 	return
+}
+
+func ImpersonateUser(c *gin.Context) {
+	operator, ok := getCurrentUserForPrivilegedAction(c)
+	if !ok {
+		return
+	}
+	if operator.Role != common.RoleRootUser {
+		common.ApiErrorI18n(c, i18n.MsgAuthInsufficientPrivilege)
+		return
+	}
+	operatorId := operator.Id
+	targetId, err := strconv.Atoi(c.Param("id"))
+	if err != nil || targetId == 0 {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+	if targetId == operatorId {
+		common.ApiErrorMsg(c, "cannot impersonate yourself")
+		return
+	}
+
+	targetUser, err := model.GetUserById(targetId, false)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if targetUser.Status != common.UserStatusEnabled {
+		common.ApiErrorI18n(c, i18n.MsgAuthUserBanned)
+		return
+	}
+
+	adminInfo := map[string]interface{}{
+		"admin_id":       operatorId,
+		"admin_username": operator.Username,
+		"target_user_id": targetUser.Id,
+	}
+	model.RecordLogWithAdminInfo(targetUser.Id, model.LogTypeManage, fmt.Sprintf("root impersonated user %s", targetUser.Username), adminInfo)
+	setupLogin(targetUser, c)
 }
 
 type emailBindRequest struct {
@@ -1150,7 +1230,7 @@ type UpdateUserSettingRequest struct {
 	GotifyPriority                   int     `json:"gotify_priority,omitempty"`
 	UpstreamModelUpdateNotifyEnabled *bool   `json:"upstream_model_update_notify_enabled,omitempty"`
 	AcceptUnsetModelRatioModel       bool    `json:"accept_unset_model_ratio_model"`
-	RecordIpLog                      bool    `json:"record_ip_log"`
+	RecordIpLog                      *bool   `json:"record_ip_log"`
 }
 
 func UpdateUserSetting(c *gin.Context) {
@@ -1245,6 +1325,10 @@ func UpdateUserSetting(c *gin.Context) {
 	if user.Role >= common.RoleAdminUser && req.UpstreamModelUpdateNotifyEnabled != nil {
 		upstreamModelUpdateNotifyEnabled = *req.UpstreamModelUpdateNotifyEnabled
 	}
+	recordIpLog := existingSettings.RecordIpLog
+	if req.RecordIpLog != nil {
+		recordIpLog = req.RecordIpLog
+	}
 
 	// 构建设置
 	settings := dto.UserSetting{
@@ -1252,7 +1336,7 @@ func UpdateUserSetting(c *gin.Context) {
 		QuotaWarningThreshold:            req.QuotaWarningThreshold,
 		UpstreamModelUpdateNotifyEnabled: upstreamModelUpdateNotifyEnabled,
 		AcceptUnsetRatioModel:            req.AcceptUnsetModelRatioModel,
-		RecordIpLog:                      req.RecordIpLog,
+		RecordIpLog:                      recordIpLog,
 	}
 
 	// 如果是webhook类型,添加webhook相关设置

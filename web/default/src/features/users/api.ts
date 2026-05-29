@@ -116,6 +116,14 @@ export async function manageUser(
 }
 
 /**
+ * Sign in as another user. Root only.
+ */
+export async function impersonateUser(id: number): Promise<ApiResponse<User>> {
+  const res = await api.post(`/api/user/${id}/impersonate`)
+  return res.data
+}
+
+/**
  * Adjust user quota atomically (add/subtract/override)
  */
 export async function adjustUserQuota(

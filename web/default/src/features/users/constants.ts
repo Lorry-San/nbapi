@@ -81,7 +81,7 @@ export const USER_ROLES = {
     icon: Users,
   },
   [USER_ROLE.ROOT]: {
-    labelKey: 'Root',
+    labelKey: 'Super Admin',
     value: USER_ROLE.ROOT,
     icon: Shield,
   },
@@ -90,7 +90,7 @@ export const USER_ROLES = {
 export const getUserRoleOptions = (t: (key: string) => string) => [
   { label: t('User'), value: String(USER_ROLE.USER), icon: User },
   { label: t('Admin'), value: String(USER_ROLE.ADMIN), icon: Users },
-  { label: t('Root'), value: String(USER_ROLE.ROOT), icon: Shield },
+  { label: t('Super Admin'), value: String(USER_ROLE.ROOT), icon: Shield },
 ]
 
 // ============================================================================

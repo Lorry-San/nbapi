@@ -23,11 +23,13 @@ import { type ManageUserAction } from '../types'
 // ============================================================================
 
 const ACTION_MESSAGES: Record<ManageUserAction, string> = {
-  enable: 'User enabled successfully',
-  disable: 'User disabled successfully',
-  promote: 'User promoted to admin successfully',
-  demote: 'User demoted to regular user successfully',
-  delete: 'User deleted successfully',
+  enable: 'User updated successfully',
+  disable: 'User updated successfully',
+  promote: 'User updated successfully',
+  promote_root: 'User updated successfully',
+  demote: 'User updated successfully',
+  demote_root: 'User updated successfully',
+  delete: 'User updated successfully',
   add_quota: 'Quota adjusted successfully',
 }
 

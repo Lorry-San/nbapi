@@ -1,14 +1,20 @@
 package controller
 
 import (
+	"encoding/csv"
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 
 	"github.com/gin-gonic/gin"
 )
+
+const maxLogCsvExportRows = 10000
 
 func GetAllLogs(c *gin.Context) {
 	pageInfo := common.GetPageQuery(c)
@@ -53,6 +59,104 @@ func GetUserLogs(c *gin.Context) {
 	pageInfo.SetItems(logs)
 	common.ApiSuccess(c, pageInfo)
 	return
+}
+
+func parseLogQuery(c *gin.Context) (logType int, startTimestamp int64, endTimestamp int64, username string, tokenName string, modelName string, channel int, group string, requestId string, upstreamRequestId string) {
+	logType, _ = strconv.Atoi(c.Query("type"))
+	startTimestamp, _ = strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
+	endTimestamp, _ = strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
+	username = c.Query("username")
+	tokenName = c.Query("token_name")
+	modelName = c.Query("model_name")
+	channel, _ = strconv.Atoi(c.Query("channel"))
+	group = c.Query("group")
+	requestId = c.Query("request_id")
+	upstreamRequestId = c.Query("upstream_request_id")
+	return
+}
+
+func writeLogsCsv(c *gin.Context, filename string, logs []*model.Log) {
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+
+	writer := csv.NewWriter(c.Writer)
+	defer writer.Flush()
+
+	_ = writer.Write([]string{
+		"id",
+		"user_id",
+		"username",
+		"created_at",
+		"type",
+		"content",
+		"token_name",
+		"model_name",
+		"quota",
+		"quota_display",
+		"prompt_tokens",
+		"completion_tokens",
+		"use_time",
+		"is_stream",
+		"channel",
+		"channel_name",
+		"token_id",
+		"group",
+		"ip",
+		"request_id",
+		"upstream_request_id",
+		"other",
+	})
+
+	for _, log := range logs {
+		if err := writer.Write([]string{
+			strconv.Itoa(log.Id),
+			strconv.Itoa(log.UserId),
+			log.Username,
+			time.Unix(log.CreatedAt, 0).Format(time.RFC3339),
+			strconv.Itoa(log.Type),
+			log.Content,
+			log.TokenName,
+			log.ModelName,
+			strconv.Itoa(log.Quota),
+			logger.LogQuota(log.Quota),
+			strconv.Itoa(log.PromptTokens),
+			strconv.Itoa(log.CompletionTokens),
+			strconv.Itoa(log.UseTime),
+			strconv.FormatBool(log.IsStream),
+			strconv.Itoa(log.ChannelId),
+			log.ChannelName,
+			strconv.Itoa(log.TokenId),
+			log.Group,
+			log.Ip,
+			log.RequestId,
+			log.UpstreamRequestId,
+			log.Other,
+		}); err != nil {
+			common.SysLog("failed to write log csv: " + err.Error())
+			return
+		}
+	}
+}
+
+func ExportAllLogs(c *gin.Context) {
+	logType, startTimestamp, endTimestamp, username, tokenName, modelName, channel, group, requestId, upstreamRequestId := parseLogQuery(c)
+	logs, err := model.GetAllLogsForExport(logType, startTimestamp, endTimestamp, modelName, username, tokenName, channel, group, requestId, upstreamRequestId, maxLogCsvExportRows)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	writeLogsCsv(c, fmt.Sprintf("usage-logs-%s.csv", time.Now().Format("20060102150405")), logs)
+}
+
+func ExportUserLogs(c *gin.Context) {
+	logType, startTimestamp, endTimestamp, _, tokenName, modelName, _, group, requestId, upstreamRequestId := parseLogQuery(c)
+	userId := c.GetInt("id")
+	logs, err := model.GetUserLogsForExport(userId, logType, startTimestamp, endTimestamp, modelName, tokenName, group, requestId, upstreamRequestId, maxLogCsvExportRows)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	writeLogsCsv(c, fmt.Sprintf("usage-logs-self-%s.csv", time.Now().Format("20060102150405")), logs)
 }
 
 // Deprecated: SearchAllLogs 已废弃，前端未使用该接口。

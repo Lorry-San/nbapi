@@ -1,0 +1,87 @@
+# Deploy directly from the GitHub branch. This file builds the image from the
+# remote repository context, so the target server only needs Docker Compose.
+#
+# Usage:
+#   copy .env.docker.example .env.docker
+#   docker compose --env-file .env.docker -f docker-compose.github.yml up -d --build
+
+services:
+  new-api:
+    build:
+      context: ${NEW_API_BUILD_CONTEXT:-https://github.com/Lorry-San/new-api.git#codex/admin-usage-export-docker}
+      dockerfile: Dockerfile
+    image: ${NEW_API_IMAGE:-nbapi-new-api:github}
+    container_name: ${NEW_API_CONTAINER:-nbapi-new-api}
+    restart: unless-stopped
+    command: --log-dir /app/logs
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - ./data:/data
+      - ./logs:/app/logs
+    environment:
+      SQL_DSN: postgresql://root:${POSTGRES_PASSWORD:-change_me_postgres_password}@postgres:5432/new-api
+      REDIS_CONN_STRING: redis://:${REDIS_PASSWORD:-change_me_redis_password}@redis:6379
+      SESSION_SECRET: ${SESSION_SECRET:-change_me_to_a_long_random_session_secret}
+      TZ: ${TZ:-Asia/Shanghai}
+      NODE_NAME: ${NODE_NAME:-nbapi-node-1}
+      ERROR_LOG_ENABLED: "true"
+      BATCH_UPDATE_ENABLED: "true"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - nbapi-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:3000/api/status | grep -o '\"success\":\\s*true' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    container_name: nbapi-redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --requirepass
+      - ${REDIS_PASSWORD:-change_me_redis_password}
+    volumes:
+      - redis_data:/data
+    networks:
+      - nbapi-network
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-change_me_redis_password} ping | grep PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: nbapi-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_postgres_password}
+      POSTGRES_DB: new-api
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - nbapi-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d new-api"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  pg_data:
+  redis_data:
+
+networks:
+  nbapi-network:
+    driver: bridge

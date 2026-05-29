@@ -249,6 +249,19 @@ export function buildApiParams(config: {
   return params
 }
 
+export function buildCommonLogExportParams(config: {
+  searchParams: Record<string, unknown>
+  isAdmin: boolean
+}): GetLogsParams {
+  return buildApiParams({
+    page: 1,
+    pageSize: 1,
+    searchParams: config.searchParams,
+    columnFilters: [],
+    isAdmin: config.isAdmin,
+  })
+}
+
 // ============================================================================
 // Data Fetching
 // ============================================================================
