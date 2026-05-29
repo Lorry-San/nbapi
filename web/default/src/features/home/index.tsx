@@ -24,11 +24,16 @@ import { Footer } from '@/components/layout/components/footer'
 import { CTA, Features, Hero, HowItWorks, Stats } from './components'
 import { useHomePageContent } from './hooks'
 
+function isLikelyHtml(value: string) {
+  return /<\/?[a-z][\s\S]*>/i.test(value)
+}
+
 export function Home() {
   const { t } = useTranslation()
   const { auth } = useAuthStore()
   const isAuthenticated = !!auth.user
   const { content, isLoaded, isUrl } = useHomePageContent()
+  const isHtml = content && !isUrl && isLikelyHtml(content)
 
   if (!isLoaded) {
     return (
@@ -49,6 +54,11 @@ export function Home() {
               src={content}
               className='h-screen w-full border-none'
               title={t('Custom Home Page')}
+            />
+          ) : isHtml ? (
+            <div
+              className='custom-home-html min-h-screen'
+              dangerouslySetInnerHTML={{ __html: content }}
             />
           ) : (
             <div className='container mx-auto py-8'>
