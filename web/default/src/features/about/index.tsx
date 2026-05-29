@@ -57,55 +57,46 @@ function EmptyAboutState() {
         </div>
         <div className='space-y-4 text-sm'>
           <p>
-            {t('New API Project Repository:')}{' '}
+            NBAPI 项目仓库：{' '}
             <a
-              href='https://github.com/QuantumNous/new-api'
+              href='https://github.com/Lorry-San/nbapi'
               target='_blank'
               rel='noopener noreferrer'
               className='text-primary hover:underline'
             >
-              {t('https://github.com/QuantumNous/new-api')}
+              https://github.com/Lorry-San/nbapi
             </a>
           </p>
           <p className='text-muted-foreground'>
             <a
-              href='https://github.com/QuantumNous/new-api'
+              href='https://github.com/Lorry-San/nbapi'
               target='_blank'
               rel='noopener noreferrer'
               className='text-primary hover:underline'
             >
-              {t('NewAPI')}
+              NBAPI
             </a>{' '}
             © {currentYear}{' '}
             <a
-              href='https://github.com/QuantumNous'
+              href='https://github.com/Lorry-San'
               target='_blank'
               rel='noopener noreferrer'
               className='text-primary hover:underline'
             >
-              {t('QuantumNous')}
+              Lorry-San
             </a>{' '}
-            {t('| Based on')}{' '}
+            | 基于{' '}
             <a
-              href='https://github.com/songquanpeng/one-api'
+              href='https://github.com/QuantumNous/new-api'
               target='_blank'
               rel='noopener noreferrer'
               className='text-primary hover:underline'
             >
-              {t('One API')}
-            </a>{' '}
-            © 2023{' '}
-            <a
-              href='https://github.com/songquanpeng'
-              target='_blank'
-              rel='noopener noreferrer'
-              className='text-primary hover:underline'
-            >
-              {t('JustSong')}
+              New API
             </a>
           </p>
           <p className='text-muted-foreground'>
-            {t('This project must be used in compliance with the')}{' '}
+            本项目基于{' '}
             <a
               href='https://github.com/QuantumNous/new-api/blob/main/LICENSE'
               target='_blank'
@@ -113,8 +104,8 @@ function EmptyAboutState() {
               className='text-primary hover:underline'
             >
               {t('AGPL v3.0 License')}
-            </a>
-            .
+            </a>{' '}
+            授权使用。
           </p>
         </div>
       </div>

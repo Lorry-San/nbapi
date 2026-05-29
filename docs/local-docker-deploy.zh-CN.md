@@ -1,6 +1,9 @@
-# 本地 Docker 镜像部署
+# NBAPI Docker 部署
 
-这套配置会从当前源码构建镜像，包含本地修改后的后端和两套前端构建产物。
+这套配置支持两种方式：
+
+- `docker-compose.github.yml`：直接拉取 GitHub Actions 发布到 GHCR 的镜像。
+- `docker-compose.local.yml`：在本机从当前源码构建镜像。
 
 ## 1. 准备环境变量
 
@@ -11,20 +14,19 @@ copy .env.docker.example .env.docker
 notepad .env.docker
 ```
 
-至少修改 `POSTGRES_PASSWORD`、`REDIS_PASSWORD`、`SESSION_SECRET`。密码如果包含 `@`、`:`、`/`、`?` 等字符，需要 URL 编码后再用于连接串。
+至少修改 `POSTGRES_PASSWORD`、`REDIS_PASSWORD`、`SESSION_SECRET`。如果密码包含 `@`、`:`、`/`、`?` 等特殊字符，用在连接串里时需要先做 URL 编码。
 
-## 2. 构建并启动
+默认镜像为：
 
-从当前目录源码构建：
-
-```powershell
-docker compose --env-file .env.docker -f docker-compose.local.yml up -d --build
+```text
+ghcr.io/lorry-san/nbapi:custom
 ```
 
-从 GitHub 分支远程构建：
+## 2. 使用 GHCR 镜像启动
 
 ```powershell
-docker compose --env-file .env.docker -f docker-compose.github.yml up -d --build
+docker compose --env-file .env.docker -f docker-compose.github.yml pull new-api
+docker compose --env-file .env.docker -f docker-compose.github.yml up -d
 ```
 
 启动后访问：
@@ -33,28 +35,35 @@ docker compose --env-file .env.docker -f docker-compose.github.yml up -d --build
 http://localhost:3000
 ```
 
-## 3. 常用命令
+## 3. 本地源码构建启动
+
+```powershell
+docker compose --env-file .env.docker -f docker-compose.local.yml up -d --build
+```
+
+## 4. 常用命令
 
 查看日志：
 
 ```powershell
-docker compose --env-file .env.docker -f docker-compose.local.yml logs -f new-api
+docker compose --env-file .env.docker -f docker-compose.github.yml logs -f new-api
 ```
 
-更新代码后重新构建：
+更新 GHCR 镜像：
 
 ```powershell
-docker compose --env-file .env.docker -f docker-compose.local.yml up -d --build new-api
+docker compose --env-file .env.docker -f docker-compose.github.yml pull new-api
+docker compose --env-file .env.docker -f docker-compose.github.yml up -d --no-deps new-api
 ```
 
 停止服务：
 
 ```powershell
-docker compose --env-file .env.docker -f docker-compose.local.yml down
+docker compose --env-file .env.docker -f docker-compose.github.yml down
 ```
 
 连数据库数据一起删除：
 
 ```powershell
-docker compose --env-file .env.docker -f docker-compose.local.yml down -v
+docker compose --env-file .env.docker -f docker-compose.github.yml down -v
 ```

@@ -1,16 +1,12 @@
-# Deploy directly from the GitHub branch. This file builds the image from the
-# remote repository context, so the target server only needs Docker Compose.
+# Deploy the prebuilt image published by GitHub Actions.
 #
 # Usage:
 #   copy .env.docker.example .env.docker
-#   docker compose --env-file .env.docker -f docker-compose.github.yml up -d --build
+#   docker compose --env-file .env.docker -f docker-compose.github.yml up -d
 
 services:
   new-api:
-    build:
-      context: ${NEW_API_BUILD_CONTEXT:-https://github.com/Lorry-San/new-api.git#codex/admin-usage-export-docker}
-      dockerfile: Dockerfile
-    image: ${NEW_API_IMAGE:-nbapi-new-api:github}
+    image: ${NEW_API_IMAGE:-ghcr.io/lorry-san/nbapi:custom}
     container_name: ${NEW_API_CONTAINER:-nbapi-new-api}
     restart: unless-stopped
     command: --log-dir /app/logs
