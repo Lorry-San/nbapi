@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - codex/admin-usage-export-docker
+      - main
 
 permissions:
   contents: read
