@@ -244,13 +244,13 @@ const OtherSetting = () => {
 
       // Option 2: Use the JSON proxy approach which often works better with GitHub API
       const res = await fetch(
-        'https://api.github.com/repos/Calcium-Ion/new-api/releases/latest',
+        'https://api.github.com/repos/Lorry-San/nbapi/releases/latest',
         {
           headers: {
             Accept: 'application/json',
             'Content-Type': 'application/json',
             // Adding User-Agent which is often required by GitHub API
-            'User-Agent': 'new-api-update-checker',
+            'User-Agent': 'nbapi-update-checker',
           },
         },
       ).then((response) => response.json());
@@ -260,6 +260,10 @@ const OtherSetting = () => {
       // const res = await API.get('/api/status/github-latest-release');
 
       const { tag_name, body } = res;
+      if (!tag_name) {
+        showSuccess(t('NBAPI 当前没有发布 release，已使用 main 分支镜像更新。'));
+        return;
+      }
       if (tag_name === statusState?.status?.version) {
         showSuccess(`已是最新版本：${tag_name}`);
       } else {
@@ -282,8 +286,8 @@ const OtherSetting = () => {
 
   const switchToDefaultFrontend = () => {
     Modal.confirm({
-      title: t('切换到新版前端'),
-      content: t('切换后页面会自动刷新，并进入新版前端。是否继续？'),
+      title: t('切换到 default 前端'),
+      content: t('切换后页面会自动刷新，并进入 default 前端。是否继续？'),
       okText: t('确认切换'),
       cancelText: t('取消'),
       onOk: async () => {
@@ -301,12 +305,12 @@ const OtherSetting = () => {
             showError(message);
             return;
           }
-          showSuccess(t('已切换到新版前端，正在刷新页面'));
+          showSuccess(t('已切换到 default 前端，正在刷新页面'));
           setTimeout(() => {
             window.location.reload();
           }, 600);
         } catch (error) {
-          console.error('切换新版前端失败', error);
+          console.error('切换 default 前端失败', error);
           showError(t('切换失败，请稍后重试'));
         } finally {
           setLoadingInput((loadingInput) => ({
@@ -343,7 +347,7 @@ const OtherSetting = () => {
   // Function to open GitHub release page
   const openGitHubRelease = () => {
     window.open(
-      `https://github.com/Calcium-Ion/new-api/releases/tag/${updateData.tag_name}`,
+      `https://github.com/Lorry-San/nbapi/releases/tag/${updateData.tag_name}`,
       '_blank',
     );
   };
@@ -351,6 +355,11 @@ const OtherSetting = () => {
   const getStartTimeString = () => {
     const timestamp = statusState?.status?.start_time;
     return statusState.status ? timestamp2string(timestamp) : '';
+  };
+
+  const getVersionString = () => {
+    const version = statusState?.status?.version;
+    return version || t('当前镜像未注入版本号');
   };
 
   return (
@@ -367,26 +376,25 @@ const OtherSetting = () => {
         {/* 版本信息 */}
         <Form>
           <Card>
-            <Form.Section text={t('系统信息')}>
+            <Form.Section text={t('NBAPI 系统信息')}>
               <Row>
                 <Col span={16}>
                   <Space>
                     <Text>
-                      {t('当前版本')}：
-                      {statusState?.status?.version || t('未知')}
+                      {t('当前版本')}：{getVersionString()}
                     </Text>
                     <Button
                       type='primary'
                       onClick={checkUpdate}
                       loading={loadingInput['CheckUpdate']}
                     >
-                      {t('检查更新')}
+                      {t('检查 NBAPI 更新')}
                     </Button>
                     <Button
                       onClick={switchToDefaultFrontend}
                       loading={loadingInput['FrontendTheme']}
                     >
-                      {t('切换到新版前端')}
+                      {t('切换到 default 前端')}
                     </Button>
                   </Space>
                 </Col>
