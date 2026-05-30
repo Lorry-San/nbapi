@@ -77,3 +77,71 @@ func TestApplyOpenAIAPIPath(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildOpenAIRequestURL(t *testing.T) {
+	tests := []struct {
+		name        string
+		baseURL     string
+		requestPath string
+		apiPath     string
+		want        string
+	}{
+		{
+			name:        "origin defaults to v1",
+			baseURL:     "https://api.example.com",
+			requestPath: "/v1/models",
+			apiPath:     "",
+			want:        "https://api.example.com/v1/models",
+		},
+		{
+			name:        "origin uses custom nested path",
+			baseURL:     "https://ark.cn-beijing.volces.com",
+			requestPath: "/v1/models",
+			apiPath:     "/api/coding/v3",
+			want:        "https://ark.cn-beijing.volces.com/api/coding/v3/models",
+		},
+		{
+			name:        "versioned base url does not append v1",
+			baseURL:     "https://ark.cn-beijing.volces.com/api/coding/v3",
+			requestPath: "/v1/models",
+			apiPath:     "",
+			want:        "https://ark.cn-beijing.volces.com/api/coding/v3/models",
+		},
+		{
+			name:        "versioned base url with matching api path does not duplicate path",
+			baseURL:     "https://ark.cn-beijing.volces.com/api/coding/v3",
+			requestPath: "/v1/chat/completions",
+			apiPath:     "/api/coding/v3",
+			want:        "https://ark.cn-beijing.volces.com/api/coding/v3/chat/completions",
+		},
+		{
+			name:        "base url ending in v1 accepts normal openai requests",
+			baseURL:     "https://api.example.com/v1",
+			requestPath: "/v1/responses?beta=true",
+			apiPath:     "",
+			want:        "https://api.example.com/v1/responses?beta=true",
+		},
+		{
+			name:        "non versioned nested base keeps default v1 suffix",
+			baseURL:     "https://proxy.example.com/openai",
+			requestPath: "/v1/models",
+			apiPath:     "",
+			want:        "https://proxy.example.com/openai/v1/models",
+		},
+		{
+			name:        "cloudflare gateway strips default v1 prefix",
+			baseURL:     "https://gateway.ai.cloudflare.com/v1/account/gateway/openai",
+			requestPath: "/v1/chat/completions",
+			apiPath:     "",
+			want:        "https://gateway.ai.cloudflare.com/v1/account/gateway/openai/chat/completions",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := BuildOpenAIRequestURL(tt.baseURL, tt.requestPath, tt.apiPath); got != tt.want {
+				t.Fatalf("BuildOpenAIRequestURL(%q, %q, %q) = %q, want %q", tt.baseURL, tt.requestPath, tt.apiPath, got, tt.want)
+			}
+		})
+	}
+}

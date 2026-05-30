@@ -1060,7 +1060,7 @@ func FetchModels(c *gin.Context) {
 	if req.Type == constant.ChannelTypeOpenAI {
 		openAIAPIPath = req.OpenAIAPIPath
 	}
-	url := fmt.Sprintf("%s%s/models", baseURL, common.OpenAIAPIPathOrDefault(openAIAPIPath))
+	url := common.BuildOpenAIRequestURL(baseURL, "/v1/models", openAIAPIPath)
 
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
