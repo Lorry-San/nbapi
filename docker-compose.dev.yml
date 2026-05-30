@@ -1,4 +1,4 @@
-# Frontend Development - Backend built from local source
+# Frontend Development - NBAPI backend built from local source
 #
 # Usage:
 #   1. docker compose -f docker-compose.dev.yml up -d
@@ -6,7 +6,7 @@
 #   3. Open http://localhost:3001 (Rsbuild dev server, API auto-proxied to :3000)
 #
 # Rebuild backend after Go code changes:
-#   docker compose -f docker-compose.dev.yml up -d --build new-api
+#   docker compose -f docker-compose.dev.yml up -d --build nbapi
 #
 # Stop:
 #   docker compose -f docker-compose.dev.yml down
@@ -15,12 +15,12 @@
 #   docker compose -f docker-compose.dev.yml down -v
 
 services:
-  new-api:
+  nbapi:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    image: new-api-dev:local
-    container_name: new-api-dev
+    image: nbapi-dev:local
+    container_name: nbapi-dev
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -41,14 +41,14 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: new-api-dev-redis
+    container_name: nbapi-dev-redis
     restart: unless-stopped
     networks:
       - dev-network
 
   postgres:
     image: postgres:15-alpine
-    container_name: new-api-dev-pg
+    container_name: nbapi-dev-pg
     restart: unless-stopped
     environment:
       POSTGRES_USER: root

@@ -22,10 +22,11 @@ var (
 )
 
 func printHelp() {
-	fmt.Println("NewAPI(Based OneAPI) " + Version + " - The next-generation LLM gateway and AI asset management system supports multiple languages.")
+	fmt.Println("NBAPI(Based on New API) " + Version + " - The next-generation LLM gateway and AI asset management system supports multiple languages.")
 	fmt.Println("Original Project: OneAPI by JustSong - https://github.com/songquanpeng/one-api")
-	fmt.Println("Maintainer: QuantumNous - https://github.com/QuantumNous/new-api")
-	fmt.Println("Usage: newapi [--port <port>] [--log-dir <log directory>] [--version] [--help]")
+	fmt.Println("Based on New API: https://github.com/QuantumNous/new-api")
+	fmt.Println("Maintainer: Lorry-San - https://github.com/Lorry-San/nbapi")
+	fmt.Println("Usage: nbapi [--port <port>] [--log-dir <log directory>] [--version] [--help]")
 }
 
 func InitEnv() {

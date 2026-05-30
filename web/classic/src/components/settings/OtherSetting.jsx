@@ -235,33 +235,28 @@ const OtherSetting = () => {
         ...loadingInput,
         CheckUpdate: true,
       }));
-      // Use a CORS proxy to avoid direct cross-origin requests to GitHub API
-      // Option 1: Use a public CORS proxy service
-      // const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
-      // const res = await API.get(
-      //   `${proxyUrl}https://api.github.com/repos/Calcium-Ion/new-api/releases/latest`,
-      // );
-
-      // Option 2: Use the JSON proxy approach which often works better with GitHub API
       const res = await fetch(
-        'https://api.github.com/repos/Lorry-San/nbapi/releases/latest',
+        'https://api.github.com/repos/Lorry-San/nbapi/releases?per_page=20',
         {
           headers: {
             Accept: 'application/json',
             'Content-Type': 'application/json',
-            // Adding User-Agent which is often required by GitHub API
             'User-Agent': 'nbapi-update-checker',
           },
         },
       ).then((response) => response.json());
 
-      // Option 3: Use a local proxy endpoint
-      // Create a cached version of the response to avoid frequent GitHub API calls
-      // const res = await API.get('/api/status/github-latest-release');
-
-      const { tag_name, body } = res;
+      if (!Array.isArray(res)) {
+        throw new Error('Unexpected release payload');
+      }
+      const releases = res.filter((item) => !item.draft);
+      const matchedRelease = releases.find(
+        (item) => item.tag_name === statusState?.status?.version,
+      );
+      const latestRelease = matchedRelease || releases[0];
+      const { tag_name, body } = latestRelease || {};
       if (!tag_name) {
-        showSuccess(t('NBAPI 当前没有发布 release，已使用 main 分支镜像更新。'));
+        showSuccess(t('NBAPI 当前没有发布 release，已使用 main 分支镜像。'));
         return;
       }
       if (tag_name === statusState?.status?.version) {

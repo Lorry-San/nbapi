@@ -5,12 +5,12 @@
 #   docker compose --env-file .env.docker -f docker-compose.local.yml up -d --build
 
 services:
-  new-api:
+  nbapi:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ${NEW_API_IMAGE:-nbapi-new-api:local}
-    container_name: ${NEW_API_CONTAINER:-nbapi-new-api}
+    image: ${NBAPI_IMAGE:-nbapi:local}
+    container_name: ${NBAPI_CONTAINER:-nbapi}
     restart: unless-stopped
     command: --log-dir /app/logs
     ports:

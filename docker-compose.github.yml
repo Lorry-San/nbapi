@@ -5,9 +5,9 @@
 #   docker compose --env-file .env.docker -f docker-compose.github.yml up -d
 
 services:
-  new-api:
-    image: ${NEW_API_IMAGE:-ghcr.io/lorry-san/nbapi:custom}
-    container_name: ${NEW_API_CONTAINER:-nbapi-new-api}
+  nbapi:
+    image: ${NBAPI_IMAGE:-ghcr.io/lorry-san/nbapi:beta-5.30-1}
+    container_name: ${NBAPI_CONTAINER:-nbapi}
     restart: unless-stopped
     command: --log-dir /app/logs
     ports:

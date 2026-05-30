@@ -39,6 +39,8 @@ type ReleaseInfo = {
   body?: string
   html_url?: string
   published_at?: string
+  draft?: boolean
+  prerelease?: boolean
 }
 
 type UpdateCheckerSectionProps = {
@@ -62,11 +64,11 @@ export function UpdateCheckerSection({
     setChecking(true)
     try {
       const response = await fetch(
-        'https://api.github.com/repos/Calcium-Ion/new-api/releases/latest',
+        'https://api.github.com/repos/Lorry-San/nbapi/releases?per_page=20',
         {
           headers: {
             Accept: 'application/vnd.github+json',
-            'User-Agent': 'new-api-dashboard',
+            'User-Agent': 'nbapi-dashboard',
           },
         }
       )
@@ -75,9 +77,22 @@ export function UpdateCheckerSection({
         throw new Error(t('Failed to contact GitHub releases API'))
       }
 
-      const data = (await response.json()) as ReleaseInfo
-      if (!data?.tag_name) {
+      const releases = (await response.json()) as ReleaseInfo[]
+      if (!Array.isArray(releases)) {
         throw new Error(t('Unexpected release payload'))
+      }
+
+      const publishedReleases = releases.filter((item) => !item.draft)
+      const data =
+        (currentVersion &&
+          publishedReleases.find((item) => item.tag_name === currentVersion)) ||
+        publishedReleases[0]
+
+      if (!data?.tag_name) {
+        toast.success(
+          t('NBAPI currently has no published release. The main image is used.')
+        )
+        return
       }
 
       if (currentVersion && data.tag_name === currentVersion) {

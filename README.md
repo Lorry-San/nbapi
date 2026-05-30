@@ -1,27 +1,29 @@
 # NBAPI
 
-NBAPI 是基于 [New API](https://github.com/QuantumNous/new-api) 的二开版本，保留 OpenAI/Claude/Gemini 等多协议 AI API 网关能力，并加入适合自部署运营的管理功能。
+NBAPI 是基于 [New API](https://github.com/QuantumNous/new-api) 的二开版本，保留 OpenAI、Claude、Gemini 等多协议 AI API 网关能力，并加入适合自部署运营的管理功能。
 
 ## 主要改动
 
-- 默认品牌名调整为 `NBAPI`，页脚、关于页和默认系统名同步改名。
-- 保留上游来源说明：关于页显示“基于 New API”。
-- 默认强制记录用户 IP，用户侧不可关闭。
+- 默认品牌名调整为 `NBAPI`，同时保留上游来源说明“基于 New API”。
+- 默认强制记录用户 IP，普通用户不可关闭。
 - 支持设置其他用户为超级管理员。
 - 超级管理员支持一键登录其他用户账号。
 - classic 使用记录支持导出 CSV。
-- 支付设置页移除合规确认锁定提示，兑换码、订阅、邀请返利和支付配置不再被该确认项阻断。
-- 提供 GHCR 镜像和 Docker Compose 部署文件。
+- OpenAI 兼容渠道支持自定义 API 版本路径，适配非 `/v1` 的上游。
+- 移除支付合规确认对兑换码、订阅、邀请返利和支付配置页面的阻断。
+- 提供 GHCR 镜像和完整 Docker Compose 部署文件。
 
 ## 镜像
 
 ```text
+ghcr.io/lorry-san/nbapi:beta-5.30-1
 ghcr.io/lorry-san/nbapi:custom
 ```
 
-推送到 `codex/admin-usage-export-docker` 分支后，GitHub Actions 会自动构建并推送：
+`main` 分支推送后，GitHub Actions 会自动构建并推送：
 
 - `ghcr.io/lorry-san/nbapi:custom`
+- `ghcr.io/lorry-san/nbapi:beta-5.30-1`
 - `ghcr.io/lorry-san/nbapi:custom-<sha>`
 
 ## 快速部署
@@ -43,7 +45,7 @@ SESSION_SECRET=...
 启动：
 
 ```bash
-docker compose --env-file .env.docker -f docker-compose.github.yml pull new-api
+docker compose --env-file .env.docker -f docker-compose.github.yml pull nbapi
 docker compose --env-file .env.docker -f docker-compose.github.yml up -d
 ```
 
@@ -58,14 +60,14 @@ http://localhost:3000
 如果你已经有 New API/NBAPI 的 Docker Compose 部署，先备份数据库，再把应用服务镜像改为：
 
 ```text
-ghcr.io/lorry-san/nbapi:custom
+ghcr.io/lorry-san/nbapi:beta-5.30-1
 ```
 
 只更新应用容器：
 
 ```bash
-docker compose pull new-api
-docker compose up -d --no-deps new-api
+docker compose pull nbapi
+docker compose up -d --no-deps nbapi
 ```
 
 不要执行 `docker compose down -v`，否则会删除数据库卷。

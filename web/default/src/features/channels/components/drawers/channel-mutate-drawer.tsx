@@ -1782,7 +1782,7 @@ export function ChannelMutateDrawer({
                               {t(
                                 currentType === 1
                                   ? 'OpenAI-compatible origin URL only. Do not add /v1 or trailing slash; use OpenAI API version path for /v3 or other upstream versions.'
-                                  : 'Custom API base URL. For official channels, New API has built-in addresses. Only fill this for third-party proxy sites or special endpoints. Do not add /v1 or trailing slash.'
+                                  : 'Custom API base URL. For official channels, NBAPI has built-in addresses. Only fill this for third-party proxy sites or special endpoints. Do not add /v1 or trailing slash.'
                               )}
                             </FormDescription>
                             <FormMessage />

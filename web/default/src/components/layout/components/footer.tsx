@@ -41,9 +41,9 @@ interface FooterProps {
   className?: string
 }
 
-const NEW_API_FOOTER_ATTRIBUTION_KEY = [
+const NBAPI_FOOTER_ATTRIBUTION_KEY = [
   'footer',
-  'new' + 'api',
+  'nbapi',
   'projectAttributionSuffix',
 ].join('.')
 
@@ -135,7 +135,7 @@ function ProjectAttribution(props: { currentYear: number; inline?: boolean }) {
       >
         NBAPI
       </a>
-      . {t(NEW_API_FOOTER_ATTRIBUTION_KEY)}
+      . {t(NBAPI_FOOTER_ATTRIBUTION_KEY)}
     </span>
   )
   if (props.inline) {
