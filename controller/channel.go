@@ -993,9 +993,10 @@ func UpdateChannel(c *gin.Context) {
 
 func FetchModels(c *gin.Context) {
 	var req struct {
-		BaseURL string `json:"base_url"`
-		Type    int    `json:"type"`
-		Key     string `json:"key"`
+		BaseURL       string `json:"base_url"`
+		Type          int    `json:"type"`
+		Key           string `json:"key"`
+		OpenAIAPIPath string `json:"openai_api_path"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -1055,7 +1056,11 @@ func FetchModels(c *gin.Context) {
 	}
 
 	client := &http.Client{}
-	url := fmt.Sprintf("%s/v1/models", baseURL)
+	openAIAPIPath := ""
+	if req.Type == constant.ChannelTypeOpenAI {
+		openAIAPIPath = req.OpenAIAPIPath
+	}
+	url := fmt.Sprintf("%s%s/models", baseURL, common.OpenAIAPIPathOrDefault(openAIAPIPath))
 
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {

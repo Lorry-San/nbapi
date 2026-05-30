@@ -504,6 +504,7 @@ export async function fetchModels(data: {
   base_url: string
   type: number
   key: string
+  openai_api_path?: string
 }): Promise<FetchModelsResponse> {
   const res = await api.post(
     '/api/channel/fetch_models',

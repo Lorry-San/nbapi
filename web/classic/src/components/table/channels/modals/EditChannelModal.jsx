@@ -174,6 +174,7 @@ const EditChannelModal = (props) => {
     type: 1,
     key: '',
     openai_organization: '',
+    openai_api_path: '',
     max_input_tokens: 0,
     base_url: '',
     other: '',
@@ -616,11 +617,11 @@ const EditChannelModal = (props) => {
       value = Array.from(new Set(value.map((m) => (m || '').trim())));
     }
 
-    if (name === 'base_url' && value.endsWith('/v1')) {
+    if (inputs.type === 1 && name === 'base_url' && value.endsWith('/v1')) {
       Modal.confirm({
         title: '警告',
         content:
-          '不需要在末尾加/v1，New API会自动处理，添加后可能导致请求失败，是否继续？',
+          'OpenAI 渠道的 Base URL 不需要在末尾加 /v1。需要 /v3 或其他版本时，请在高级设置里填写 OpenAI API version path。添加 /v1 可能导致请求失败，是否继续？',
         onOk: () => {
           setInputs((inputs) => ({ ...inputs, [name]: value }));
         },
@@ -905,6 +906,7 @@ const EditChannelModal = (props) => {
           data.disable_store = parsedSettings.disable_store || false;
           data.allow_safety_identifier =
             parsedSettings.allow_safety_identifier || false;
+          data.openai_api_path = parsedSettings.openai_api_path || '';
           data.allow_include_obfuscation =
             parsedSettings.allow_include_obfuscation || false;
           data.allow_inference_geo =
@@ -937,6 +939,7 @@ const EditChannelModal = (props) => {
           data.allow_service_tier = false;
           data.disable_store = false;
           data.allow_safety_identifier = false;
+          data.openai_api_path = '';
           data.allow_include_obfuscation = false;
           data.allow_inference_geo = false;
           data.allow_speed = false;
@@ -955,6 +958,7 @@ const EditChannelModal = (props) => {
         data.allow_service_tier = false;
         data.disable_store = false;
         data.allow_safety_identifier = false;
+        data.openai_api_path = '';
         data.allow_include_obfuscation = false;
         data.allow_inference_geo = false;
         data.allow_speed = false;
@@ -1033,6 +1037,7 @@ const EditChannelModal = (props) => {
         (data.weight && data.weight !== 0) ||
         (data.proxy && data.proxy.trim()) ||
         (data.system_prompt && data.system_prompt.trim()) ||
+        (data.openai_api_path && data.openai_api_path.trim()) ||
         data.thinking_to_content ||
         data.pass_through_body_enabled ||
         data.force_format ||
@@ -1080,6 +1085,7 @@ const EditChannelModal = (props) => {
               base_url: inputs['base_url'],
               type: inputs['type'],
               key: inputs['key'],
+              openai_api_path: inputs['openai_api_path'] || '',
             },
             { skipErrorHandler: true },
           );
@@ -1790,6 +1796,12 @@ const EditChannelModal = (props) => {
       settings.allow_service_tier = localInputs.allow_service_tier === true;
       // 仅 OpenAI 渠道需要 store / safety_identifier / include_obfuscation
       if (localInputs.type === 1) {
+        const openaiApiPath = String(localInputs.openai_api_path || '').trim();
+        if (openaiApiPath) {
+          settings.openai_api_path = openaiApiPath;
+        } else {
+          delete settings.openai_api_path;
+        }
         settings.disable_store = localInputs.disable_store === true;
         settings.allow_safety_identifier =
           localInputs.allow_safety_identifier === true;
@@ -1801,6 +1813,8 @@ const EditChannelModal = (props) => {
         settings.allow_speed = localInputs.allow_speed === true;
         settings.claude_beta_query = localInputs.claude_beta_query === true;
       }
+    } else {
+      delete settings.openai_api_path;
     }
 
     settings.upstream_model_update_check_enabled =
@@ -1844,6 +1858,7 @@ const EditChannelModal = (props) => {
     delete localInputs.allow_service_tier;
     delete localInputs.disable_store;
     delete localInputs.allow_safety_identifier;
+    delete localInputs.openai_api_path;
     delete localInputs.allow_include_obfuscation;
     delete localInputs.allow_inference_geo;
     delete localInputs.allow_speed;
@@ -2491,6 +2506,7 @@ const EditChannelModal = (props) => {
                         {t('字段透传控制')}
                       </div>
                       <Form.Switch field='allow_service_tier' label={t('允许 service_tier 透传')} checkedText={t('开')} uncheckedText={t('关')} onChange={(value) => handleChannelOtherSettingsChange('allow_service_tier', value)} extraText={t('service_tier 字段用于指定服务层级，允许透传可能导致实际计费高于预期。默认关闭以避免额外费用')} />
+                      <Form.Input field='openai_api_path' label={t('OpenAI API version path')} placeholder='/v3' onChange={(value) => handleChannelOtherSettingsChange('openai_api_path', value)} showClear extraText={t('Leave empty to use /v1. Use /v3 or /api/v3 when the upstream does not expose /v1.')} />
                       <Form.Switch field='disable_store' label={t('禁用 store 透传')} checkedText={t('开')} uncheckedText={t('关')} onChange={(value) => handleChannelOtherSettingsChange('disable_store', value)} extraText={t('store 字段用于授权 OpenAI 存储请求数据以评估和优化产品。默认关闭，开启后可能导致 Codex 无法正常使用')} />
                       <Form.Switch field='allow_safety_identifier' label={t('允许 safety_identifier 透传')} checkedText={t('开')} uncheckedText={t('关')} onChange={(value) => handleChannelOtherSettingsChange('allow_safety_identifier', value)} extraText={t('safety_identifier 字段用于帮助 OpenAI 识别可能违反使用政策的应用程序用户。默认关闭以保护用户隐私')} />
                       <Form.Switch field='allow_include_obfuscation' label={t('允许 stream_options.include_obfuscation 透传')} checkedText={t('开')} uncheckedText={t('关')} onChange={(value) => handleChannelOtherSettingsChange('allow_include_obfuscation', value)} extraText={t('include_obfuscation 用于控制 Responses 流混淆字段。默认关闭以避免客户端关闭该安全保护')} />

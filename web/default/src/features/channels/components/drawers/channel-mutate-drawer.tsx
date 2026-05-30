@@ -218,6 +218,7 @@ function hasAdvancedSettingsValues(values: ChannelFormValues): boolean {
     values.thinking_to_content ||
     values.pass_through_body_enabled ||
     values.system_prompt_override ||
+    values.openai_api_path?.trim() ||
     values.claude_beta_query ||
     values.upstream_model_update_check_enabled ||
     values.upstream_model_update_auto_sync_enabled ||
@@ -625,12 +626,13 @@ export function ChannelMutateDrawer({
   // Validate base_url - warn if it ends with /v1
   useEffect(() => {
     if (!currentBaseUrl || !currentBaseUrl.endsWith('/v1')) return
+    if (currentType !== 1) return
 
     // Show warning toast
     const timer = setTimeout(() => {
       toast.warning(
         t(
-          'Warning: Base URL should not end with /v1. New API will handle it automatically. This may cause request failures.'
+          'Warning: OpenAI Base URL should not end with /v1. Leave it at the origin and use OpenAI API version path for /v3 or other upstream versions.'
         ),
         { duration: 5000 }
       )
@@ -638,7 +640,7 @@ export function ChannelMutateDrawer({
 
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentBaseUrl])
+  }, [currentBaseUrl, currentType])
 
   // Handle key deduplication
   const handleDeduplicateKeys = () => {
@@ -762,6 +764,7 @@ export function ChannelMutateDrawer({
       type: form.getValues('type'),
       key: form.getValues('key'),
       base_url: form.getValues('base_url') || '',
+      openai_api_path: form.getValues('openai_api_path') || '',
     })
     if (response.success && response.data) {
       return response.data
@@ -1777,7 +1780,9 @@ export function ChannelMutateDrawer({
                             </FormControl>
                             <FormDescription>
                               {t(
-                                'Custom API base URL. For official channels, New API has built-in addresses. Only fill this for third-party proxy sites or special endpoints. Do not add /v1 or trailing slash.'
+                                currentType === 1
+                                  ? 'OpenAI-compatible origin URL only. Do not add /v1 or trailing slash; use OpenAI API version path for /v3 or other upstream versions.'
+                                  : 'Custom API base URL. For official channels, New API has built-in addresses. Only fill this for third-party proxy sites or special endpoints. Do not add /v1 or trailing slash.'
                               )}
                             </FormDescription>
                             <FormMessage />
@@ -2897,6 +2902,29 @@ export function ChannelMutateDrawer({
                             title={t('Field passthrough controls')}
                             icon={<SlidersHorizontal className='h-3.5 w-3.5' />}
                           />
+
+                          {currentType === 1 && (
+                            <FormField
+                              control={form.control}
+                              name='openai_api_path'
+                              render={({ field }) => (
+                                <FormItem className='px-4 pb-1'>
+                                  <FormLabel>
+                                    {t('OpenAI API version path')}
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input placeholder='/v3' {...field} />
+                                  </FormControl>
+                                  <FormDescription>
+                                    {t(
+                                      'Leave empty to use /v1. Use /v3 or /api/v3 when the upstream does not expose /v1.'
+                                    )}
+                                  </FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          )}
 
                           <div className='divide-border space-y-0 divide-y border-y'>
                             <FormField

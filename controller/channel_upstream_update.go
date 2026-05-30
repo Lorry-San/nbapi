@@ -264,6 +264,11 @@ func fetchChannelUpstreamModelIDs(channel *model.Channel) ([]string, error) {
 	if channel.GetBaseURL() != "" {
 		baseURL = channel.GetBaseURL()
 	}
+	settings := channel.GetOtherSettings()
+	openAIAPIPath := common.OpenAIAPIPathOrDefault("")
+	if channel.Type == constant.ChannelTypeOpenAI {
+		openAIAPIPath = common.OpenAIAPIPathOrDefault(settings.OpenAIAPIPath)
+	}
 
 	if channel.Type == constant.ChannelTypeOllama {
 		key := strings.TrimSpace(strings.Split(channel.Key, "\n")[0])
@@ -303,16 +308,16 @@ func fetchChannelUpstreamModelIDs(channel *model.Channel) ([]string, error) {
 		if plan, ok := constant.ChannelSpecialBases[baseURL]; ok && plan.OpenAIBaseURL != "" {
 			url = fmt.Sprintf("%s/v1/models", plan.OpenAIBaseURL)
 		} else {
-			url = fmt.Sprintf("%s/v1/models", baseURL)
+			url = fmt.Sprintf("%s%s/models", baseURL, openAIAPIPath)
 		}
 	case constant.ChannelTypeMoonshot:
 		if plan, ok := constant.ChannelSpecialBases[baseURL]; ok && plan.OpenAIBaseURL != "" {
 			url = fmt.Sprintf("%s/models", plan.OpenAIBaseURL)
 		} else {
-			url = fmt.Sprintf("%s/v1/models", baseURL)
+			url = fmt.Sprintf("%s%s/models", baseURL, openAIAPIPath)
 		}
 	default:
-		url = fmt.Sprintf("%s/v1/models", baseURL)
+		url = fmt.Sprintf("%s%s/models", baseURL, openAIAPIPath)
 	}
 
 	key, _, apiErr := channel.GetNextEnabledKey()

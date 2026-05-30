@@ -163,12 +163,18 @@ func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 		url = strings.Replace(url, "{model}", info.UpstreamModelName, -1)
 		return url, nil
 	default:
+		apiPathSetting := ""
+		if info.ChannelType == constant.ChannelTypeOpenAI {
+			apiPathSetting = info.ChannelOtherSettings.OpenAIAPIPath
+		}
+		apiPath := common.OpenAIAPIPathOrDefault(apiPathSetting)
 		if (info.RelayFormat == types.RelayFormatClaude || info.RelayFormat == types.RelayFormatGemini) &&
 			info.RelayMode != relayconstant.RelayModeResponses &&
 			info.RelayMode != relayconstant.RelayModeResponsesCompact {
-			return fmt.Sprintf("%s/v1/chat/completions", info.ChannelBaseUrl), nil
+			return fmt.Sprintf("%s%s/chat/completions", info.ChannelBaseUrl, apiPath), nil
 		}
-		return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, info.RequestURLPath, info.ChannelType), nil
+		requestURLPath := common.ApplyOpenAIAPIPath(info.RequestURLPath, apiPathSetting)
+		return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, requestURLPath, info.ChannelType), nil
 	}
 }
 

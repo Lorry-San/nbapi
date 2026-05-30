@@ -187,6 +187,7 @@ export const channelFormSchema = z
     vertex_key_type: z.enum(['json', 'api_key']).optional(), // Vertex AI specific
     aws_key_type: z.enum(['ak_sk', 'api_key']).optional(), // AWS specific
     azure_responses_version: z.string().optional(), // Azure specific
+    openai_api_path: z.string().optional(), // OpenAI-compatible API path
     // Field passthrough controls (stored in settings JSON)
     allow_service_tier: z.boolean().optional(), // OpenAI/Anthropic
     disable_store: z.boolean().optional(), // OpenAI only
@@ -305,6 +306,7 @@ export const CHANNEL_FORM_DEFAULT_VALUES: ChannelFormValues = {
   vertex_key_type: 'json',
   aws_key_type: 'ak_sk',
   azure_responses_version: '',
+  openai_api_path: '',
   // Field passthrough controls
   allow_service_tier: false,
   disable_store: false,
@@ -367,6 +369,7 @@ export function transformChannelToFormDefaults(
   let allowInferenceGeo = false
   let allowSpeed = false
   let claudeBetaQuery = false
+  let openAIAPIPath = ''
   let upstreamModelUpdateCheckEnabled = false
   let upstreamModelUpdateAutoSyncEnabled = false
   let upstreamModelUpdateIgnoredModels = ''
@@ -385,6 +388,7 @@ export function transformChannelToFormDefaults(
       allowInferenceGeo = parsed.allow_inference_geo === true
       allowSpeed = parsed.allow_speed === true
       claudeBetaQuery = parsed.claude_beta_query === true
+      openAIAPIPath = parsed.openai_api_path || ''
       upstreamModelUpdateCheckEnabled =
         parsed.upstream_model_update_check_enabled === true
       upstreamModelUpdateAutoSyncEnabled =
@@ -439,6 +443,7 @@ export function transformChannelToFormDefaults(
     allow_inference_geo: allowInferenceGeo,
     allow_speed: allowSpeed,
     claude_beta_query: claudeBetaQuery,
+    openai_api_path: openAIAPIPath,
     allow_safety_identifier: allowSafetyIdentifier,
     upstream_model_update_check_enabled: upstreamModelUpdateCheckEnabled,
     upstream_model_update_auto_sync_enabled: upstreamModelUpdateAutoSyncEnabled,
@@ -515,6 +520,12 @@ function buildSettingsJSON(formData: ChannelFormValues): string {
   }
 
   if (formData.type === 1) {
+    const openaiAPIPath = formData.openai_api_path?.trim()
+    if (openaiAPIPath) {
+      settingsObj.openai_api_path = openaiAPIPath
+    } else if ('openai_api_path' in settingsObj) {
+      delete settingsObj.openai_api_path
+    }
     settingsObj.disable_store = formData.disable_store === true
     settingsObj.allow_safety_identifier =
       formData.allow_safety_identifier === true
@@ -527,6 +538,7 @@ function buildSettingsJSON(formData: ChannelFormValues): string {
       delete settingsObj.allow_safety_identifier
     if ('allow_include_obfuscation' in settingsObj)
       delete settingsObj.allow_include_obfuscation
+    if ('openai_api_path' in settingsObj) delete settingsObj.openai_api_path
     if (formData.type !== 14 && 'allow_inference_geo' in settingsObj)
       delete settingsObj.allow_inference_geo
   }
