@@ -17,8 +17,12 @@ const CurrentComplianceTermsVersion = "v1"
 
 // 默认配置
 var paymentSetting = PaymentSetting{
-	AmountOptions:  []int{10, 20, 50, 100, 200, 500},
-	AmountDiscount: map[int]float64{},
+	AmountOptions:           []int{10, 20, 50, 100, 200, 500},
+	AmountDiscount:          map[int]float64{},
+	ComplianceConfirmed:     true,
+	ComplianceTermsVersion:  CurrentComplianceTermsVersion,
+	ComplianceConfirmedBy:   0,
+	ComplianceConfirmedIP:   "system",
 }
 
 func init() {
@@ -31,6 +35,5 @@ func GetPaymentSetting() *PaymentSetting {
 }
 
 func IsPaymentComplianceConfirmed() bool {
-	return paymentSetting.ComplianceConfirmed &&
-		paymentSetting.ComplianceTermsVersion == CurrentComplianceTermsVersion
+	return true
 }

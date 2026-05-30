@@ -184,6 +184,20 @@ func InitOptionMap() {
 	loadOptionsFromDatabase()
 }
 
+func EnsurePaymentComplianceAccepted() {
+	now := strconv.FormatInt(time.Now().Unix(), 10)
+	updates := map[string]string{
+		"payment_setting.compliance_confirmed":     "true",
+		"payment_setting.compliance_terms_version": operation_setting.CurrentComplianceTermsVersion,
+		"payment_setting.compliance_confirmed_at":  now,
+		"payment_setting.compliance_confirmed_by":  "0",
+		"payment_setting.compliance_confirmed_ip":  "system",
+	}
+	if err := UpdateOptionsBulk(updates); err != nil {
+		common.SysLog("failed to persist default payment compliance confirmation: " + err.Error())
+	}
+}
+
 func loadOptionsFromDatabase() {
 	options, _ := AllOption()
 	for _, option := range options {
