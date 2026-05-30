@@ -27,6 +27,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          if [ -z "$VERSION" ]; then
+            echo "::error::VERSION file is empty"
+            exit 1
+          fi
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -34,7 +45,12 @@ jobs:
           images: ghcr.io/${{ github.repository_owner }}/nbapi
           tags: |
             type=raw,value=custom
+            type=raw,value=${{ steps.version.outputs.value }}
             type=sha,prefix=custom-
+          flavor: |
+            latest=false
+          labels: |
+            org.opencontainers.image.version=${{ steps.version.outputs.value }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
