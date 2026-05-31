@@ -85,3 +85,95 @@ export interface OpsMonitorResponse {
   message?: string
   data?: OpsMonitorData
 }
+
+export interface OpsAlertRule {
+  id: number
+  name: string
+  description: string
+  metric: string
+  comparator: string
+  threshold: number
+  level: string
+  enabled: boolean
+  window_seconds: number
+  duration_seconds: number
+  cooldown_seconds: number
+  notify_email: boolean
+  scope: string
+  channel_id: number
+  model_name: string
+  group: string
+  last_state: string
+  first_triggered_at: number
+  last_triggered_at: number
+  last_recovered_at: number
+  last_notified_at: number
+  last_value: number
+  last_message: string
+  created_at: number
+  updated_at: number
+}
+
+export interface OpsAlertMetric {
+  key: string
+  label: string
+  unit: string
+  default_comparator: string
+}
+
+export interface OpsAlertEvent {
+  id: number
+  rule_id: number
+  rule_name: string
+  title: string
+  message: string
+  metric: string
+  comparator: string
+  threshold: number
+  current_value: number
+  level: string
+  status: string
+  scope: string
+  channel_id: number
+  channel_name: string
+  model_name: string
+  group: string
+  window_seconds: number
+  duration_seconds: number
+  triggered_at: number
+  resolved_at: number
+  email_sent: boolean
+  email_error: string
+  email_recipient: string
+  notification_type: string
+  created_at: number
+}
+
+export interface OpsAlertRulesResponse {
+  success: boolean
+  message?: string
+  data?: {
+    rules: OpsAlertRule[]
+    metrics: OpsAlertMetric[]
+  }
+}
+
+export interface OpsAlertEventsResponse {
+  success: boolean
+  message?: string
+  data?: OpsAlertEvent[]
+}
+
+export type OpsAlertRulePayload = Omit<
+  OpsAlertRule,
+  | 'id'
+  | 'last_state'
+  | 'first_triggered_at'
+  | 'last_triggered_at'
+  | 'last_recovered_at'
+  | 'last_notified_at'
+  | 'last_value'
+  | 'last_message'
+  | 'created_at'
+  | 'updated_at'
+>

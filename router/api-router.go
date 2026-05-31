@@ -328,6 +328,12 @@ func SetApiRouter(router *gin.Engine) {
 		opsRoute.Use(middleware.AdminAuth())
 		{
 			opsRoute.GET("/monitor", controller.GetOpsMonitor)
+			opsRoute.GET("/alerts/rules", controller.ListOpsAlertRules)
+			opsRoute.POST("/alerts/rules", controller.CreateOpsAlertRule)
+			opsRoute.PUT("/alerts/rules/:id", controller.UpdateOpsAlertRule)
+			opsRoute.DELETE("/alerts/rules/:id", controller.DeleteOpsAlertRule)
+			opsRoute.GET("/alerts/events", controller.ListOpsAlertEvents)
+			opsRoute.POST("/alerts/evaluate", controller.TriggerOpsAlertEvaluation)
 		}
 		groupRoute := apiRouter.Group("/group")
 		groupRoute.Use(middleware.AdminAuth())

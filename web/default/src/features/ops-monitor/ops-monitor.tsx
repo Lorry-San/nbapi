@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
 import { VChart } from '@visactor/react-vchart'
 import {
   Activity,
   AlertTriangle,
+  Bell,
   Gauge,
+  Pencil,
+  Plus,
   RadioTower,
   RefreshCw,
   Timer,
+  Trash2,
   Zap,
 } from 'lucide-react'
 import { VCHART_OPTION } from '@/lib/vchart'
@@ -14,12 +19,23 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import {
   Table,
   TableBody,
@@ -28,8 +44,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { getOpsMonitor } from './api'
-import type { OpsMonitorData } from './types'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  createOpsAlertRule,
+  deleteOpsAlertRule,
+  evaluateOpsAlerts,
+  getOpsAlertEvents,
+  getOpsAlertRules,
+  getOpsMonitor,
+  updateOpsAlertRule,
+} from './api'
+import type {
+  OpsAlertEvent,
+  OpsAlertMetric,
+  OpsAlertRule,
+  OpsAlertRulePayload,
+  OpsMonitorData,
+} from './types'
 
 const RANGE_OPTIONS = [
   { label: '近1小时', value: '3600' },
@@ -37,6 +69,33 @@ const RANGE_OPTIONS = [
   { label: '近24小时', value: '86400' },
   { label: '近7天', value: '604800' },
 ]
+
+const EVENT_RANGE_OPTIONS = [
+  { label: '近24小时', value: '86400' },
+  { label: '近7天', value: '604800' },
+  { label: '近30天', value: '2592000' },
+]
+
+const LEVEL_OPTIONS = ['P0', 'P1', 'P2', 'P3']
+const COMPARATOR_OPTIONS = ['>', '>=', '<', '<=']
+
+const emptyRule: OpsAlertRulePayload = {
+  name: '',
+  description: '',
+  metric: 'error_rate',
+  comparator: '>',
+  threshold: 20,
+  level: 'P1',
+  enabled: true,
+  window_seconds: 300,
+  duration_seconds: 300,
+  cooldown_seconds: 1800,
+  notify_email: true,
+  scope: 'overall',
+  channel_id: 0,
+  model_name: '',
+  group: '',
+}
 
 function formatNumber(value?: number) {
   const num = Number(value || 0)
@@ -52,6 +111,14 @@ function formatPercent(value?: number) {
 function formatTime(ts?: number) {
   if (!ts) return '-'
   return new Date(ts * 1000).toLocaleString()
+}
+
+function formatDuration(seconds?: number) {
+  const value = Number(seconds || 0)
+  if (value <= 0) return '-'
+  if (value % 3600 === 0) return `${value / 3600}h`
+  if (value % 60 === 0) return `${value / 60}m`
+  return `${value}s`
 }
 
 function buildLineSpec(
@@ -94,6 +161,30 @@ function readPointValue(point: unknown, key: string): unknown {
   return (point as Record<string, unknown>)[key]
 }
 
+function metricLabel(metrics: OpsAlertMetric[], key: string) {
+  return metrics.find((item) => item.key === key)?.label || key
+}
+
+function ruleToPayload(rule: OpsAlertRule): OpsAlertRulePayload {
+  return {
+    name: rule.name,
+    description: rule.description,
+    metric: rule.metric,
+    comparator: rule.comparator,
+    threshold: rule.threshold,
+    level: rule.level,
+    enabled: rule.enabled,
+    window_seconds: rule.window_seconds,
+    duration_seconds: rule.duration_seconds,
+    cooldown_seconds: rule.cooldown_seconds,
+    notify_email: rule.notify_email,
+    scope: rule.scope || 'overall',
+    channel_id: rule.channel_id || 0,
+    model_name: rule.model_name || '',
+    group: rule.group || '',
+  }
+}
+
 function StatCard(props: {
   icon: typeof Activity
   title: string
@@ -134,25 +225,259 @@ function StatCard(props: {
   )
 }
 
-export function OpsMonitor() {
-  const [range, setRange] = useState('3600')
-  const [loading, setLoading] = useState(false)
-  const [data, setData] = useState<OpsMonitorData | null>(null)
+function LevelBadge({ level }: { level: string }) {
+  const className =
+    level === 'P0'
+      ? 'bg-red-100 text-red-700'
+      : level === 'P1'
+        ? 'bg-amber-100 text-amber-700'
+        : 'bg-blue-100 text-blue-700'
+  return <Badge className={className}>{level}</Badge>
+}
 
-  const fetchData = async () => {
-    setLoading(true)
+function AlertRuleDialog(props: {
+  open: boolean
+  rule: OpsAlertRule | null
+  metrics: OpsAlertMetric[]
+  onOpenChange: (open: boolean) => void
+  onSaved: () => void
+}) {
+  const [form, setForm] = useState<OpsAlertRulePayload>(emptyRule)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setForm(props.rule ? ruleToPayload(props.rule) : emptyRule)
+  }, [props.rule, props.open])
+
+  const update = <K extends keyof OpsAlertRulePayload>(
+    key: K,
+    value: OpsAlertRulePayload[K]
+  ) => setForm((prev) => ({ ...prev, [key]: value }))
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault()
+    setSaving(true)
     try {
-      const res = await getOpsMonitor({ range_seconds: Number(range) })
-      if (res.success && res.data) setData(res.data)
+      const res = props.rule
+        ? await updateOpsAlertRule(props.rule.id, form)
+        : await createOpsAlertRule(form)
+      if (res.success) {
+        props.onSaved()
+        props.onOpenChange(false)
+      }
     } finally {
-      setLoading(false)
+      setSaving(false)
     }
   }
 
-  useEffect(() => {
-    void fetchData()
-  }, [range])
+  return (
+    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
+      <DialogContent className='max-h-[92vh] overflow-y-auto sm:max-w-2xl'>
+        <DialogHeader>
+          <DialogTitle>{props.rule ? '编辑告警规则' : '新建告警规则'}</DialogTitle>
+          <DialogDescription>
+            规则由后台每分钟评估，触发和恢复都会记录事件并按配置发送邮件。
+          </DialogDescription>
+        </DialogHeader>
+        <form className='grid gap-4' onSubmit={submit}>
+          <div className='grid gap-3 md:grid-cols-2'>
+            <div className='space-y-2'>
+              <Label>名称</Label>
+              <Input
+                value={form.name}
+                onChange={(event) => update('name', event.target.value)}
+                required
+              />
+            </div>
+            <div className='space-y-2'>
+              <Label>级别</Label>
+              <Select
+                value={form.level}
+                onValueChange={(value) => {
+                  if (value) update('level', value)
+                }}
+              >
+                <SelectTrigger className='w-full'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LEVEL_OPTIONS.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
+          <div className='grid gap-3 md:grid-cols-[1.4fr_.7fr_1fr]'>
+            <div className='space-y-2'>
+              <Label>指标</Label>
+              <Select
+                value={form.metric}
+                onValueChange={(value) => {
+                  if (!value) return
+                  const metric = props.metrics.find((item) => item.key === value)
+                  update('metric', value)
+                  if (metric?.default_comparator) {
+                    update('comparator', metric.default_comparator)
+                  }
+                }}
+              >
+                <SelectTrigger className='w-full'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {props.metrics.map((item) => (
+                    <SelectItem key={item.key} value={item.key}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className='space-y-2'>
+              <Label>比较</Label>
+              <Select
+                value={form.comparator}
+                onValueChange={(value) => {
+                  if (value) update('comparator', value)
+                }}
+              >
+                <SelectTrigger className='w-full'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {COMPARATOR_OPTIONS.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className='space-y-2'>
+              <Label>阈值</Label>
+              <Input
+                type='number'
+                step='0.01'
+                value={form.threshold}
+                onChange={(event) =>
+                  update('threshold', Number(event.target.value))
+                }
+              />
+            </div>
+          </div>
+
+          <div className='grid gap-3 md:grid-cols-3'>
+            <div className='space-y-2'>
+              <Label>统计窗口（秒）</Label>
+              <Input
+                type='number'
+                value={form.window_seconds}
+                onChange={(event) =>
+                  update('window_seconds', Number(event.target.value))
+                }
+              />
+            </div>
+            <div className='space-y-2'>
+              <Label>持续时间（秒）</Label>
+              <Input
+                type='number'
+                value={form.duration_seconds}
+                onChange={(event) =>
+                  update('duration_seconds', Number(event.target.value))
+                }
+              />
+            </div>
+            <div className='space-y-2'>
+              <Label>冷却时间（秒）</Label>
+              <Input
+                type='number'
+                value={form.cooldown_seconds}
+                onChange={(event) =>
+                  update('cooldown_seconds', Number(event.target.value))
+                }
+              />
+            </div>
+          </div>
+
+          <div className='grid gap-3 md:grid-cols-3'>
+            <div className='space-y-2'>
+              <Label>渠道 ID</Label>
+              <Input
+                type='number'
+                value={form.channel_id}
+                onChange={(event) =>
+                  update('channel_id', Number(event.target.value))
+                }
+              />
+            </div>
+            <div className='space-y-2'>
+              <Label>模型</Label>
+              <Input
+                value={form.model_name}
+                onChange={(event) => update('model_name', event.target.value)}
+                placeholder='留空为全部'
+              />
+            </div>
+            <div className='space-y-2'>
+              <Label>分组</Label>
+              <Input
+                value={form.group}
+                onChange={(event) => update('group', event.target.value)}
+                placeholder='留空为全部'
+              />
+            </div>
+          </div>
+
+          <div className='space-y-2'>
+            <Label>描述</Label>
+            <Textarea
+              value={form.description}
+              onChange={(event) => update('description', event.target.value)}
+            />
+          </div>
+
+          <div className='flex flex-wrap gap-6 rounded-lg border p-3'>
+            <label className='flex items-center gap-2 text-sm'>
+              <Switch
+                checked={form.enabled}
+                onCheckedChange={(value) => update('enabled', Boolean(value))}
+              />
+              启用规则
+            </label>
+            <label className='flex items-center gap-2 text-sm'>
+              <Switch
+                checked={form.notify_email}
+                onCheckedChange={(value) =>
+                  update('notify_email', Boolean(value))
+                }
+              />
+              邮件通知管理员/超管
+            </label>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={() => props.onOpenChange(false)}
+            >
+              取消
+            </Button>
+            <Button type='submit' disabled={saving}>
+              {saving ? '保存中...' : '保存'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function OverviewTab({ data }: { data: OpsMonitorData | null }) {
   const overview = data?.overview
   const throughputSpec = useMemo(
     () =>
@@ -171,42 +496,11 @@ export function OpsMonitor() {
   )
 
   return (
-    <div className='min-h-0 flex-1 overflow-y-auto'>
-      <div className='space-y-4 p-4 pb-8 md:p-6 md:pb-10'>
-      <div className='flex flex-wrap items-center justify-between gap-3'>
-        <div>
-          <h1 className='text-xl font-semibold'>运维监控</h1>
-          <div className='text-muted-foreground mt-1 text-sm'>
-            就绪 · 刷新：{formatTime(data?.updated_at)}
-          </div>
-        </div>
-        <div className='flex items-center gap-2'>
-          <Select
-            value={range}
-            onValueChange={(value) => value && setRange(value)}
-          >
-            <SelectTrigger className='w-32'>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {RANGE_OPTIONS.map((item) => (
-                <SelectItem key={item.value} value={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button variant='outline' size='sm' onClick={() => void fetchData()}>
-            <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} />
-            刷新
-          </Button>
-        </div>
-      </div>
-
+    <div className='space-y-4'>
       <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-6'>
         <StatCard
           icon={Activity}
-          title='请求数'
+          title='请求数量'
           value={formatNumber(overview?.request_count)}
           sub={`Token ${formatNumber(overview?.total_tokens)}`}
         />
@@ -238,7 +532,7 @@ export function OpsMonitor() {
         />
         <StatCard
           icon={RadioTower}
-          title='首 token'
+          title='首 Token'
           value={`${formatNumber(overview?.avg_ttft_ms)} ms`}
           sub={`P99 ${formatNumber(overview?.p99_ttft_ms)} ms`}
         />
@@ -272,7 +566,7 @@ export function OpsMonitor() {
           <CardHeader>
             <CardTitle>渠道并发 / 排队</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className='overflow-x-auto'>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -316,7 +610,7 @@ export function OpsMonitor() {
           <CardHeader>
             <CardTitle>上游错误</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className='overflow-x-auto'>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -346,6 +640,370 @@ export function OpsMonitor() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  )
+}
+
+function RulesTab(props: {
+  rules: OpsAlertRule[]
+  metrics: OpsAlertMetric[]
+  onCreate: () => void
+  onEdit: (rule: OpsAlertRule) => void
+  onDelete: (rule: OpsAlertRule) => void
+}) {
+  return (
+    <Card>
+      <CardHeader className='flex flex-row items-center justify-between gap-3'>
+        <div>
+          <CardTitle>告警规则</CardTitle>
+          <div className='text-muted-foreground mt-1 text-sm'>
+            创建与管理系统阈值告警，仅邮件通知管理员和超管
+          </div>
+        </div>
+        <Button onClick={props.onCreate}>
+          <Plus className='size-4' />
+          新建规则
+        </Button>
+      </CardHeader>
+      <CardContent className='overflow-x-auto'>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>名称</TableHead>
+              <TableHead>指标</TableHead>
+              <TableHead>级别</TableHead>
+              <TableHead>启用</TableHead>
+              <TableHead>邮件</TableHead>
+              <TableHead>最近状态</TableHead>
+              <TableHead className='text-right'>操作</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {props.rules.map((rule) => (
+              <TableRow key={rule.id}>
+                <TableCell className='min-w-[320px]'>
+                  <div className='font-medium'>{rule.name}</div>
+                  <div className='text-muted-foreground text-xs'>
+                    {rule.description || rule.last_message || '-'}
+                  </div>
+                  <div className='text-muted-foreground mt-1 text-xs'>
+                    {formatTime(rule.updated_at)}
+                  </div>
+                </TableCell>
+                <TableCell className='font-mono text-xs'>
+                  {rule.metric} {rule.comparator} {rule.threshold}
+                  <div className='text-muted-foreground mt-1 font-sans'>
+                    {metricLabel(props.metrics, rule.metric)} /{' '}
+                    {formatDuration(rule.duration_seconds)}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <LevelBadge level={rule.level} />
+                </TableCell>
+                <TableCell>{rule.enabled ? '已启用' : '已禁用'}</TableCell>
+                <TableCell>{rule.notify_email ? '发送' : '关闭'}</TableCell>
+                <TableCell>
+                  <Badge
+                    variant={
+                      rule.last_state === 'firing' ? 'destructive' : 'outline'
+                    }
+                  >
+                    {rule.last_state === 'firing' ? '告警中' : '正常'}
+                  </Badge>
+                </TableCell>
+                <TableCell className='text-right'>
+                  <div className='flex justify-end gap-2'>
+                    <Button
+                      variant='outline'
+                      size='icon-sm'
+                      onClick={() => props.onEdit(rule)}
+                    >
+                      <Pencil className='size-4' />
+                    </Button>
+                    <Button
+                      variant='destructive'
+                      size='icon-sm'
+                      onClick={() => props.onDelete(rule)}
+                    >
+                      <Trash2 className='size-4' />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  )
+}
+
+function EventsTab({
+  events,
+  metrics,
+}: {
+  events: OpsAlertEvent[]
+  metrics: OpsAlertMetric[]
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>告警事件</CardTitle>
+        <div className='text-muted-foreground mt-1 text-sm'>
+          最近的告警触发和恢复记录
+        </div>
+      </CardHeader>
+      <CardContent className='overflow-x-auto'>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>时间</TableHead>
+              <TableHead>级别</TableHead>
+              <TableHead>规则ID</TableHead>
+              <TableHead>标题</TableHead>
+              <TableHead>持续时间</TableHead>
+              <TableHead>维度</TableHead>
+              <TableHead>邮件已发送</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {events.map((event) => (
+              <TableRow key={event.id}>
+                <TableCell>{formatTime(event.created_at)}</TableCell>
+                <TableCell>
+                  <div className='flex items-center gap-2'>
+                    <LevelBadge level={event.level} />
+                    <Badge
+                      variant={
+                        event.status === 'firing' ? 'destructive' : 'outline'
+                      }
+                    >
+                      {event.status === 'firing' ? '触发' : '恢复'}
+                    </Badge>
+                  </div>
+                </TableCell>
+                <TableCell>#{event.rule_id}</TableCell>
+                <TableCell className='min-w-[360px]'>
+                  <div className='font-medium'>{event.title}</div>
+                  <div className='text-muted-foreground text-xs'>
+                    {metricLabel(metrics, event.metric)} {event.comparator}{' '}
+                    {event.threshold}，当前 {event.current_value}
+                  </div>
+                  <div className='text-muted-foreground mt-1 text-xs'>
+                    {event.message}
+                  </div>
+                </TableCell>
+                <TableCell>{formatDuration(event.duration_seconds)}</TableCell>
+                <TableCell>
+                  {event.channel_name ||
+                    (event.channel_id > 0 ? `渠道 #${event.channel_id}` : '-')}
+                </TableCell>
+                <TableCell>
+                  {event.email_sent ? (
+                    <span className='text-emerald-600'>已发送</span>
+                  ) : (
+                    <span className='text-muted-foreground'>
+                      {event.email_error || '已忽略'}
+                    </span>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  )
+}
+
+export function OpsMonitor() {
+  const [range, setRange] = useState('3600')
+  const [eventRange, setEventRange] = useState('604800')
+  const [eventLevel, setEventLevel] = useState('all')
+  const [eventStatus, setEventStatus] = useState('all')
+  const [loading, setLoading] = useState(false)
+  const [data, setData] = useState<OpsMonitorData | null>(null)
+  const [rules, setRules] = useState<OpsAlertRule[]>([])
+  const [metrics, setMetrics] = useState<OpsAlertMetric[]>([])
+  const [events, setEvents] = useState<OpsAlertEvent[]>([])
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editingRule, setEditingRule] = useState<OpsAlertRule | null>(null)
+
+  const fetchMonitor = async () => {
+    const res = await getOpsMonitor({ range_seconds: Number(range) })
+    if (res.success && res.data) setData(res.data)
+  }
+
+  const fetchRules = async () => {
+    const res = await getOpsAlertRules()
+    if (res.success && res.data) {
+      setRules(res.data.rules)
+      setMetrics(res.data.metrics)
+    }
+  }
+
+  const fetchEvents = async () => {
+    const res = await getOpsAlertEvents({
+      range_seconds: Number(eventRange),
+      level: eventLevel,
+      status: eventStatus,
+      limit: 100,
+    })
+    if (res.success && res.data) setEvents(res.data)
+  }
+
+  const refreshAll = async () => {
+    setLoading(true)
+    try {
+      await Promise.all([fetchMonitor(), fetchRules(), fetchEvents()])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void refreshAll()
+  }, [range, eventRange, eventLevel, eventStatus])
+
+  const createRule = () => {
+    setEditingRule(null)
+    setDialogOpen(true)
+  }
+
+  const removeRule = async (rule: OpsAlertRule) => {
+    if (!window.confirm(`删除告警规则「${rule.name}」？`)) return
+    const res = await deleteOpsAlertRule(rule.id)
+    if (res.success) await refreshAll()
+  }
+
+  const runEvaluation = async () => {
+    setLoading(true)
+    try {
+      await evaluateOpsAlerts()
+      await refreshAll()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className='min-h-0 flex-1 overflow-y-auto'>
+      <div className='space-y-4 p-4 pb-8 md:p-6 md:pb-10'>
+        <div className='flex flex-wrap items-center justify-between gap-3'>
+          <div>
+            <h1 className='text-xl font-semibold'>运维监控</h1>
+            <div className='text-muted-foreground mt-1 text-sm'>
+              就绪 · 刷新：{formatTime(data?.updated_at)}
+            </div>
+          </div>
+          <div className='flex flex-wrap items-center gap-2'>
+            <Select
+              value={range}
+              onValueChange={(value) => value && setRange(value)}
+            >
+              <SelectTrigger className='w-32'>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {RANGE_OPTIONS.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant='outline' size='sm' onClick={runEvaluation}>
+              <Bell className='size-4' />
+              评估告警
+            </Button>
+            <Button variant='outline' size='sm' onClick={() => void refreshAll()}>
+              <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} />
+              刷新
+            </Button>
+          </div>
+        </div>
+
+        <Tabs defaultValue='overview'>
+          <div className='flex flex-wrap items-center justify-between gap-3'>
+            <TabsList>
+              <TabsTrigger value='overview'>概览</TabsTrigger>
+              <TabsTrigger value='rules'>告警规则</TabsTrigger>
+              <TabsTrigger value='events'>告警事件</TabsTrigger>
+            </TabsList>
+            <div className='flex flex-wrap items-center gap-2'>
+              <Select
+                value={eventRange}
+                onValueChange={(value) => value && setEventRange(value)}
+              >
+                <SelectTrigger className='w-32'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EVENT_RANGE_OPTIONS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={eventLevel}
+                onValueChange={(value) => value && setEventLevel(value)}
+              >
+                <SelectTrigger className='w-24'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='all'>全部</SelectItem>
+                  {LEVEL_OPTIONS.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={eventStatus}
+                onValueChange={(value) => value && setEventStatus(value)}
+              >
+                <SelectTrigger className='w-28'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='all'>全部</SelectItem>
+                  <SelectItem value='firing'>触发</SelectItem>
+                  <SelectItem value='resolved'>恢复</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <TabsContent value='overview'>
+            <OverviewTab data={data} />
+          </TabsContent>
+          <TabsContent value='rules'>
+            <RulesTab
+              rules={rules}
+              metrics={metrics}
+              onCreate={createRule}
+              onEdit={(rule) => {
+                setEditingRule(rule)
+                setDialogOpen(true)
+              }}
+              onDelete={removeRule}
+            />
+          </TabsContent>
+          <TabsContent value='events'>
+            <EventsTab events={events} metrics={metrics} />
+          </TabsContent>
+        </Tabs>
+
+        <AlertRuleDialog
+          open={dialogOpen}
+          rule={editingRule}
+          metrics={metrics}
+          onOpenChange={setDialogOpen}
+          onSaved={refreshAll}
+        />
       </div>
     </div>
   )
