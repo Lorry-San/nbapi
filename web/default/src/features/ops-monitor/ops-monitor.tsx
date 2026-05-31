@@ -6,7 +6,6 @@ import {
   AlertTriangle,
   Bell,
   Gauge,
-  Pencil,
   Plus,
   RadioTower,
   RefreshCw,
@@ -53,7 +52,6 @@ import {
   getOpsAlertEvents,
   getOpsAlertRules,
   getOpsMonitor,
-  updateOpsAlertRule,
 } from './api'
 import type {
   OpsAlertEvent,
@@ -167,26 +165,6 @@ function metricLabel(metrics: OpsAlertMetric[], key: string) {
   return metrics.find((item) => item.key === key)?.label || key
 }
 
-function ruleToPayload(rule: OpsAlertRule): OpsAlertRulePayload {
-  return {
-    name: rule.name,
-    description: rule.description,
-    metric: rule.metric,
-    comparator: rule.comparator,
-    threshold: rule.threshold,
-    level: rule.level,
-    enabled: rule.enabled,
-    window_seconds: rule.window_seconds,
-    duration_seconds: rule.duration_seconds,
-    cooldown_seconds: rule.cooldown_seconds,
-    notify_email: rule.notify_email,
-    scope: rule.scope || 'overall',
-    channel_id: rule.channel_id || 0,
-    model_name: rule.model_name || '',
-    group: rule.group || '',
-  }
-}
-
 function StatCard(props: {
   icon: typeof Activity
   title: string
@@ -239,7 +217,6 @@ function LevelBadge({ level }: { level: string }) {
 
 function AlertRuleDialog(props: {
   open: boolean
-  rule: OpsAlertRule | null
   metrics: OpsAlertMetric[]
   onOpenChange: (open: boolean) => void
   onSaved: () => void
@@ -248,8 +225,8 @@ function AlertRuleDialog(props: {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    setForm(props.rule ? ruleToPayload(props.rule) : emptyRule)
-  }, [props.rule, props.open])
+    if (props.open) setForm(emptyRule)
+  }, [props.open])
 
   const update = <K extends keyof OpsAlertRulePayload>(
     key: K,
@@ -260,9 +237,7 @@ function AlertRuleDialog(props: {
     event.preventDefault()
     setSaving(true)
     try {
-      const res = props.rule
-        ? await updateOpsAlertRule(props.rule.id, form)
-        : await createOpsAlertRule(form)
+      const res = await createOpsAlertRule(form)
       if (res.success) {
         props.onSaved()
         props.onOpenChange(false)
@@ -276,7 +251,7 @@ function AlertRuleDialog(props: {
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent className='max-h-[92vh] overflow-y-auto sm:max-w-2xl'>
         <DialogHeader>
-          <DialogTitle>{props.rule ? '编辑告警规则' : '新建告警规则'}</DialogTitle>
+          <DialogTitle>新建告警规则</DialogTitle>
           <DialogDescription>
             规则由后台每分钟评估，触发和恢复都会记录事件并按配置发送邮件。
           </DialogDescription>
@@ -659,7 +634,6 @@ function RulesTab(props: {
   rules: OpsAlertRule[]
   metrics: OpsAlertMetric[]
   onCreate: () => void
-  onEdit: (rule: OpsAlertRule) => void
   onDelete: (rule: OpsAlertRule) => void
 }) {
   return (
@@ -676,74 +650,70 @@ function RulesTab(props: {
           新建规则
         </Button>
       </CardHeader>
-      <CardContent className='overflow-x-auto'>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>名称</TableHead>
-              <TableHead>指标</TableHead>
-              <TableHead>级别</TableHead>
-              <TableHead>启用</TableHead>
-              <TableHead>邮件</TableHead>
-              <TableHead>最近状态</TableHead>
-              <TableHead className='text-right'>操作</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {props.rules.map((rule) => (
-              <TableRow key={rule.id}>
-                <TableCell className='min-w-[320px]'>
-                  <div className='font-medium'>{rule.name}</div>
-                  <div className='text-muted-foreground text-xs'>
-                    {rule.description || rule.last_message || '-'}
+      <CardContent>
+        <div className='grid gap-3 lg:grid-cols-2'>
+          {props.rules.map((rule) => (
+            <div
+              key={rule.id}
+              className='rounded-lg border bg-muted/20 p-4 transition-colors hover:bg-muted/30'
+            >
+              <div className='flex items-start justify-between gap-3'>
+                <div className='min-w-0'>
+                  <div className='flex flex-wrap items-center gap-2'>
+                    <div className='font-medium'>{rule.name}</div>
+                    <LevelBadge level={rule.level} />
+                    <Badge
+                      variant={
+                        rule.last_state === 'firing' ? 'destructive' : 'outline'
+                      }
+                    >
+                      {rule.last_state === 'firing' ? '告警中' : '正常'}
+                    </Badge>
                   </div>
                   <div className='text-muted-foreground mt-1 text-xs'>
-                    {formatTime(rule.updated_at)}
+                    {rule.description || rule.last_message || '-'}
                   </div>
-                </TableCell>
-                <TableCell className='font-mono text-xs'>
-                  {rule.metric} {rule.comparator} {rule.threshold}
-                  <div className='text-muted-foreground mt-1 font-sans'>
-                    {metricLabel(props.metrics, rule.metric)} /{' '}
-                    {formatDuration(rule.duration_seconds)}
+                </div>
+                <Button
+                  variant='destructive'
+                  size='icon-sm'
+                  onClick={() => props.onDelete(rule)}
+                  title='删除'
+                >
+                  <Trash2 className='size-4' />
+                </Button>
+              </div>
+              <div className='mt-4 grid gap-3 text-sm sm:grid-cols-3'>
+                <div>
+                  <div className='text-muted-foreground text-xs'>指标</div>
+                  <div className='mt-1 font-mono text-xs'>
+                    {rule.metric} {rule.comparator} {rule.threshold}
                   </div>
-                </TableCell>
-                <TableCell>
-                  <LevelBadge level={rule.level} />
-                </TableCell>
-                <TableCell>{rule.enabled ? '已启用' : '已禁用'}</TableCell>
-                <TableCell>{rule.notify_email ? '发送' : '关闭'}</TableCell>
-                <TableCell>
-                  <Badge
-                    variant={
-                      rule.last_state === 'firing' ? 'destructive' : 'outline'
-                    }
-                  >
-                    {rule.last_state === 'firing' ? '告警中' : '正常'}
-                  </Badge>
-                </TableCell>
-                <TableCell className='text-right'>
-                  <div className='flex justify-end gap-2'>
-                    <Button
-                      variant='outline'
-                      size='icon-sm'
-                      onClick={() => props.onEdit(rule)}
-                    >
-                      <Pencil className='size-4' />
-                    </Button>
-                    <Button
-                      variant='destructive'
-                      size='icon-sm'
-                      onClick={() => props.onDelete(rule)}
-                    >
-                      <Trash2 className='size-4' />
-                    </Button>
+                  <div className='text-muted-foreground mt-1 text-xs'>
+                    {metricLabel(props.metrics, rule.metric)}
                   </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                </div>
+                <div>
+                  <div className='text-muted-foreground text-xs'>持续/窗口</div>
+                  <div className='mt-1'>
+                    {formatDuration(rule.duration_seconds)} /{' '}
+                    {formatDuration(rule.window_seconds)}
+                  </div>
+                </div>
+                <div>
+                  <div className='text-muted-foreground text-xs'>通知</div>
+                  <div className='mt-1'>
+                    {rule.enabled ? '已启用' : '已禁用'} ·{' '}
+                    {rule.notify_email ? '邮件发送' : '邮件关闭'}
+                  </div>
+                </div>
+              </div>
+              <div className='text-muted-foreground mt-3 text-xs'>
+                更新时间 {formatTime(rule.updated_at)}
+              </div>
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   )
@@ -838,7 +808,6 @@ export function OpsMonitor() {
   const [metrics, setMetrics] = useState<OpsAlertMetric[]>([])
   const [events, setEvents] = useState<OpsAlertEvent[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingRule, setEditingRule] = useState<OpsAlertRule | null>(null)
 
   const fetchMonitor = async () => {
     const res = await getOpsMonitor({ range_seconds: Number(range) })
@@ -877,7 +846,6 @@ export function OpsMonitor() {
   }, [range, eventRange, eventLevel, eventStatus])
 
   const createRule = () => {
-    setEditingRule(null)
     setDialogOpen(true)
   }
 
@@ -996,10 +964,6 @@ export function OpsMonitor() {
               rules={rules}
               metrics={metrics}
               onCreate={createRule}
-              onEdit={(rule) => {
-                setEditingRule(rule)
-                setDialogOpen(true)
-              }}
               onDelete={removeRule}
             />
           </TabsContent>
@@ -1010,7 +974,6 @@ export function OpsMonitor() {
 
         <AlertRuleDialog
           open={dialogOpen}
-          rule={editingRule}
           metrics={metrics}
           onOpenChange={setDialogOpen}
           onSaved={refreshAll}

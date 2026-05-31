@@ -96,26 +96,6 @@ function metricLabel(metrics, key) {
   return metrics.find((item) => item.key === key)?.label || key;
 }
 
-function ruleToForm(rule) {
-  return {
-    name: rule.name || '',
-    description: rule.description || '',
-    metric: rule.metric || 'error_rate',
-    comparator: rule.comparator || '>',
-    threshold: Number(rule.threshold || 0),
-    level: rule.level || 'P1',
-    enabled: Boolean(rule.enabled),
-    window_seconds: Number(rule.window_seconds || 300),
-    duration_seconds: Number(rule.duration_seconds || 300),
-    cooldown_seconds: Number(rule.cooldown_seconds || 1800),
-    notify_email: Boolean(rule.notify_email),
-    scope: rule.scope || 'overall',
-    channel_id: Number(rule.channel_id || 0),
-    model_name: rule.model_name || '',
-    group: rule.group || '',
-  };
-}
-
 function lineSpec(data, fields) {
   const rows = [];
   data.forEach((point) => {
@@ -183,7 +163,6 @@ export default function OpsMonitor() {
   const [metrics, setMetrics] = useState([]);
   const [events, setEvents] = useState([]);
   const [ruleModalVisible, setRuleModalVisible] = useState(false);
-  const [editingRule, setEditingRule] = useState(null);
   const [ruleForm, setRuleForm] = useState(defaultRuleForm);
 
   const fetchData = async () => {
@@ -233,18 +212,13 @@ export default function OpsMonitor() {
   useEffect(() => {
     refreshAll();
   }, [range, eventRange, eventLevel, eventStatus]);
-
-  const openRuleModal = (rule = null) => {
-    setEditingRule(rule);
-    setRuleForm(rule ? ruleToForm(rule) : defaultRuleForm);
+  const openRuleModal = () => {
+    setRuleForm(defaultRuleForm);
     setRuleModalVisible(true);
   };
 
   const saveRule = async () => {
-    const apiCall = editingRule
-      ? API.put(`/api/ops/alerts/rules/${editingRule.id}`, ruleForm)
-      : API.post('/api/ops/alerts/rules', ruleForm);
-    const res = await apiCall;
+    const res = await API.post('/api/ops/alerts/rules', ruleForm);
     if (res.data?.success) {
       setRuleModalVisible(false);
       await refreshAll();
@@ -403,9 +377,6 @@ export default function OpsMonitor() {
       dataIndex: 'operate',
       render: (_, row) => (
         <div className='flex gap-2'>
-          <Button size='small' onClick={() => openRuleModal(row)}>
-            编辑
-          </Button>
           <Popconfirm
             title={`删除告警规则「${row.name}」？`}
             onConfirm={() => deleteRule(row)}
@@ -681,7 +652,7 @@ export default function OpsMonitor() {
       </Spin>
 
       <Modal
-        title={editingRule ? '编辑告警规则' : '新建告警规则'}
+        title='新建告警规则'
         visible={ruleModalVisible}
         onOk={saveRule}
         onCancel={() => setRuleModalVisible(false)}
