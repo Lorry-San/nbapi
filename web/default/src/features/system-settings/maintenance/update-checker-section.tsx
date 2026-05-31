@@ -82,11 +82,7 @@ export function UpdateCheckerSection({
         throw new Error(t('Unexpected release payload'))
       }
 
-      const publishedReleases = releases.filter((item) => !item.draft)
-      const data =
-        (currentVersion &&
-          publishedReleases.find((item) => item.tag_name === currentVersion)) ||
-        publishedReleases[0]
+      const data = releases.find((item) => !item.draft)
 
       if (!data?.tag_name) {
         toast.success(

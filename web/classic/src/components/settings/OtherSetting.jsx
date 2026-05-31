@@ -249,11 +249,7 @@ const OtherSetting = () => {
       if (!Array.isArray(res)) {
         throw new Error('Unexpected release payload');
       }
-      const releases = res.filter((item) => !item.draft);
-      const matchedRelease = releases.find(
-        (item) => item.tag_name === statusState?.status?.version,
-      );
-      const latestRelease = matchedRelease || releases[0];
+      const latestRelease = res.find((item) => !item.draft);
       const { tag_name, body } = latestRelease || {};
       if (!tag_name) {
         showSuccess(t('NBAPI 当前没有发布 release，已使用 main 分支镜像。'));
