@@ -10,27 +10,12 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    name: Build ${{ matrix.name }}
-    runs-on: ${{ matrix.runner }}
+  frontend:
+    name: Build frontend assets
+    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: linux-amd64
-            runner: ubuntu-latest
-            goos: linux
-            goarch: amd64
-            ext: ''
-          - name: windows-amd64
-            runner: windows-latest
-            goos: windows
-            goarch: amd64
-            ext: '.exe'
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -68,6 +53,57 @@ jobs:
           bun install
           VITE_REACT_APP_VERSION="$VERSION" bun run build
 
+      - name: Upload frontend assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: |
+            web/default/dist
+            web/classic/dist
+          retention-days: 1
+
+  build:
+    name: Build ${{ matrix.name }}
+    needs: frontend
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-amd64
+            runner: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            ext: ''
+          - name: windows-amd64
+            runner: windows-latest
+            goos: windows
+            goarch: amd64
+            ext: '.exe'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          if [ -z "$VERSION" ]; then
+            VERSION="$(git rev-parse --short HEAD)"
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Download frontend assets
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: .
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -84,11 +120,7 @@ jobs:
 
       - name: Generate checksum
         run: |
-          if [ "${{ matrix.goos }}" = "windows" ]; then
-            sha256sum "nbapi-${VERSION}-${{ matrix.name }}${{ matrix.ext }}" > "checksums-${{ matrix.name }}.txt"
-          else
-            sha256sum "nbapi-${VERSION}-${{ matrix.name }}" > "checksums-${{ matrix.name }}.txt"
-          fi
+          sha256sum "nbapi-${VERSION}-${{ matrix.name }}${{ matrix.ext }}" > "checksums-${{ matrix.name }}.txt"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
