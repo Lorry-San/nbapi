@@ -126,6 +126,10 @@ export function SidebarModulesSection({
       },
     },
     admin: {
+      ops_monitor: {
+        title: t('Ops Monitor'),
+        description: t('Request, token, SLA, and upstream error monitoring.'),
+      },
       channel: {
         title: t('Channels'),
         description: t('Configure upstream providers and routing.'),

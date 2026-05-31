@@ -60,6 +60,7 @@ export default function SettingsSidebarModulesAdmin(props) {
     },
     admin: {
       enabled: true,
+      ops_monitor: true,
       channel: true,
       models: true,
       deployment: true,
@@ -121,6 +122,7 @@ export default function SettingsSidebarModulesAdmin(props) {
       },
       admin: {
         enabled: true,
+        ops_monitor: true,
         channel: true,
         models: true,
         deployment: true,
@@ -174,7 +176,13 @@ export default function SettingsSidebarModulesAdmin(props) {
     if (props.options && props.options.SidebarModulesAdmin) {
       try {
         const modules = JSON.parse(props.options.SidebarModulesAdmin);
-        setSidebarModulesAdmin(modules);
+        setSidebarModulesAdmin({
+          ...modules,
+          admin: {
+            ops_monitor: true,
+            ...(modules.admin || {}),
+          },
+        });
       } catch (error) {
         // 使用默认配置
         const defaultModules = {
@@ -190,6 +198,7 @@ export default function SettingsSidebarModulesAdmin(props) {
           personal: { enabled: true, topup: true, personal: true },
           admin: {
             enabled: true,
+            ops_monitor: true,
             channel: true,
             models: true,
             deployment: true,
@@ -253,6 +262,11 @@ export default function SettingsSidebarModulesAdmin(props) {
       title: t('管理员区域'),
       description: t('系统管理功能'),
       modules: [
+        {
+          key: 'ops_monitor',
+          title: t('运维监控'),
+          description: t('请求、Token、SLA 与上游错误监控'),
+        },
         { key: 'channel', title: t('渠道管理'), description: t('API渠道配置') },
         { key: 'models', title: t('模型管理'), description: t('AI模型配置') },
         {

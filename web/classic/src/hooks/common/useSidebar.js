@@ -46,6 +46,7 @@ export const DEFAULT_ADMIN_CONFIG = {
   },
   admin: {
     enabled: true,
+    ops_monitor: true,
     channel: true,
     models: true,
     deployment: true,
@@ -254,6 +255,13 @@ export const useSidebar = () => {
         result[sectionKey][moduleKey] =
           adminAllowed && userAllowed && sectionEnabled;
       });
+
+      if (sectionKey === 'admin') {
+        result[sectionKey].ops_monitor =
+          adminSection.ops_monitor !== false &&
+          (userSection ? userSection.ops_monitor !== false : true) &&
+          sectionEnabled;
+      }
     });
 
     return result;
