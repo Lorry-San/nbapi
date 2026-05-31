@@ -26,6 +26,7 @@ import {
   LayoutDashboard,
   ListTodo,
   MessageSquare,
+  MonitorCog,
   Radio,
   Settings,
   Ticket,
@@ -35,6 +36,8 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { type SidebarData } from '@/components/layout/types'
+import { ROLE } from '@/lib/roles'
+import { useAuthStore } from '@/stores/auth-store'
 
 /**
  * Root navigation groups for the application sidebar.
@@ -44,6 +47,8 @@ import { type SidebarData } from '@/components/layout/types'
  */
 export function useSidebarData(): SidebarData {
   const { t } = useTranslation()
+  const userRole = useAuthStore((s) => s.auth.user?.role)
+  const isAdmin = userRole !== undefined && userRole >= ROLE.ADMIN
 
   return {
     navGroups: [
@@ -112,43 +117,52 @@ export function useSidebarData(): SidebarData {
           },
         ],
       },
-      {
-        id: 'admin',
-        title: t('Admin'),
-        items: [
-          {
-            title: t('Channels'),
-            url: '/channels',
-            icon: Radio,
-          },
-          {
-            title: t('Models'),
-            url: '/models/metadata',
-            icon: Box,
-          },
-          {
-            title: t('Users'),
-            url: '/users',
-            icon: Users,
-          },
-          {
-            title: t('Redemption Codes'),
-            url: '/redemption-codes',
-            icon: Ticket,
-          },
-          {
-            title: t('Subscription Management'),
-            url: '/subscriptions',
-            icon: CreditCard,
-          },
-          {
-            title: t('System Settings'),
-            url: '/system-settings/site',
-            activeUrls: ['/system-settings'],
-            icon: Settings,
-          },
-        ],
-      },
+      ...(isAdmin
+        ? [
+            {
+              id: 'admin',
+              title: t('Admin'),
+              items: [
+                {
+                  title: t('Ops Monitor'),
+                  url: '/ops-monitor',
+                  icon: MonitorCog,
+                },
+                {
+                  title: t('Channels'),
+                  url: '/channels',
+                  icon: Radio,
+                },
+                {
+                  title: t('Models'),
+                  url: '/models/metadata',
+                  icon: Box,
+                },
+                {
+                  title: t('Users'),
+                  url: '/users',
+                  icon: Users,
+                },
+                {
+                  title: t('Redemption Codes'),
+                  url: '/redemption-codes',
+                  icon: Ticket,
+                },
+                {
+                  title: t('Subscription Management'),
+                  url: '/subscriptions',
+                  icon: CreditCard,
+                },
+                {
+                  title: t('System Settings'),
+                  url: '/system-settings/site',
+                  activeUrls: ['/system-settings'],
+                  icon: Settings,
+                },
+              ],
+            },
+          ]
+        : []),
     ],
   }
 }

@@ -29,6 +29,7 @@ export const STATIC_I18N_KEYS = [
 
   // Sidebar views (drill-in workspaces)
   'System Settings',
+  'Ops Monitor',
   'Back to Dashboard',
 
   // System settings sidebar

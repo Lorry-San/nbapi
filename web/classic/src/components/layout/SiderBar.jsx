@@ -38,6 +38,7 @@ const routerMap = {
   topup: '/console/topup',
   user: '/console/user',
   subscription: '/console/subscription',
+  ops_monitor: '/console/ops-monitor',
   log: '/console/log',
   midjourney: '/console/midjourney',
   setting: '/console/setting',
@@ -147,6 +148,12 @@ const SiderBar = ({ onNavigate = () => {} }) => {
 
   const adminItems = useMemo(() => {
     const items = [
+      {
+        text: t('运维监控'),
+        itemKey: 'ops_monitor',
+        to: '/ops-monitor',
+        className: isAdmin() ? '' : 'tableHiddle',
+      },
       {
         text: t('渠道管理'),
         itemKey: 'channel',

@@ -324,6 +324,11 @@ func SetApiRouter(router *gin.Engine) {
 		{
 			logRoute.GET("/token", middleware.TokenAuthReadOnly(), controller.GetLogByKey)
 		}
+		opsRoute := apiRouter.Group("/ops")
+		opsRoute.Use(middleware.AdminAuth())
+		{
+			opsRoute.GET("/monitor", controller.GetOpsMonitor)
+		}
 		groupRoute := apiRouter.Group("/group")
 		groupRoute.Use(middleware.AdminAuth())
 		{
