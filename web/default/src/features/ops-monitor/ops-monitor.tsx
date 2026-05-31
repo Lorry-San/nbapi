@@ -171,7 +171,8 @@ export function OpsMonitor() {
   )
 
   return (
-    <div className='space-y-4 p-4 md:p-6'>
+    <div className='min-h-0 flex-1 overflow-y-auto'>
+      <div className='space-y-4 p-4 pb-8 md:p-6 md:pb-10'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <div>
           <h1 className='text-xl font-semibold'>运维监控</h1>
@@ -344,6 +345,7 @@ export function OpsMonitor() {
             </Table>
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   )
