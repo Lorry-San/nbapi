@@ -1,0 +1,99 @@
+name: Binary Artifacts
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-amd64
+            runner: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            ext: ''
+          - name: windows-amd64
+            runner: windows-latest
+            goos: windows
+            goarch: amd64
+            ext: '.exe'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          if [ -z "$VERSION" ]; then
+            VERSION="$(git rev-parse --short HEAD)"
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Build frontend (default)
+        env:
+          CI: ""
+          NODE_OPTIONS: "--max-old-space-size=4096"
+        run: |
+          cd web/default
+          bun install
+          DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION="$VERSION" bun run build
+
+      - name: Build frontend (classic)
+        env:
+          CI: ""
+          NODE_OPTIONS: "--max-old-space-size=4096"
+        run: |
+          cd web/classic
+          bun install
+          VITE_REACT_APP_VERSION="$VERSION" bun run build
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '>=1.25.1'
+
+      - name: Build backend
+        env:
+          CGO_ENABLED: 0
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go mod download
+          go build -ldflags "-s -w -X 'github.com/QuantumNous/new-api/common.Version=$VERSION'" -o "nbapi-${VERSION}-${{ matrix.name }}${{ matrix.ext }}"
+
+      - name: Generate checksum
+        run: |
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            sha256sum "nbapi-${VERSION}-${{ matrix.name }}${{ matrix.ext }}" > "checksums-${{ matrix.name }}.txt"
+          else
+            sha256sum "nbapi-${VERSION}-${{ matrix.name }}" > "checksums-${{ matrix.name }}.txt"
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nbapi-${{ env.VERSION }}-${{ matrix.name }}
+          path: |
+            nbapi-${{ env.VERSION }}-${{ matrix.name }}${{ matrix.ext }}
+            checksums-${{ matrix.name }}.txt
