@@ -1,6 +1,4 @@
-name: Release (Linux, macOS, Windows)
-permissions:
-  contents: write
+name: Release (Linux amd64, Windows amd64)
 
 on:
   workflow_dispatch:
@@ -13,115 +11,13 @@ on:
       - '*'
       - '!*-alpha*'
 
+permissions:
+  contents: write
+
 jobs:
-  linux:
-    name: Linux Release
+  frontend:
+    name: Build frontend assets
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          fetch-depth: 0
-      - name: Determine Version
-        run: |
-          VERSION=$(git describe --tags)
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: latest
-      - name: Build Frontend (default)
-        env:
-          CI: ""
-        run: |
-          cd web/default
-          bun install
-          DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$VERSION bun run build
-          cd ../..
-      - name: Build Frontend (classic)
-        env:
-          CI: ""
-        run: |
-          cd web/classic
-          bun install
-          VITE_REACT_APP_VERSION=$VERSION bun run build
-          cd ../..
-      - name: Set up Go
-        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
-        with:
-          go-version: '>=1.25.1'
-      - name: Build Backend (amd64)
-        run: |
-          go mod download
-          go build -ldflags "-s -w -X 'github.com/QuantumNous/new-api/common.Version=$VERSION' -extldflags '-static'" -o nbapi-$VERSION
-      - name: Generate checksums
-        run: sha256sum nbapi-* > checksums-linux.txt
-
-      - name: Release
-        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            nbapi-*
-            checksums-linux.txt
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  macos:
-    name: macOS Release
-    runs-on: macos-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          fetch-depth: 0
-      - name: Determine Version
-        run: |
-          VERSION=$(git describe --tags)
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: latest
-      - name: Build Frontend (default)
-        env:
-          CI: ""
-          NODE_OPTIONS: "--max-old-space-size=4096"
-        run: |
-          cd web/default
-          bun install
-          DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$VERSION bun run build
-          cd ../..
-      - name: Build Frontend (classic)
-        env:
-          CI: ""
-        run: |
-          cd web/classic
-          bun install
-          VITE_REACT_APP_VERSION=$VERSION bun run build
-          cd ../..
-      - name: Set up Go
-        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
-        with:
-          go-version: '>=1.25.1'
-      - name: Build Backend
-        run: |
-          go mod download
-          go build -ldflags "-X 'github.com/QuantumNous/new-api/common.Version=$VERSION'" -o nbapi-macos-$VERSION
-      - name: Generate checksums
-        run: shasum -a 256 nbapi-macos-* > checksums-macos.txt
-
-      - name: Release
-        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            nbapi-macos-*
-            checksums-macos.txt
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  windows:
-    name: Windows Release
-    runs-on: windows-latest
     defaults:
       run:
         shell: bash
@@ -130,46 +26,120 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
-      - name: Determine Version
+
+      - name: Determine version
         run: |
-          VERSION=$(git describe --tags)
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+          VERSION="$(git describe --tags)"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: latest
-      - name: Build Frontend (default)
+
+      - name: Build frontend (default)
         env:
           CI: ""
+          NODE_OPTIONS: "--max-old-space-size=4096"
         run: |
           cd web/default
           bun install
-          DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$VERSION bun run build
-          cd ../..
-      - name: Build Frontend (classic)
+          DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION="$VERSION" bun run build
+
+      - name: Build frontend (classic)
         env:
           CI: ""
+          NODE_OPTIONS: "--max-old-space-size=4096"
         run: |
           cd web/classic
           bun install
-          VITE_REACT_APP_VERSION=$VERSION bun run build
-          cd ../..
+          VITE_REACT_APP_VERSION="$VERSION" bun run build
+
+      - name: Upload frontend assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: |
+            web/default/dist
+            web/classic/dist
+          retention-days: 1
+
+  release:
+    name: Release ${{ matrix.name }}
+    needs: frontend
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-amd64
+            runner: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            ext: ''
+          - name: windows-amd64
+            runner: windows-latest
+            goos: windows
+            goarch: amd64
+            ext: '.exe'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        run: |
+          VERSION="$(git describe --tags)"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Download frontend assets
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: .
+
+      - name: Restore frontend asset paths
+        run: |
+          mkdir -p web/default web/classic
+          if [ -d default/dist ]; then
+            rm -rf web/default/dist
+            mv default/dist web/default/dist
+          fi
+          if [ -d classic/dist ]; then
+            rm -rf web/classic/dist
+            mv classic/dist web/classic/dist
+          fi
+          test -d web/default/dist
+          test -d web/classic/dist
+
       - name: Set up Go
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '>=1.25.1'
-      - name: Build Backend
+
+      - name: Build backend
+        env:
+          CGO_ENABLED: 0
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
         run: |
           go mod download
-          go build -ldflags "-s -w -X 'github.com/QuantumNous/new-api/common.Version=$VERSION'" -o nbapi-$VERSION.exe
-      - name: Generate checksums
-        run: sha256sum nbapi-*.exe > checksums-windows.txt
+          go build -ldflags "-s -w -X 'github.com/QuantumNous/new-api/common.Version=$VERSION'" -o "nbapi-${VERSION}-${{ matrix.name }}${{ matrix.ext }}"
+
+      - name: Generate checksum
+        run: |
+          sha256sum "nbapi-${VERSION}-${{ matrix.name }}${{ matrix.ext }}" > "checksums-${{ matrix.name }}.txt"
 
       - name: Release
         uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            nbapi-*.exe
-            checksums-windows.txt
+            nbapi-${{ env.VERSION }}-${{ matrix.name }}${{ matrix.ext }}
+            checksums-${{ matrix.name }}.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
