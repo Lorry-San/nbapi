@@ -157,7 +157,7 @@ func GetOpsMonitor(startTs int64, endTs int64, channelId int, modelName string, 
 
 	var logs []Log
 	if err := query.
-		Select("id, created_at, type, content, model_name, prompt_tokens, completion_tokens, use_time, channel_id, group, request_id, upstream_request_id, other").
+		Select("id, created_at, type, content, model_name, prompt_tokens, completion_tokens, use_time, channel_id, "+logGroupCol+", request_id, upstream_request_id, other").
 		Order("created_at asc, id asc").
 		Limit(maxOpsMonitorLogs).
 		Find(&logs).Error; err != nil {
