@@ -78,6 +78,8 @@ const EVENT_RANGE_OPTIONS = [
 
 const LEVEL_OPTIONS = ['P0', 'P1', 'P2', 'P3']
 const COMPARATOR_OPTIONS = ['>', '>=', '<', '<=']
+const ALERT_RULE_INPUT_CLASS = 'bg-background text-foreground'
+const ALERT_RULE_SELECT_TRIGGER_CLASS = 'w-full bg-background text-foreground'
 
 const emptyRule: OpsAlertRulePayload = {
   name: '',
@@ -284,6 +286,7 @@ function AlertRuleDialog(props: {
             <div className='space-y-2'>
               <Label>名称</Label>
               <Input
+                className={ALERT_RULE_INPUT_CLASS}
                 value={form.name}
                 onChange={(event) => update('name', event.target.value)}
                 required
@@ -297,8 +300,8 @@ function AlertRuleDialog(props: {
                   if (value) update('level', value)
                 }}
               >
-                <SelectTrigger className='w-full'>
-                  <SelectValue />
+                <SelectTrigger className={ALERT_RULE_SELECT_TRIGGER_CLASS}>
+                  <SelectValue>{form.level}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {LEVEL_OPTIONS.map((item) => (
@@ -325,8 +328,8 @@ function AlertRuleDialog(props: {
                   }
                 }}
               >
-                <SelectTrigger className='w-full'>
-                  <SelectValue />
+                <SelectTrigger className={ALERT_RULE_SELECT_TRIGGER_CLASS}>
+                  <SelectValue>{metricLabel(props.metrics, form.metric)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {props.metrics.map((item) => (
@@ -345,8 +348,8 @@ function AlertRuleDialog(props: {
                   if (value) update('comparator', value)
                 }}
               >
-                <SelectTrigger className='w-full'>
-                  <SelectValue />
+                <SelectTrigger className={ALERT_RULE_SELECT_TRIGGER_CLASS}>
+                  <SelectValue>{form.comparator}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {COMPARATOR_OPTIONS.map((item) => (
@@ -360,6 +363,7 @@ function AlertRuleDialog(props: {
             <div className='space-y-2'>
               <Label>阈值</Label>
               <Input
+                className={ALERT_RULE_INPUT_CLASS}
                 type='number'
                 step='0.01'
                 value={form.threshold}
@@ -374,6 +378,7 @@ function AlertRuleDialog(props: {
             <div className='space-y-2'>
               <Label>统计窗口（秒）</Label>
               <Input
+                className={ALERT_RULE_INPUT_CLASS}
                 type='number'
                 value={form.window_seconds}
                 onChange={(event) =>
@@ -384,6 +389,7 @@ function AlertRuleDialog(props: {
             <div className='space-y-2'>
               <Label>持续时间（秒）</Label>
               <Input
+                className={ALERT_RULE_INPUT_CLASS}
                 type='number'
                 value={form.duration_seconds}
                 onChange={(event) =>
@@ -394,6 +400,7 @@ function AlertRuleDialog(props: {
             <div className='space-y-2'>
               <Label>冷却时间（秒）</Label>
               <Input
+                className={ALERT_RULE_INPUT_CLASS}
                 type='number'
                 value={form.cooldown_seconds}
                 onChange={(event) =>
@@ -407,6 +414,7 @@ function AlertRuleDialog(props: {
             <div className='space-y-2'>
               <Label>渠道 ID</Label>
               <Input
+                className={ALERT_RULE_INPUT_CLASS}
                 type='number'
                 value={form.channel_id}
                 onChange={(event) =>
@@ -417,6 +425,7 @@ function AlertRuleDialog(props: {
             <div className='space-y-2'>
               <Label>模型</Label>
               <Input
+                className={ALERT_RULE_INPUT_CLASS}
                 value={form.model_name}
                 onChange={(event) => update('model_name', event.target.value)}
                 placeholder='留空为全部'
@@ -425,6 +434,7 @@ function AlertRuleDialog(props: {
             <div className='space-y-2'>
               <Label>分组</Label>
               <Input
+                className={ALERT_RULE_INPUT_CLASS}
                 value={form.group}
                 onChange={(event) => update('group', event.target.value)}
                 placeholder='留空为全部'
@@ -435,6 +445,7 @@ function AlertRuleDialog(props: {
           <div className='space-y-2'>
             <Label>描述</Label>
             <Textarea
+              className={ALERT_RULE_INPUT_CLASS}
               value={form.description}
               onChange={(event) => update('description', event.target.value)}
             />
