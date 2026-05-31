@@ -104,6 +104,20 @@ jobs:
           name: frontend-dist
           path: .
 
+      - name: Restore frontend asset paths
+        run: |
+          mkdir -p web/default web/classic
+          if [ -d default/dist ]; then
+            rm -rf web/default/dist
+            mv default/dist web/default/dist
+          fi
+          if [ -d classic/dist ]; then
+            rm -rf web/classic/dist
+            mv classic/dist web/classic/dist
+          fi
+          test -d web/default/dist
+          test -d web/classic/dist
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
