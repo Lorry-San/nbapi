@@ -260,7 +260,7 @@ const OtherSetting = () => {
       } else {
         setUpdateData({
           tag_name: tag_name,
-          content: marked.parse(body),
+          content: body ? marked.parse(body) : t('暂无更新说明'),
         });
         setShowUpdateModal(true);
       }

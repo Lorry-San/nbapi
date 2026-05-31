@@ -22,11 +22,13 @@ import remarkGfm from 'remark-gfm'
 import { cn } from '@/lib/utils'
 
 interface MarkdownProps {
-  children: string
+  children?: string | null
   className?: string
 }
 
 export function Markdown({ children, className }: MarkdownProps) {
+  const content = typeof children === 'string' ? children : ''
+
   return (
     <div
       className={cn(
@@ -57,7 +59,7 @@ export function Markdown({ children, className }: MarkdownProps) {
           ),
         }}
       >
-        {children}
+        {content}
       </ReactMarkdown>
     </div>
   )

@@ -100,7 +100,10 @@ export function UpdateCheckerSection({
         return
       }
 
-      setRelease(data)
+      setRelease({
+        ...data,
+        body: data.body || '',
+      })
       setDialogOpen(true)
     } catch (error) {
       const message =
