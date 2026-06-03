@@ -1,10 +1,12 @@
 package controller
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
@@ -19,6 +21,91 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+func checkHAHealth(c *gin.Context) (gin.H, error) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+	defer cancel()
+
+	data := gin.H{
+		"version":      common.Version,
+		"database":     "ok",
+		"databaseRole": "primary",
+		"redis":        "disabled",
+	}
+
+	sqlDB, err := model.DB.DB()
+	if err != nil {
+		data["database"] = "error"
+		return data, err
+	}
+	if err := sqlDB.PingContext(ctx); err != nil {
+		data["database"] = "error"
+		return data, err
+	}
+
+	if common.UsingPostgreSQL {
+		var inRecovery bool
+		var transactionReadOnly string
+		row := model.DB.WithContext(ctx).Raw("SELECT pg_is_in_recovery(), current_setting('transaction_read_only')").Row()
+		if err := row.Scan(&inRecovery, &transactionReadOnly); err != nil {
+			data["database"] = "error"
+			return data, err
+		}
+		data["databaseInRecovery"] = inRecovery
+		data["databaseTransactionReadOnly"] = transactionReadOnly
+		if inRecovery || strings.EqualFold(transactionReadOnly, "on") {
+			data["database"] = "read_only"
+			data["databaseRole"] = "standby"
+			return data, fmt.Errorf("database is read-only")
+		}
+	}
+
+	if common.UsingMySQL {
+		var readOnly int
+		row := model.DB.WithContext(ctx).Raw("SELECT IF(@@global.read_only OR @@global.super_read_only, 1, 0)").Row()
+		if err := row.Scan(&readOnly); err != nil {
+			data["database"] = "error"
+			return data, err
+		}
+		data["databaseReadOnly"] = readOnly == 1
+		if readOnly == 1 {
+			data["database"] = "read_only"
+			data["databaseRole"] = "standby"
+			return data, fmt.Errorf("database is read-only")
+		}
+	}
+
+	if common.RedisEnabled {
+		data["redis"] = "ok"
+		if common.RDB == nil {
+			data["redis"] = "error"
+			return data, fmt.Errorf("redis client is not initialized")
+		}
+		if err := common.RDB.Ping(ctx).Err(); err != nil {
+			data["redis"] = "error"
+			return data, err
+		}
+	}
+
+	return data, nil
+}
+
+func HAHealth(c *gin.Context) {
+	data, err := checkHAHealth(c)
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"success": false,
+			"message": err.Error(),
+			"data":    data,
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "ok",
+		"data":    data,
+	})
+}
 
 func TestStatus(c *gin.Context) {
 	err := model.PingDB()
