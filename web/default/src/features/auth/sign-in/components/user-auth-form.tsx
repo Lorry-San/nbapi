@@ -107,6 +107,7 @@ export function UserAuthForm({
     status?.discord_oauth ||
     status?.oidc_enabled ||
     status?.linuxdo_oauth ||
+    status?.mofang_oauth ||
     status?.telegram_oauth ||
     (status?.custom_oauth_providers?.length ?? 0) > 0
   )

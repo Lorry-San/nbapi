@@ -39,6 +39,7 @@ export const userSchema = z.object({
   oidc_id: z.string().optional(),
   wechat_id: z.string().optional(),
   telegram_id: z.string().optional(),
+  mofang_id: z.string().optional(),
   email: z.string().optional(),
   quota: z.number(),
   used_quota: z.number(),

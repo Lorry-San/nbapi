@@ -88,6 +88,9 @@ export type AuthSettings = {
   LinuxDOClientId: string
   LinuxDOClientSecret: string
   LinuxDOMinimumTrustLevel: string
+  MofangOAuthEnabled: boolean
+  MofangApiBase: string
+  MofangLoginUrl: string
   WeChatAuthEnabled: boolean
   WeChatServerAddress: string
   WeChatServerToken: string

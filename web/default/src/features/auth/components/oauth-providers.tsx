@@ -61,6 +61,7 @@ export function OAuthProviders({
     handleDiscordLogin,
     handleOIDCLogin,
     handleLinuxDOLogin,
+    handleMofangLogin,
     handleTelegramLogin,
     handleCustomOAuthLogin,
   } = useOAuthLogin(status)
@@ -110,6 +111,14 @@ export function OAuthProviders({
       label: t('Continue with LinuxDO'),
       onClick: handleLinuxDOLogin,
       icon: <IconLinuxDo className='h-4 w-4' />,
+    })
+  }
+
+  if (status?.mofang_oauth) {
+    providerButtons.push({
+      key: 'mofang',
+      label: t('Continue with Mofang'),
+      onClick: handleMofangLogin,
     })
   }
 

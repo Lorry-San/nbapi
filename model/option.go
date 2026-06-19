@@ -41,6 +41,7 @@ func InitOptionMap() {
 	common.OptionMap["EmailVerificationEnabled"] = strconv.FormatBool(common.EmailVerificationEnabled)
 	common.OptionMap["GitHubOAuthEnabled"] = strconv.FormatBool(common.GitHubOAuthEnabled)
 	common.OptionMap["LinuxDOOAuthEnabled"] = strconv.FormatBool(common.LinuxDOOAuthEnabled)
+	common.OptionMap["MofangOAuthEnabled"] = strconv.FormatBool(common.MofangOAuthEnabled)
 	common.OptionMap["TelegramOAuthEnabled"] = strconv.FormatBool(common.TelegramOAuthEnabled)
 	common.OptionMap["WeChatAuthEnabled"] = strconv.FormatBool(common.WeChatAuthEnabled)
 	common.OptionMap["TurnstileCheckEnabled"] = strconv.FormatBool(common.TurnstileCheckEnabled)
@@ -121,6 +122,8 @@ func InitOptionMap() {
 	common.OptionMap["PayMethods"] = operation_setting.PayMethods2JsonString()
 	common.OptionMap["GitHubClientId"] = ""
 	common.OptionMap["GitHubClientSecret"] = ""
+	common.OptionMap["MofangApiBase"] = common.MofangApiBase
+	common.OptionMap["MofangLoginUrl"] = common.MofangLoginUrl
 	common.OptionMap["TelegramBotToken"] = ""
 	common.OptionMap["TelegramBotName"] = ""
 	common.OptionMap["WeChatServerAddress"] = ""
@@ -302,6 +305,8 @@ func updateOptionMap(key string, value string) (err error) {
 			common.GitHubOAuthEnabled = boolValue
 		case "LinuxDOOAuthEnabled":
 			common.LinuxDOOAuthEnabled = boolValue
+		case "MofangOAuthEnabled":
+			common.MofangOAuthEnabled = boolValue
 		case "WeChatAuthEnabled":
 			common.WeChatAuthEnabled = boolValue
 		case "TelegramOAuthEnabled":
@@ -488,6 +493,10 @@ func updateOptionMap(key string, value string) (err error) {
 		common.LinuxDOClientSecret = value
 	case "LinuxDOMinimumTrustLevel":
 		common.LinuxDOMinimumTrustLevel, _ = strconv.Atoi(value)
+	case "MofangApiBase":
+		common.MofangApiBase = value
+	case "MofangLoginUrl":
+		common.MofangLoginUrl = value
 	case "Footer":
 		common.Footer = value
 	case "SystemName":

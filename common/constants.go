@@ -130,6 +130,9 @@ var GitHubClientSecret = ""
 var LinuxDOClientId = ""
 var LinuxDOClientSecret = ""
 var LinuxDOMinimumTrustLevel = 0
+var MofangOAuthEnabled = false
+var MofangApiBase = ""
+var MofangLoginUrl = ""
 
 var WeChatServerAddress = ""
 var WeChatServerToken = ""

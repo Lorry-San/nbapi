@@ -146,6 +146,8 @@ func GetStatus(c *gin.Context) {
 		"linuxdo_oauth":               common.LinuxDOOAuthEnabled,
 		"linuxdo_client_id":           common.LinuxDOClientId,
 		"linuxdo_minimum_trust_level": common.LinuxDOMinimumTrustLevel,
+		"mofang_oauth":                common.MofangOAuthEnabled,
+		"mofang_login_url":            common.MofangLoginUrl,
 		"telegram_oauth":              common.TelegramOAuthEnabled,
 		"telegram_bot_name":           common.TelegramBotName,
 		"theme":                       system_setting.GetThemeSettings().Frontend,
