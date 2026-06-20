@@ -100,6 +100,9 @@ const SystemSetting = () => {
     LinuxDOClientId: '',
     LinuxDOClientSecret: '',
     LinuxDOMinimumTrustLevel: '',
+    MofangOAuthEnabled: '',
+    MofangApiBase: '',
+    MofangLoginUrl: '',
     ServerAddress: '',
     // SSRF防护配置
     'fetch_setting.enable_ssrf_protection': true,
@@ -185,6 +188,7 @@ const SystemSetting = () => {
           case 'SMTPSSLEnabled':
           case 'SMTPForceAuthLogin':
           case 'LinuxDOOAuthEnabled':
+          case 'MofangOAuthEnabled':
           case 'discord.enabled':
           case 'oidc.enabled':
           case 'passkey.enabled':
@@ -639,6 +643,21 @@ const SystemSetting = () => {
     }
   };
 
+  const submitMofangOAuth = async () => {
+    const options = [];
+
+    if (originInputs['MofangApiBase'] !== inputs.MofangApiBase) {
+      options.push({ key: 'MofangApiBase', value: inputs.MofangApiBase });
+    }
+    if (originInputs['MofangLoginUrl'] !== inputs.MofangLoginUrl) {
+      options.push({ key: 'MofangLoginUrl', value: inputs.MofangLoginUrl });
+    }
+
+    if (options.length > 0) {
+      await updateOptions(options);
+    }
+  };
+
   const submitPasskeySettings = async () => {
     // 使用formApi直接获取当前表单值
     const formValues = formApiRef.current?.getValues() || {};
@@ -1063,6 +1082,15 @@ const SystemSetting = () => {
                         }
                       >
                         {t('允许通过 Linux DO 账户登录 & 注册')}
+                      </Form.Checkbox>
+                      <Form.Checkbox
+                        field='MofangOAuthEnabled'
+                        noLabel
+                        onChange={(e) =>
+                          handleCheckboxChange('MofangOAuthEnabled', e)
+                        }
+                      >
+                        {t('允许通过魔方财务登录 & 注册')}
                       </Form.Checkbox>
                       <Form.Checkbox
                         field='WeChatAuthEnabled'
@@ -1542,6 +1570,44 @@ const SystemSetting = () => {
                   </Row>
                   <Button onClick={submitLinuxDOOAuth}>
                     {t('保存 Linux DO OAuth 设置')}
+                  </Button>
+                </Form.Section>
+              </Card>
+
+              <Card>
+                <Form.Section text={t('配置魔方财务 OAuth')}>
+                  <Text>
+                    {t(
+                      '用于支持魔方财务小窗口登录，系统会通过魔方 /v1/user 接口获取用户并自动绑定或创建 NBAPI 账户',
+                    )}
+                  </Text>
+                  <Banner
+                    type='info'
+                    description={t(
+                      '登录地址通常填写魔方财务的 loginAccessToken 地址，API Base 填魔方财务站点根地址',
+                    )}
+                    style={{ marginBottom: 20, marginTop: 16 }}
+                  />
+                  <Row
+                    gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}
+                  >
+                    <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                      <Form.Input
+                        field='MofangApiBase'
+                        label={t('魔方财务 API Base')}
+                        placeholder='https://mofang.example.com'
+                      />
+                    </Col>
+                    <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                      <Form.Input
+                        field='MofangLoginUrl'
+                        label={t('魔方财务登录地址')}
+                        placeholder='https://mofang.example.com/loginAccessToken'
+                      />
+                    </Col>
+                  </Row>
+                  <Button onClick={submitMofangOAuth}>
+                    {t('保存魔方财务 OAuth 设置')}
                   </Button>
                 </Form.Section>
               </Card>

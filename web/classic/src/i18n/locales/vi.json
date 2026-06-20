@@ -4213,6 +4213,17 @@
     "运营和收费行为产生的法律责任": "operation and charging behavior",
     "，": ", ",
     "、": ", ",
-    "对于官方渠道，NBAPI已经内置地址，除非是第三方代理站点或者Azure的特殊接入地址，否则不需要填写": "Đối với các kênh chính thức, NBAPI đã tích hợp sẵn địa chỉ. Trừ khi đó là trang web proxy của bên thứ ba hoặc địa chỉ truy cập đặc biệt của Azure, không cần điền vào"
+    "对于官方渠道，NBAPI已经内置地址，除非是第三方代理站点或者Azure的特殊接入地址，否则不需要填写": "Đối với các kênh chính thức, NBAPI đã tích hợp sẵn địa chỉ. Trừ khi đó là trang web proxy của bên thứ ba hoặc địa chỉ truy cập đặc biệt của Azure, không cần điền vào",
+    "使用魔方财务继续": "Continue with Mofang",
+    "魔方财务登录失败": "Mofang login failed",
+    "无法打开魔方财务登录窗口": "Failed to open Mofang login window",
+    "魔方财务登录超时": "Mofang login timed out",
+    "允许通过魔方财务登录 & 注册": "Allow login and registration with Mofang Finance",
+    "配置魔方财务 OAuth": "Configure Mofang OAuth",
+    "用于支持魔方财务小窗口登录，系统会通过魔方 /v1/user 接口获取用户并自动绑定或创建 NBAPI 账户": "Supports Mofang popup login. The system uses the Mofang /v1/user API to fetch the user and automatically bind or create an NBAPI account.",
+    "登录地址通常填写魔方财务的 loginAccessToken 地址，API Base 填魔方财务站点根地址": "The login URL is usually the Mofang loginAccessToken URL. API Base should be the Mofang site root URL.",
+    "魔方财务 API Base": "Mofang API Base",
+    "魔方财务登录地址": "Mofang Login URL",
+    "保存魔方财务 OAuth 设置": "Save Mofang OAuth Settings"
   }
 }

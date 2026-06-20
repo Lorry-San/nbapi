@@ -31,6 +31,7 @@ import {
   setUserData,
   onDiscordOAuthClicked,
   onCustomOAuthClicked,
+  onMofangOAuthClicked,
 } from '../../helpers';
 import Turnstile from 'react-turnstile';
 import {
@@ -94,6 +95,7 @@ const RegisterForm = () => {
   const [discordLoading, setDiscordLoading] = useState(false);
   const [oidcLoading, setOidcLoading] = useState(false);
   const [linuxdoLoading, setLinuxdoLoading] = useState(false);
+  const [mofangLoading, setMofangLoading] = useState(false);
   const [emailRegisterLoading, setEmailRegisterLoading] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
   const [verificationCodeLoading, setVerificationCodeLoading] = useState(false);
@@ -137,6 +139,7 @@ const RegisterForm = () => {
       status.oidc_enabled ||
       status.wechat_login ||
       status.linuxdo_oauth ||
+      status.mofang_oauth ||
       status.telegram_oauth ||
       hasCustomOAuthProviders,
   );
@@ -333,6 +336,25 @@ const RegisterForm = () => {
     }
   };
 
+  const handleMofangClick = () => {
+    setMofangLoading(true);
+    onMofangOAuthClicked(status.mofang_login_url, {
+      onSuccess: (data) => {
+        userDispatch({ type: 'login', payload: data });
+        setUserData(data);
+        updateAPI();
+        showSuccess(t('登录成功！'));
+        navigate('/console');
+      },
+      onFinally: () => setMofangLoading(false),
+      messages: {
+        loginFailed: t('魔方财务登录失败'),
+        popupBlocked: t('无法打开魔方财务登录窗口'),
+        timeout: t('魔方财务登录超时'),
+      },
+    });
+  };
+
   const handleCustomOAuthClick = (provider) => {
     setCustomOAuthLoading((prev) => ({ ...prev, [provider.slug]: true }));
     try {
@@ -491,6 +513,19 @@ const RegisterForm = () => {
                     loading={linuxdoLoading}
                   >
                     <span className='ml-3'>{t('使用 LinuxDO 继续')}</span>
+                  </Button>
+                )}
+
+                {status.mofang_oauth && (
+                  <Button
+                    theme='outline'
+                    className='w-full h-12 flex items-center justify-center !rounded-full border border-gray-200 hover:bg-gray-50 transition-colors'
+                    type='tertiary'
+                    icon={getOAuthProviderIcon('', 20)}
+                    onClick={handleMofangClick}
+                    loading={mofangLoading}
+                  >
+                    <span className='ml-3'>{t('使用魔方财务继续')}</span>
                   </Button>
                 )}
 
