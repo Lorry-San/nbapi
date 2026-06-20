@@ -221,7 +221,7 @@ export function useOAuthLogin(status: SystemStatus | null) {
       // resetSession already ignores expected failures
     }
 
-    const expectedOrigin = loginUrl.origin
+    const allowedOrigins = new Set([loginUrl.origin, window.location.origin])
     let finished = false
     let timeoutId: ReturnType<typeof setTimeout> | undefined
     let closeCheckId: ReturnType<typeof setInterval> | undefined
@@ -273,7 +273,7 @@ export function useOAuthLogin(status: SystemStatus | null) {
     }
 
     function handleMessage(event: MessageEvent<MofangJwtMessage>) {
-      if (finished || event.origin !== expectedOrigin) return
+      if (finished || !allowedOrigins.has(event.origin)) return
       if (!event.data || event.data.type !== 'mofang-jwt') return
       const jwt = event.data.jwt
       if (typeof jwt !== 'string' || !jwt.trim()) {

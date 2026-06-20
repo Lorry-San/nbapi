@@ -367,7 +367,7 @@ export async function onMofangOAuthClicked(mofangLoginUrl, options = {}) {
     updateAPI();
   }
 
-  const expectedOrigin = loginUrl.origin;
+  const allowedOrigins = new Set([loginUrl.origin, window.location.origin]);
   let finished = false;
   let timeoutId;
   let closeCheckId;
@@ -410,7 +410,7 @@ export async function onMofangOAuthClicked(mofangLoginUrl, options = {}) {
   };
 
   function handleMessage(event) {
-    if (finished || event.origin !== expectedOrigin) return;
+    if (finished || !allowedOrigins.has(event.origin)) return;
     if (!event.data || event.data.type !== 'mofang-jwt') return;
 
     const jwt = event.data.jwt;

@@ -148,7 +148,7 @@ export function AccountBindingsTab({
       return
     }
 
-    const expectedOrigin = loginUrl.origin
+    const allowedOrigins = new Set([loginUrl.origin, window.location.origin])
     let finished = false
     let timeoutId: ReturnType<typeof setTimeout> | undefined
     let closeCheckId: ReturnType<typeof setInterval> | undefined
@@ -180,7 +180,7 @@ export function AccountBindingsTab({
     }
 
     function handleMessage(event: MessageEvent<{ type?: string; jwt?: unknown }>) {
-      if (finished || event.origin !== expectedOrigin) return
+      if (finished || !allowedOrigins.has(event.origin)) return
       if (!event.data || event.data.type !== 'mofang-jwt') return
 
       const jwt = event.data.jwt

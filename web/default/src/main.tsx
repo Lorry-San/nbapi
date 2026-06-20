@@ -28,6 +28,7 @@ import { RouterProvider, createRouter } from '@tanstack/react-router'
 import i18next from 'i18next'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
+import { consumeMofangAccessTokenCallback } from '@/features/auth/lib/mofang-callback'
 import { getStatus } from '@/lib/api'
 import { installBuildMetadata } from '@/lib/build-metadata'
 import '@/lib/dayjs'
@@ -47,6 +48,7 @@ import './styles/index.css'
 // VChart theme is driven by our ThemeProvider (html.light/html.dark) via per-chart `theme` prop.
 initializeFrontendCache()
 installBuildMetadata()
+const isMofangCallbackWindow = consumeMofangAccessTokenCallback()
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -155,7 +157,7 @@ const rootElement = document.getElementById('root')!
     /* empty */
   }
 })()
-if (!rootElement.innerHTML) {
+if (!isMofangCallbackWindow && !rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
   root.render(
     <StrictMode>
