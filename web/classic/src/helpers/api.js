@@ -25,6 +25,7 @@ import {
 } from './utils';
 import axios from 'axios';
 import { MESSAGE_ROLES } from '../constants/playground.constants';
+import { MOFANG_CALLBACK_STORAGE_KEY } from './mofangOAuthCallback';
 
 export let API = axios.create({
   baseURL: import.meta.env.VITE_REACT_APP_SERVER_URL
@@ -358,6 +359,10 @@ export async function onMofangOAuthClicked(mofangLoginUrl, options = {}) {
     return;
   }
 
+  try {
+    window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY);
+  } catch (error) {}
+
   if (shouldLogout) {
     try {
       await API.get('/api/user/logout', { skipErrorHandler: true });
@@ -376,7 +381,8 @@ export async function onMofangOAuthClicked(mofangLoginUrl, options = {}) {
     finished = true;
     if (timeoutId) clearTimeout(timeoutId);
     if (closeCheckId) clearInterval(closeCheckId);
-    window.removeEventListener('message', handleMessage);
+      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('storage', handleStorage);
     if (onFinally) onFinally();
   };
 
@@ -424,7 +430,48 @@ export async function onMofangOAuthClicked(mofangLoginUrl, options = {}) {
     completeWithJWT(jwt.trim());
   }
 
+  function parseStoredMofangJwt(value) {
+    if (!value) return '';
+    try {
+      const payload = JSON.parse(value);
+      if (payload?.type !== 'mofang-jwt') return '';
+      if (typeof payload.jwt !== 'string' || !payload.jwt.trim()) return '';
+      if (
+        typeof payload.timestamp === 'number' &&
+        Date.now() - payload.timestamp > timeoutMs
+      ) {
+        return '';
+      }
+      return payload.jwt.trim();
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function consumeStoredToken() {
+    if (finished) return;
+    const jwt = parseStoredMofangJwt(
+      window.localStorage.getItem(MOFANG_CALLBACK_STORAGE_KEY),
+    );
+    if (!jwt) return;
+    try {
+      window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY);
+    } catch (error) {}
+    completeWithJWT(jwt);
+  }
+
+  function handleStorage(event) {
+    if (event.key !== MOFANG_CALLBACK_STORAGE_KEY) return;
+    const jwt = parseStoredMofangJwt(event.newValue);
+    if (!jwt) return;
+    try {
+      window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY);
+    } catch (error) {}
+    completeWithJWT(jwt);
+  }
+
   window.addEventListener('message', handleMessage);
+  window.addEventListener('storage', handleStorage);
   timeoutId = setTimeout(() => {
     if (finished) return;
     showError(timeoutMessage);
@@ -433,6 +480,7 @@ export async function onMofangOAuthClicked(mofangLoginUrl, options = {}) {
   }, timeoutMs);
   closeCheckId = setInterval(() => {
     if (finished) return;
+    consumeStoredToken();
     if (popup.closed) {
       cleanup();
     }

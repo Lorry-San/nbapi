@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 const MOFANG_TOKEN_KEYS = ['access_token', 'jwt', 'token']
+export const MOFANG_CALLBACK_STORAGE_KEY = 'mofang_oauth_callback'
 
 function readTokenFromParams(params: URLSearchParams): string {
   for (const key of MOFANG_TOKEN_KEYS) {
@@ -87,6 +88,21 @@ function renderCallbackFallback() {
     '<div style="font-family: system-ui, sans-serif; padding: 24px; color: #111827;">Mofang login completed. You can close this window.</div>'
 }
 
+function storeCallbackToken(token: string) {
+  try {
+    window.localStorage.setItem(
+      MOFANG_CALLBACK_STORAGE_KEY,
+      JSON.stringify({
+        type: 'mofang-jwt',
+        jwt: token,
+        timestamp: Date.now(),
+      })
+    )
+  } catch {
+    // ignore storage failures
+  }
+}
+
 export function consumeMofangAccessTokenCallback(): boolean {
   if (typeof window === 'undefined') return false
 
@@ -94,9 +110,12 @@ export function consumeMofangAccessTokenCallback(): boolean {
   if (!token) return false
 
   stripTokenFromUrl()
+  storeCallbackToken(token)
 
   if (!window.opener || window.opener.closed) {
-    return false
+    renderCallbackFallback()
+    window.setTimeout(() => window.close(), 100)
+    return true
   }
 
   try {

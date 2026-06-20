@@ -28,6 +28,7 @@ import {
   handleDiscordOAuth,
   handleLinuxDOOAuth,
 } from '@/lib/oauth'
+import { MOFANG_CALLBACK_STORAGE_KEY } from '@/features/auth/lib/mofang-callback'
 import { useDialogs } from '@/hooks/use-dialog'
 import { useStatus } from '@/hooks/use-status'
 import { Button } from '@/components/ui/button'
@@ -56,6 +57,28 @@ interface AccountBindingsTabProps {
 }
 
 type DialogKey = 'email' | 'wechat' | 'telegram'
+
+function parseStoredMofangJwt(value: string | null, maxAgeMs: number): string {
+  if (!value) return ''
+  try {
+    const payload = JSON.parse(value) as {
+      type?: string
+      jwt?: unknown
+      timestamp?: unknown
+    }
+    if (payload?.type !== 'mofang-jwt') return ''
+    if (typeof payload.jwt !== 'string' || !payload.jwt.trim()) return ''
+    if (
+      typeof payload.timestamp === 'number' &&
+      Date.now() - payload.timestamp > maxAgeMs
+    ) {
+      return ''
+    }
+    return payload.jwt.trim()
+  } catch {
+    return ''
+  }
+}
 
 export function AccountBindingsTab({
   profile,
@@ -148,6 +171,13 @@ export function AccountBindingsTab({
       return
     }
 
+    const timeoutMs = 120000
+    try {
+      window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY)
+    } catch {
+      // ignore storage cleanup failures
+    }
+
     const allowedOrigins = new Set([loginUrl.origin, window.location.origin])
     let finished = false
     let timeoutId: ReturnType<typeof setTimeout> | undefined
@@ -158,6 +188,7 @@ export function AccountBindingsTab({
       if (timeoutId) clearTimeout(timeoutId)
       if (closeCheckId) clearInterval(closeCheckId)
       window.removeEventListener('message', handleMessage)
+      window.removeEventListener('storage', handleStorage)
       setMofangBinding(false)
     }
 
@@ -193,15 +224,44 @@ export function AccountBindingsTab({
       void completeWithJWT(jwt.trim())
     }
 
+    function consumeStoredToken() {
+      if (finished) return
+      const jwt = parseStoredMofangJwt(
+        window.localStorage.getItem(MOFANG_CALLBACK_STORAGE_KEY),
+        timeoutMs
+      )
+      if (!jwt) return
+      try {
+        window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY)
+      } catch {
+        // ignore storage cleanup failures
+      }
+      void completeWithJWT(jwt)
+    }
+
+    function handleStorage(event: StorageEvent) {
+      if (event.key !== MOFANG_CALLBACK_STORAGE_KEY) return
+      const jwt = parseStoredMofangJwt(event.newValue, timeoutMs)
+      if (!jwt) return
+      try {
+        window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY)
+      } catch {
+        // ignore storage cleanup failures
+      }
+      void completeWithJWT(jwt)
+    }
+
     setMofangBinding(true)
     window.addEventListener('message', handleMessage)
+    window.addEventListener('storage', handleStorage)
     timeoutId = setTimeout(() => {
       if (finished) return
       toast.error(t('Mofang login timed out'))
       cleanup()
-    }, 120000)
+    }, timeoutMs)
     closeCheckId = setInterval(() => {
       if (finished) return
+      consumeStoredToken()
       if (popup.closed) {
         cleanup()
       }
