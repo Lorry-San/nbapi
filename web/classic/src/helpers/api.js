@@ -322,6 +322,9 @@ export async function onMofangOAuthClicked(mofangLoginUrl, options = {}) {
     onError,
     onFinally,
     timeoutMs = 120000,
+    sessionEndpoint = '/api/oauth/mofang/session',
+    persistUser = true,
+    shouldLogout = true,
     messages = {},
   } = options;
   const loginFailedMessage = messages.loginFailed || '魔方财务登录失败';
@@ -355,12 +358,14 @@ export async function onMofangOAuthClicked(mofangLoginUrl, options = {}) {
     return;
   }
 
-  try {
-    await API.get('/api/user/logout', { skipErrorHandler: true });
-  } catch (err) {}
-  localStorage.removeItem('user');
-  localStorage.removeItem('uid');
-  updateAPI();
+  if (shouldLogout) {
+    try {
+      await API.get('/api/user/logout', { skipErrorHandler: true });
+    } catch (err) {}
+    localStorage.removeItem('user');
+    localStorage.removeItem('uid');
+    updateAPI();
+  }
 
   const expectedOrigin = loginUrl.origin;
   let finished = false;
@@ -377,7 +382,7 @@ export async function onMofangOAuthClicked(mofangLoginUrl, options = {}) {
 
   const completeWithJWT = async (jwt) => {
     try {
-      const res = await API.post('/api/oauth/mofang/session', { jwt });
+      const res = await API.post(sessionEndpoint, { jwt });
       const { success, message, data } = res.data || {};
       if (!success) {
         showError(message || loginFailedMessage);
@@ -385,11 +390,13 @@ export async function onMofangOAuthClicked(mofangLoginUrl, options = {}) {
         return;
       }
 
-      if (data?.id != null) {
-        localStorage.setItem('uid', String(data.id));
+      if (persistUser) {
+        if (data?.id != null) {
+          localStorage.setItem('uid', String(data.id));
+        }
+        localStorage.setItem('user', JSON.stringify(data));
+        updateAPI();
       }
-      localStorage.setItem('user', JSON.stringify(data));
-      updateAPI();
       if (onSuccess) onSuccess(data);
       try {
         popup.close();

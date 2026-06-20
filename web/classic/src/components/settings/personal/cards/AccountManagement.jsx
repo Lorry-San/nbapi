@@ -49,6 +49,7 @@ import {
   onOIDCClicked,
   onLinuxDOOAuthClicked,
   onDiscordOAuthClicked,
+  onMofangOAuthClicked,
   onCustomOAuthClicked,
   getOAuthProviderIcon,
 } from '../../../../helpers';
@@ -99,6 +100,7 @@ const AccountManagement = ({
   const isBound = (accountId) => Boolean(accountId);
   const [showTelegramBindModal, setShowTelegramBindModal] =
     React.useState(false);
+  const [mofangLoading, setMofangLoading] = React.useState(false);
   const [customOAuthBindings, setCustomOAuthBindings] = React.useState([]);
   const [customOAuthLoading, setCustomOAuthLoading] = React.useState({});
 
@@ -145,6 +147,29 @@ const AccountManagement = ({
   // Handle bind custom OAuth
   const handleBindCustomOAuth = (provider) => {
     onCustomOAuthClicked(provider);
+  };
+
+  const handleBindMofangOAuth = () => {
+    if (!status.mofang_login_url) {
+      showError(t('魔方财务登录地址未配置'));
+      return;
+    }
+    setMofangLoading(true);
+    onMofangOAuthClicked(status.mofang_login_url, {
+      sessionEndpoint: '/api/oauth/mofang/bind',
+      persistUser: false,
+      shouldLogout: false,
+      onSuccess: () => {
+        showSuccess(t('绑定成功！'));
+        window.location.reload();
+      },
+      onFinally: () => setMofangLoading(false),
+      messages: {
+        loginFailed: t('魔方财务绑定失败'),
+        popupBlocked: t('无法打开魔方财务登录窗口'),
+        timeout: t('魔方财务登录超时'),
+      },
+    });
   };
 
   // Check if custom OAuth provider is bound
@@ -512,6 +537,43 @@ const AccountManagement = ({
                       }
                     >
                       {status.linuxdo_oauth ? t('绑定') : t('未启用')}
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Mofang Finance binding */}
+              <Card className='!rounded-xl'>
+                <div className='flex items-center justify-between gap-3'>
+                  <div className='flex items-center flex-1 min-w-0'>
+                    <div className='w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mr-3 flex-shrink-0'>
+                      {getOAuthProviderIcon('', 20)}
+                    </div>
+                    <div className='flex-1 min-w-0'>
+                      <div className='font-medium text-gray-900'>
+                        {t('魔方财务')}
+                      </div>
+                      <div className='text-sm text-gray-500 truncate'>
+                        {renderAccountInfo(
+                          userState.user?.mofang_id,
+                          t('魔方财务 ID'),
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className='flex-shrink-0'>
+                    <Button
+                      type='primary'
+                      theme='outline'
+                      size='small'
+                      onClick={handleBindMofangOAuth}
+                      loading={mofangLoading}
+                      disabled={
+                        isBound(userState.user?.mofang_id) ||
+                        !status.mofang_oauth
+                      }
+                    >
+                      {status.mofang_oauth ? t('绑定') : t('未启用')}
                     </Button>
                   </div>
                 </div>

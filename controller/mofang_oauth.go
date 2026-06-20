@@ -81,6 +81,73 @@ func MofangOAuthSession(c *gin.Context) {
 	setupLogin(user, c)
 }
 
+func MofangOAuthBind(c *gin.Context) {
+	if !common.MofangOAuthEnabled {
+		common.ApiErrorI18n(c, i18n.MsgOAuthNotEnabled, providerParams(mofangProviderName))
+		return
+	}
+
+	var req mofangSessionRequest
+	if err := common.DecodeJson(c.Request.Body, &req); err != nil {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+
+	jwt := strings.TrimSpace(req.JWT)
+	if jwt == "" {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+
+	mofangUser, err := fetchMofangUserInfo(c.Request.Context(), jwt)
+	if err != nil {
+		logger.LogError(c.Request.Context(), fmt.Sprintf("[MofangOAuth] fetch user info for bind failed: %s", err.Error()))
+		common.ApiErrorI18n(c, i18n.MsgOAuthGetUserErr)
+		return
+	}
+
+	session := sessions.Default(c)
+	sessionUserId := session.Get("id")
+	userId, ok := sessionUserId.(int)
+	if !ok || userId == 0 {
+		common.ApiErrorI18n(c, i18n.MsgAuthNotLoggedIn)
+		return
+	}
+
+	user := model.User{Id: userId}
+	if err := user.FillUserById(); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	existing := model.User{MofangId: mofangUser.Id}
+	if err := existing.FillUserByMofangId(); err == nil {
+		if existing.Id != user.Id {
+			common.ApiErrorI18n(c, i18n.MsgOAuthAlreadyBound, providerParams(mofangProviderName))
+			return
+		}
+		common.ApiSuccessI18n(c, i18n.MsgOAuthBindSuccess, gin.H{
+			"action":    "bind",
+			"mofang_id": mofangUser.Id,
+		})
+		return
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		common.ApiError(c, err)
+		return
+	}
+
+	user.MofangId = mofangUser.Id
+	if err := user.Update(false); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	common.ApiSuccessI18n(c, i18n.MsgOAuthBindSuccess, gin.H{
+		"action":    "bind",
+		"mofang_id": mofangUser.Id,
+	})
+}
+
 func fetchMofangUserInfo(parent context.Context, jwt string) (*mofangUserInfo, error) {
 	apiBase := strings.TrimRight(strings.TrimSpace(common.MofangApiBase), "/")
 	if apiBase == "" {
