@@ -48,24 +48,20 @@ func RequestOpenAI2ClaudeMessage(c *gin.Context, textRequest dto.GeneralOpenAIRe
 	claudeTools := make([]any, 0, len(textRequest.Tools))
 
 	for _, tool := range textRequest.Tools {
-		if params, ok := tool.Function.Parameters.(map[string]any); ok {
-			claudeTool := dto.Tool{
-				Name:        tool.Function.Name,
-				Description: tool.Function.Description,
-			}
-			claudeTool.InputSchema = make(map[string]interface{})
-			if params["type"] != nil {
-				claudeTool.InputSchema["type"] = params["type"].(string)
-			}
-			claudeTool.InputSchema["properties"] = params["properties"]
-			claudeTool.InputSchema["required"] = params["required"]
-			for s, a := range params {
-				if s == "type" || s == "properties" || s == "required" {
-					continue
+		claudeTool := openAIFunctionToClaudeTool(tool.Function)
+		if claudeTool != nil {
+			claudeTools = append(claudeTools, claudeTool)
+		}
+	}
+	if len(textRequest.Functions) > 0 {
+		var functions []dto.FunctionRequest
+		if err := common.Unmarshal(textRequest.Functions, &functions); err == nil {
+			for _, function := range functions {
+				claudeTool := openAIFunctionToClaudeTool(function)
+				if claudeTool != nil {
+					claudeTools = append(claudeTools, claudeTool)
 				}
-				claudeTool.InputSchema[s] = a
 			}
-			claudeTools = append(claudeTools, &claudeTool)
 		}
 	}
 
@@ -432,6 +428,47 @@ func RequestOpenAI2ClaudeMessage(c *gin.Context, textRequest dto.GeneralOpenAIRe
 	claudeRequest.Prompt = ""
 	claudeRequest.Messages = claudeMessages
 	return &claudeRequest, nil
+}
+
+func openAIFunctionToClaudeTool(function dto.FunctionRequest) *dto.Tool {
+	if strings.TrimSpace(function.Name) == "" {
+		return nil
+	}
+
+	claudeTool := dto.Tool{
+		Name:        function.Name,
+		Description: function.Description,
+		InputSchema: map[string]interface{}{
+			"type": "object",
+		},
+	}
+
+	params, ok := function.Parameters.(map[string]any)
+	if !ok {
+		if function.Parameters != nil {
+			var converted map[string]any
+			if b, err := common.Marshal(function.Parameters); err == nil {
+				_ = common.Unmarshal(b, &converted)
+			}
+			params = converted
+		}
+	}
+	if len(params) == 0 {
+		return &claudeTool
+	}
+
+	if typ, ok := params["type"].(string); ok && typ != "" {
+		claudeTool.InputSchema["type"] = typ
+	}
+	claudeTool.InputSchema["properties"] = params["properties"]
+	claudeTool.InputSchema["required"] = params["required"]
+	for s, a := range params {
+		if s == "type" || s == "properties" || s == "required" {
+			continue
+		}
+		claudeTool.InputSchema[s] = a
+	}
+	return &claudeTool
 }
 
 func StreamResponseClaude2OpenAI(claudeResponse *dto.ClaudeResponse) *dto.ChatCompletionsStreamResponse {

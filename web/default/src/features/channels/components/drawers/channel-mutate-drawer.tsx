@@ -217,6 +217,7 @@ function hasAdvancedSettingsValues(values: ChannelFormValues): boolean {
     values.force_format ||
     values.thinking_to_content ||
     values.pass_through_body_enabled ||
+    values.force_responses_to_chat_completions ||
     values.system_prompt_override ||
     values.openai_api_path?.trim() ||
     values.claude_beta_query ||
@@ -3204,6 +3205,33 @@ export function ChannelMutateDrawer({
                                 <FormLabel>{t('Pass Through Body')}</FormLabel>
                                 <FormDescription>
                                   {t('Pass request body directly to upstream')}
+                                </FormDescription>
+                              </div>
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name='force_responses_to_chat_completions'
+                          render={({ field }) => (
+                            <FormItem className='flex items-center justify-between px-4 py-3'>
+                              <div className='space-y-0.5'>
+                                <FormLabel>
+                                  {t(
+                                    'Responses 强制转 ChatCompletions'
+                                  )}
+                                </FormLabel>
+                                <FormDescription>
+                                  {t(
+                                    '将此渠道的 /v1/responses 请求先转换为 /v1/chat/completions 再请求上游'
+                                  )}
                                 </FormDescription>
                               </div>
                               <FormControl>

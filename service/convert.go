@@ -32,11 +32,11 @@ func ClaudeToOpenAIRequest(claudeRequest dto.ClaudeRequest, info *relaycommon.Re
 		openAIRequest.Stream = lo.ToPtr(lo.FromPtr(claudeRequest.Stream))
 	}
 
-	isOpenRouter := info.ChannelType == constant.ChannelTypeOpenRouter
+	isOpenRouter := info != nil && info.ChannelType == constant.ChannelTypeOpenRouter
 
 	if isOpenRouter {
 		if effort := claudeRequest.GetEfforts(); effort != "" {
-			effortBytes, _ := json.Marshal(effort)
+			effortBytes, _ := common.Marshal(effort)
 			openAIRequest.Verbosity = effortBytes
 		}
 		if claudeRequest.Thinking != nil {
@@ -51,7 +51,7 @@ func ClaudeToOpenAIRequest(claudeRequest dto.ClaudeRequest, info *relaycommon.Re
 					Enabled: true,
 				}
 			}
-			reasoningJSON, err := json.Marshal(reasoning)
+			reasoningJSON, err := common.Marshal(reasoning)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal reasoning: %w", err)
 			}
@@ -59,7 +59,8 @@ func ClaudeToOpenAIRequest(claudeRequest dto.ClaudeRequest, info *relaycommon.Re
 		}
 	} else {
 		thinkingSuffix := "-thinking"
-		if strings.HasSuffix(info.OriginModelName, thinkingSuffix) &&
+		if info != nil &&
+			strings.HasSuffix(info.OriginModelName, thinkingSuffix) &&
 			!strings.HasSuffix(openAIRequest.Model, thinkingSuffix) {
 			openAIRequest.Model = openAIRequest.Model + thinkingSuffix
 		}
@@ -72,21 +73,7 @@ func ClaudeToOpenAIRequest(claudeRequest dto.ClaudeRequest, info *relaycommon.Re
 		openAIRequest.Stop = claudeRequest.StopSequences
 	}
 
-	// Convert tools
-	tools, _ := common.Any2Type[[]dto.Tool](claudeRequest.Tools)
-	openAITools := make([]dto.ToolCallRequest, 0)
-	for _, claudeTool := range tools {
-		openAITool := dto.ToolCallRequest{
-			Type: "function",
-			Function: dto.FunctionRequest{
-				Name:        claudeTool.Name,
-				Description: claudeTool.Description,
-				Parameters:  claudeTool.InputSchema,
-			},
-		}
-		openAITools = append(openAITools, openAITool)
-	}
-	openAIRequest.Tools = openAITools
+	openAIRequest.Tools, openAIRequest.WebSearchOptions = convertClaudeToolsToOpenAI(claudeRequest.Tools)
 
 	// Convert messages
 	openAIMessages := make([]dto.Message, 0)
@@ -105,7 +92,7 @@ func ClaudeToOpenAIRequest(claudeRequest dto.ClaudeRequest, info *relaycommon.Re
 				openAIMessage := dto.Message{
 					Role: "system",
 				}
-				isOpenRouterClaude := isOpenRouter && strings.HasPrefix(info.UpstreamModelName, "anthropic/claude")
+				isOpenRouterClaude := isOpenRouter && info != nil && strings.HasPrefix(info.UpstreamModelName, "anthropic/claude")
 				if isOpenRouterClaude {
 					systemMediaMessages := make([]dto.MediaContent, 0, len(systems))
 					for _, system := range systems {
@@ -158,11 +145,21 @@ func ClaudeToOpenAIRequest(claudeRequest dto.ClaudeRequest, info *relaycommon.Re
 					mediaMessages = append(mediaMessages, message)
 				case "image":
 					// Handle image conversion (base64 to URL or keep as is)
-					imageData := fmt.Sprintf("data:%s;base64,%s", mediaMsg.Source.MediaType, mediaMsg.Source.Data)
+					source := mediaMsg.Source
+					if source == nil {
+						continue
+					}
+					imageData := source.Url
+					if imageData == "" && source.Data != nil {
+						imageData = fmt.Sprintf("data:%s;base64,%s", source.MediaType, source.Data)
+					}
+					if imageData == "" {
+						continue
+					}
 					//textContent += fmt.Sprintf("[Image: %s]", imageData)
 					mediaMessage := dto.MediaContent{
 						Type:     "image_url",
-						ImageUrl: &dto.MessageImageUrl{Url: imageData},
+						ImageUrl: &dto.MessageImageUrl{Url: imageData, MimeType: source.MediaType},
 					}
 					mediaMessages = append(mediaMessages, mediaMessage)
 				case "tool_use":
@@ -191,8 +188,16 @@ func ClaudeToOpenAIRequest(claudeRequest dto.ClaudeRequest, info *relaycommon.Re
 						oaiToolMessage.SetStringContent(mediaMsg.GetStringContent())
 					} else {
 						mediaContents := mediaMsg.ParseMediaContent()
-						encodeJson, _ := common.Marshal(mediaContents)
-						oaiToolMessage.SetStringContent(string(encodeJson))
+						if len(mediaContents) > 0 {
+							encodeJson, _ := common.Marshal(mediaContents)
+							oaiToolMessage.SetStringContent(string(encodeJson))
+						} else if mediaMsg.Content == nil {
+							oaiToolMessage.SetStringContent("")
+						} else if encodeJson, err := common.Marshal(mediaMsg.Content); err == nil {
+							oaiToolMessage.SetStringContent(string(encodeJson))
+						} else {
+							oaiToolMessage.SetStringContent(common.Interface2String(mediaMsg.Content))
+						}
 					}
 					openAIMessages = append(openAIMessages, oaiToolMessage)
 				}
@@ -202,8 +207,25 @@ func ClaudeToOpenAIRequest(claudeRequest dto.ClaudeRequest, info *relaycommon.Re
 				openAIMessage.SetToolCalls(toolCalls)
 			}
 
-			if len(mediaMessages) > 0 && len(toolCalls) == 0 {
-				openAIMessage.SetMediaContent(mediaMessages)
+			if len(mediaMessages) > 0 {
+				if len(toolCalls) > 0 {
+					allText := true
+					var textBuilder strings.Builder
+					for _, mediaMessage := range mediaMessages {
+						if mediaMessage.Type != dto.ContentTypeText {
+							allText = false
+							break
+						}
+						textBuilder.WriteString(mediaMessage.Text)
+					}
+					if allText {
+						openAIMessage.SetStringContent(textBuilder.String())
+					} else {
+						openAIMessage.SetMediaContent(mediaMessages)
+					}
+				} else {
+					openAIMessage.SetMediaContent(mediaMessages)
+				}
 			}
 		}
 		if len(openAIMessage.ParseContent()) > 0 || len(openAIMessage.ToolCalls) > 0 {
@@ -220,6 +242,104 @@ func generateStopBlock(index int) *dto.ClaudeResponse {
 	return &dto.ClaudeResponse{
 		Type:  "content_block_stop",
 		Index: common.GetPointer[int](index),
+	}
+}
+
+func convertClaudeToolsToOpenAI(toolsAny any) ([]dto.ToolCallRequest, *dto.WebSearchOptions) {
+	if toolsAny == nil {
+		return nil, nil
+	}
+
+	rawTools, err := common.Any2Type[[]json.RawMessage](toolsAny)
+	if err != nil {
+		return nil, nil
+	}
+
+	openAITools := make([]dto.ToolCallRequest, 0, len(rawTools))
+	var webSearchOptions *dto.WebSearchOptions
+
+	for _, rawTool := range rawTools {
+		var tool map[string]any
+		if err := common.Unmarshal(rawTool, &tool); err != nil {
+			continue
+		}
+		toolType := common.Interface2String(tool["type"])
+		if toolType == "web_search_20250305" {
+			var webSearchTool dto.ClaudeWebSearchTool
+			if err := common.Unmarshal(rawTool, &webSearchTool); err == nil {
+				webSearchOptions = convertClaudeWebSearchToolToOpenAI(webSearchTool)
+			}
+			continue
+		}
+
+		var claudeTool dto.Tool
+		if err := common.Unmarshal(rawTool, &claudeTool); err != nil {
+			continue
+		}
+		name := strings.TrimSpace(claudeTool.Name)
+		if name == "" {
+			continue
+		}
+
+		openAITools = append(openAITools, dto.ToolCallRequest{
+			Type: "function",
+			Function: dto.FunctionRequest{
+				Name:        name,
+				Description: claudeTool.Description,
+				Parameters:  claudeTool.InputSchema,
+			},
+		})
+	}
+
+	return openAITools, webSearchOptions
+}
+
+func convertClaudeWebSearchToolToOpenAI(tool dto.ClaudeWebSearchTool) *dto.WebSearchOptions {
+	options := &dto.WebSearchOptions{}
+	if tool.MaxUses > 0 {
+		options.SearchContextSize = claudeWebSearchMaxUsesToContextSize(tool.MaxUses)
+	}
+
+	location := tool.UserLocation
+	if location == nil {
+		return options
+	}
+
+	approximate := map[string]any{}
+	if value := strings.TrimSpace(location.Timezone); value != "" {
+		approximate["timezone"] = value
+	}
+	if value := strings.TrimSpace(location.Country); value != "" {
+		approximate["country"] = value
+	}
+	if value := strings.TrimSpace(location.Region); value != "" {
+		approximate["region"] = value
+	}
+	if value := strings.TrimSpace(location.City); value != "" {
+		approximate["city"] = value
+	}
+	if len(approximate) == 0 {
+		return options
+	}
+
+	raw, err := common.Marshal(map[string]any{
+		"type":        "approximate",
+		"approximate": approximate,
+	})
+	if err == nil {
+		options.UserLocation = raw
+	}
+	return options
+}
+
+func claudeWebSearchMaxUsesToContextSize(maxUses int) string {
+	switch {
+	case maxUses <= 1:
+		return "low"
+	case maxUses <= 5:
+		return "medium"
+	default:
+		return "high"
 	}
 }
 
@@ -648,7 +768,7 @@ func stopReasonOpenAI2Claude(reason string) string {
 }
 
 func toJSONString(v interface{}) string {
-	b, err := json.Marshal(v)
+	b, err := common.Marshal(v)
 	if err != nil {
 		return "{}"
 	}
@@ -870,7 +990,7 @@ func ResponseOpenAI2Gemini(openAIResponse *dto.OpenAITextResponse, info *relayco
 				// 解析参数
 				var args map[string]interface{}
 				if toolCall.Function.Arguments != "" {
-					if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
+					if err := common.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
 						args = map[string]interface{}{"arguments": toolCall.Function.Arguments}
 					}
 				} else {
@@ -973,7 +1093,7 @@ func StreamResponseOpenAI2Gemini(openAIResponse *dto.ChatCompletionsStreamRespon
 				// 解析参数
 				var args map[string]interface{}
 				if toolCall.Function.Arguments != "" {
-					if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
+					if err := common.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
 						args = map[string]interface{}{"arguments": toolCall.Function.Arguments}
 					}
 				} else {

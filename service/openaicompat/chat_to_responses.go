@@ -285,70 +285,9 @@ func ChatCompletionsRequestToResponsesRequest(req *dto.GeneralOpenAIRequest) (*d
 		instructionsRaw, _ = common.Marshal(instructions)
 	}
 
-	var toolsRaw json.RawMessage
-	if req.Tools != nil {
-		tools := make([]map[string]any, 0, len(req.Tools))
-		for _, tool := range req.Tools {
-			switch tool.Type {
-			case "function":
-				tools = append(tools, map[string]any{
-					"type":        "function",
-					"name":        tool.Function.Name,
-					"description": tool.Function.Description,
-					"parameters":  tool.Function.Parameters,
-				})
-			default:
-				// Best-effort: keep original tool shape for unknown types.
-				var m map[string]any
-				if b, err := common.Marshal(tool); err == nil {
-					_ = common.Unmarshal(b, &m)
-				}
-				if len(m) == 0 {
-					m = map[string]any{"type": tool.Type}
-				}
-				tools = append(tools, m)
-			}
-		}
-		toolsRaw, _ = common.Marshal(tools)
-	}
+	toolsRaw := convertChatToolsToResponsesTools(req)
 
-	var toolChoiceRaw json.RawMessage
-	if req.ToolChoice != nil {
-		switch v := req.ToolChoice.(type) {
-		case string:
-			toolChoiceRaw, _ = common.Marshal(v)
-		default:
-			var m map[string]any
-			if b, err := common.Marshal(v); err == nil {
-				_ = common.Unmarshal(b, &m)
-			}
-			if m == nil {
-				toolChoiceRaw, _ = common.Marshal(v)
-			} else if t, _ := m["type"].(string); t == "function" {
-				// Chat: {"type":"function","function":{"name":"..."}}
-				// Responses: {"type":"function","name":"..."}
-				if name, ok := m["name"].(string); ok && name != "" {
-					toolChoiceRaw, _ = common.Marshal(map[string]any{
-						"type": "function",
-						"name": name,
-					})
-				} else if fn, ok := m["function"].(map[string]any); ok {
-					if name, ok := fn["name"].(string); ok && name != "" {
-						toolChoiceRaw, _ = common.Marshal(map[string]any{
-							"type": "function",
-							"name": name,
-						})
-					} else {
-						toolChoiceRaw, _ = common.Marshal(v)
-					}
-				} else {
-					toolChoiceRaw, _ = common.Marshal(v)
-				}
-			} else {
-				toolChoiceRaw, _ = common.Marshal(v)
-			}
-		}
-	}
+	toolChoiceRaw := convertChatToolChoiceToResponsesToolChoice(req)
 
 	var parallelToolCallsRaw json.RawMessage
 	if req.ParallelTooCalls != nil {
@@ -356,6 +295,7 @@ func ChatCompletionsRequestToResponsesRequest(req *dto.GeneralOpenAIRequest) (*d
 	}
 
 	textRaw := convertChatResponseFormatToResponsesText(req.ResponseFormat)
+	serviceTier := rawMessageToString(req.ServiceTier)
 
 	maxOutputTokens := lo.FromPtrOr(req.MaxTokens, uint(0))
 	maxCompletionTokens := lo.FromPtrOr(req.MaxCompletionTokens, uint(0))
@@ -381,11 +321,17 @@ func ChatCompletionsRequestToResponsesRequest(req *dto.GeneralOpenAIRequest) (*d
 		Text:              textRaw,
 		ToolChoice:        toolChoiceRaw,
 		Tools:             toolsRaw,
+		TopLogProbs:       req.TopLogProbs,
 		TopP:              topP,
 		User:              req.User,
 		ParallelToolCalls: parallelToolCallsRaw,
 		Store:             req.Store,
 		Metadata:          req.Metadata,
+		ServiceTier:       serviceTier,
+		StreamOptions:     req.StreamOptions,
+		PromptCacheKey:       stringToRawMessage(req.PromptCacheKey),
+		PromptCacheRetention: req.PromptCacheRetention,
+		SafetyIdentifier:     req.SafetyIdentifier,
 	}
 	if req.MaxTokens != nil || req.MaxCompletionTokens != nil {
 		out.MaxOutputTokens = lo.ToPtr(maxOutputTokens)
@@ -399,4 +345,157 @@ func ChatCompletionsRequestToResponsesRequest(req *dto.GeneralOpenAIRequest) (*d
 	}
 
 	return out, nil
+}
+
+func convertChatToolsToResponsesTools(req *dto.GeneralOpenAIRequest) json.RawMessage {
+	if req == nil {
+		return nil
+	}
+
+	tools := make([]map[string]any, 0, len(req.Tools))
+	for _, tool := range req.Tools {
+		switch tool.Type {
+		case "function":
+			tools = append(tools, map[string]any{
+				"type":        "function",
+				"name":        tool.Function.Name,
+				"description": tool.Function.Description,
+				"parameters":  tool.Function.Parameters,
+			})
+		default:
+			// Best-effort: keep original tool shape for unknown types.
+			var m map[string]any
+			if b, err := common.Marshal(tool); err == nil {
+				_ = common.Unmarshal(b, &m)
+			}
+			if len(m) == 0 {
+				m = map[string]any{"type": tool.Type}
+			}
+			tools = append(tools, m)
+		}
+	}
+
+	if len(req.Functions) > 0 {
+		var functions []dto.FunctionRequest
+		if err := common.Unmarshal(req.Functions, &functions); err == nil {
+			for _, fn := range functions {
+				if strings.TrimSpace(fn.Name) == "" {
+					continue
+				}
+				tools = append(tools, map[string]any{
+					"type":        "function",
+					"name":        fn.Name,
+					"description": fn.Description,
+					"parameters":  fn.Parameters,
+				})
+			}
+		} else {
+			var rawFunctions []map[string]any
+			if err := common.Unmarshal(req.Functions, &rawFunctions); err == nil {
+				for _, fn := range rawFunctions {
+					if strings.TrimSpace(common.Interface2String(fn["name"])) == "" {
+						continue
+					}
+					fn["type"] = "function"
+					tools = append(tools, fn)
+				}
+			}
+		}
+	}
+
+	if len(tools) == 0 {
+		return nil
+	}
+	toolsRaw, _ := common.Marshal(tools)
+	return toolsRaw
+}
+
+func convertChatToolChoiceToResponsesToolChoice(req *dto.GeneralOpenAIRequest) json.RawMessage {
+	if req == nil {
+		return nil
+	}
+	if req.ToolChoice != nil {
+		return convertToolChoiceValueToResponses(req.ToolChoice)
+	}
+	if len(req.FunctionCall) == 0 {
+		return nil
+	}
+
+	var functionCall any
+	if err := common.Unmarshal(req.FunctionCall, &functionCall); err != nil {
+		return req.FunctionCall
+	}
+
+	switch v := functionCall.(type) {
+	case string:
+		if v == "none" || v == "auto" || v == "required" {
+			raw, _ := common.Marshal(v)
+			return raw
+		}
+		raw, _ := common.Marshal(map[string]any{
+			"type": "function",
+			"name": v,
+		})
+		return raw
+	case map[string]any:
+		if name := strings.TrimSpace(common.Interface2String(v["name"])); name != "" {
+			raw, _ := common.Marshal(map[string]any{
+				"type": "function",
+				"name": name,
+			})
+			return raw
+		}
+	}
+	return req.FunctionCall
+}
+
+func convertToolChoiceValueToResponses(toolChoice any) json.RawMessage {
+	switch v := toolChoice.(type) {
+	case string:
+		raw, _ := common.Marshal(v)
+		return raw
+	default:
+		var m map[string]any
+		if b, err := common.Marshal(v); err == nil {
+			_ = common.Unmarshal(b, &m)
+		}
+		if m == nil {
+			raw, _ := common.Marshal(v)
+			return raw
+		}
+		if t, _ := m["type"].(string); t == "function" {
+			// Chat: {"type":"function","function":{"name":"..."}}
+			// Responses: {"type":"function","name":"..."}
+			if name := strings.TrimSpace(common.Interface2String(m["name"])); name != "" {
+				raw, _ := common.Marshal(map[string]any{
+					"type": "function",
+					"name": name,
+				})
+				return raw
+			}
+			if fn, ok := m["function"].(map[string]any); ok {
+				if name := strings.TrimSpace(common.Interface2String(fn["name"])); name != "" {
+					raw, _ := common.Marshal(map[string]any{
+						"type": "function",
+						"name": name,
+					})
+					return raw
+				}
+			}
+		}
+		raw, _ := common.Marshal(v)
+		return raw
+	}
+}
+
+func rawMessageToString(raw json.RawMessage) string {
+	return common.JsonRawMessageToString(raw)
+}
+
+func stringToRawMessage(s string) json.RawMessage {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	raw, _ := common.Marshal(s)
+	return raw
 }
