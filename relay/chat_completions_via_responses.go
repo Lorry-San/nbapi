@@ -152,6 +152,24 @@ func chatCompletionsViaResponses(c *gin.Context, info *relaycommon.RelayInfo, ad
 		return nil, newApiErr
 	}
 
+	if info.UpstreamResponsesViaChatCompletions {
+		if info.IsStream {
+			usage, newApiErr := openaichannel.OaiStreamHandler(c, info, httpResp)
+			if newApiErr != nil {
+				service.ResetStatusCode(newApiErr, statusCodeMappingStr)
+				return nil, newApiErr
+			}
+			return usage, nil
+		}
+
+		usage, newApiErr := openaichannel.OpenaiHandler(c, info, httpResp)
+		if newApiErr != nil {
+			service.ResetStatusCode(newApiErr, statusCodeMappingStr)
+			return nil, newApiErr
+		}
+		return usage, nil
+	}
+
 	if info.IsStream {
 		usage, newApiErr := openaichannel.OaiResponsesToChatStreamHandler(c, info, httpResp)
 		if newApiErr != nil {

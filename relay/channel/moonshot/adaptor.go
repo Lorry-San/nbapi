@@ -13,6 +13,7 @@ import (
 	"github.com/QuantumNous/new-api/relay/channel/openai"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relay/constant"
+	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/types"
 
 	"github.com/gin-gonic/gin"
@@ -50,7 +51,7 @@ func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 		if info.RelayFormat == types.RelayFormatClaude {
 			return fmt.Sprintf("%s/v1/messages", specialPlan.ClaudeBaseURL), nil
 		}
-		if info.RelayFormat == types.RelayFormatOpenAI {
+		if info.RelayFormat == types.RelayFormatOpenAI || info.UpstreamResponsesViaChatCompletions {
 			return fmt.Sprintf("%s/chat/completions", specialPlan.OpenAIBaseURL), nil
 		}
 	}
@@ -83,8 +84,21 @@ func (a *Adaptor) ConvertOpenAIRequest(c *gin.Context, info *relaycommon.RelayIn
 }
 
 func (a *Adaptor) ConvertOpenAIResponsesRequest(c *gin.Context, info *relaycommon.RelayInfo, request dto.OpenAIResponsesRequest) (any, error) {
-	// TODO implement me
-	return nil, errors.New("not implemented")
+	chatReq, err := service.ResponsesRequestToChatCompletionsRequest(&request)
+	if err != nil {
+		return nil, err
+	}
+	if chatReq.MaxCompletionTokens != nil && chatReq.MaxTokens == nil {
+		chatReq.MaxTokens = chatReq.MaxCompletionTokens
+		chatReq.MaxCompletionTokens = nil
+	}
+	if info != nil {
+		info.UpstreamResponsesViaChatCompletions = true
+		info.FinalRequestRelayFormat = types.RelayFormatOpenAI
+		info.RelayMode = constant.RelayModeChatCompletions
+		info.RequestURLPath = "/v1/chat/completions"
+	}
+	return chatReq, nil
 }
 
 func (a *Adaptor) DoRequest(c *gin.Context, info *relaycommon.RelayInfo, requestBody io.Reader) (any, error) {
@@ -100,6 +114,13 @@ func (a *Adaptor) ConvertEmbeddingRequest(c *gin.Context, info *relaycommon.Rela
 }
 
 func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (usage any, err *types.NewAPIError) {
+	if info != nil && info.UpstreamResponsesViaChatCompletions {
+		if info.IsStream {
+			return openai.ChatCompletionsToResponsesStreamHandler(c, info, resp)
+		}
+		return openai.ChatCompletionsToResponsesHandler(c, info, resp)
+	}
+
 	switch info.RelayFormat {
 	case types.RelayFormatClaude:
 		adaptor := claude.Adaptor{}
