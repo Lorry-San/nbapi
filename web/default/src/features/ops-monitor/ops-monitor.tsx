@@ -62,16 +62,16 @@ import type {
 } from './types'
 
 const RANGE_OPTIONS = [
-  { label: '近1小时', value: '3600' },
-  { label: '近6小时', value: '21600' },
-  { label: '近24小时', value: '86400' },
-  { label: '近7天', value: '604800' },
+  { label: '最近 1 小时', value: '3600' },
+  { label: '最近 6 小时', value: '21600' },
+  { label: '最近 24 小时', value: '86400' },
+  { label: '最近 7 天', value: '604800' },
 ]
 
 const EVENT_RANGE_OPTIONS = [
-  { label: '近24小时', value: '86400' },
-  { label: '近7天', value: '604800' },
-  { label: '近30天', value: '2592000' },
+  { label: '最近 24 小时', value: '86400' },
+  { label: '最近 7 天', value: '604800' },
+  { label: '最近 30 天', value: '2592000' },
 ]
 
 const LEVEL_OPTIONS = ['P0', 'P1', 'P2', 'P3']
@@ -253,7 +253,7 @@ function AlertRuleDialog(props: {
         <DialogHeader>
           <DialogTitle>新建告警规则</DialogTitle>
           <DialogDescription>
-            规则由后台每分钟评估，触发和恢复都会记录事件并按配置发送邮件。
+            规则由后台定时评估，触发和恢复都会记录事件，并按配置发送邮件。
           </DialogDescription>
         </DialogHeader>
         <form className='grid gap-4' onSubmit={submit}>
@@ -441,7 +441,7 @@ function AlertRuleDialog(props: {
                   update('notify_email', Boolean(value))
                 }
               />
-              邮件通知管理员/超管
+              邮件通知管理员和超管
             </label>
           </div>
 
@@ -642,7 +642,7 @@ function RulesTab(props: {
         <div>
           <CardTitle>告警规则</CardTitle>
           <div className='text-muted-foreground mt-1 text-sm'>
-            创建与管理系统阈值告警，仅邮件通知管理员和超管
+            创建与管理系统阈值告警，仅邮件通知管理员和超管。
           </div>
         </div>
         <Button onClick={props.onCreate}>
@@ -651,69 +651,79 @@ function RulesTab(props: {
         </Button>
       </CardHeader>
       <CardContent>
-        <div className='grid gap-3 lg:grid-cols-2'>
-          {props.rules.map((rule) => (
-            <div
-              key={rule.id}
-              className='rounded-lg border bg-muted/20 p-4 transition-colors hover:bg-muted/30'
-            >
-              <div className='flex items-start justify-between gap-3'>
-                <div className='min-w-0'>
-                  <div className='flex flex-wrap items-center gap-2'>
-                    <div className='font-medium'>{rule.name}</div>
-                    <LevelBadge level={rule.level} />
-                    <Badge
-                      variant={
-                        rule.last_state === 'firing' ? 'destructive' : 'outline'
-                      }
-                    >
-                      {rule.last_state === 'firing' ? '告警中' : '正常'}
-                    </Badge>
+        {props.rules.length === 0 ? (
+          <div className='text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm'>
+            暂无告警规则
+          </div>
+        ) : (
+          <div className='grid gap-3 lg:grid-cols-2'>
+            {props.rules.map((rule) => (
+              <div
+                key={rule.id}
+                className='rounded-lg border bg-muted/20 p-4 transition-colors hover:bg-muted/30'
+              >
+                <div className='flex items-start justify-between gap-3'>
+                  <div className='min-w-0'>
+                    <div className='flex flex-wrap items-center gap-2'>
+                      <div className='font-medium'>{rule.name}</div>
+                      <LevelBadge level={rule.level} />
+                      <Badge
+                        variant={
+                          rule.last_state === 'firing'
+                            ? 'destructive'
+                            : 'outline'
+                        }
+                      >
+                        {rule.last_state === 'firing' ? '告警中' : '正常'}
+                      </Badge>
+                    </div>
+                    <div className='text-muted-foreground mt-1 text-xs'>
+                      {rule.description || rule.last_message || '-'}
+                    </div>
                   </div>
-                  <div className='text-muted-foreground mt-1 text-xs'>
-                    {rule.description || rule.last_message || '-'}
+                  <Button
+                    variant='destructive'
+                    size='icon-sm'
+                    onClick={() => props.onDelete(rule)}
+                    title='删除'
+                  >
+                    <Trash2 className='size-4' />
+                  </Button>
+                </div>
+                <div className='mt-4 grid gap-3 text-sm sm:grid-cols-3'>
+                  <div>
+                    <div className='text-muted-foreground text-xs'>指标</div>
+                    <div className='mt-1 font-mono text-xs'>
+                      {rule.metric} {rule.comparator} {rule.threshold}
+                    </div>
+                    <div className='text-muted-foreground mt-1 text-xs'>
+                      {metricLabel(props.metrics, rule.metric)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className='text-muted-foreground text-xs'>
+                      持续/窗口
+                    </div>
+                    <div className='mt-1'>
+                      {formatDuration(rule.duration_seconds)} /{' '}
+                      {formatDuration(rule.window_seconds)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className='text-muted-foreground text-xs'>通知</div>
+                    <div className='mt-1'>
+                      {rule.enabled ? '已启用' : '已禁用'} ·{' '}
+                      {rule.notify_email ? '邮件发送' : '邮件关闭'}
+                    </div>
                   </div>
                 </div>
-                <Button
-                  variant='destructive'
-                  size='icon-sm'
-                  onClick={() => props.onDelete(rule)}
-                  title='删除'
-                >
-                  <Trash2 className='size-4' />
-                </Button>
+                <div className='text-muted-foreground mt-3 text-xs'>
+                  更新时间 {formatTime(rule.updated_at)}
+                </div>
               </div>
-              <div className='mt-4 grid gap-3 text-sm sm:grid-cols-3'>
-                <div>
-                  <div className='text-muted-foreground text-xs'>指标</div>
-                  <div className='mt-1 font-mono text-xs'>
-                    {rule.metric} {rule.comparator} {rule.threshold}
-                  </div>
-                  <div className='text-muted-foreground mt-1 text-xs'>
-                    {metricLabel(props.metrics, rule.metric)}
-                  </div>
-                </div>
-                <div>
-                  <div className='text-muted-foreground text-xs'>持续/窗口</div>
-                  <div className='mt-1'>
-                    {formatDuration(rule.duration_seconds)} /{' '}
-                    {formatDuration(rule.window_seconds)}
-                  </div>
-                </div>
-                <div>
-                  <div className='text-muted-foreground text-xs'>通知</div>
-                  <div className='mt-1'>
-                    {rule.enabled ? '已启用' : '已禁用'} ·{' '}
-                    {rule.notify_email ? '邮件发送' : '邮件关闭'}
-                  </div>
-                </div>
-              </div>
-              <div className='text-muted-foreground mt-3 text-xs'>
-                更新时间 {formatTime(rule.updated_at)}
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   )
@@ -845,10 +855,6 @@ export function OpsMonitor() {
     void refreshAll()
   }, [range, eventRange, eventLevel, eventStatus])
 
-  const createRule = () => {
-    setDialogOpen(true)
-  }
-
   const removeRule = async (rule: OpsAlertRule) => {
     if (!window.confirm(`删除告警规则「${rule.name}」？`)) return
     const res = await deleteOpsAlertRule(rule.id)
@@ -906,10 +912,14 @@ export function OpsMonitor() {
           <div className='flex flex-wrap items-center justify-between gap-3'>
             <TabsList>
               <TabsTrigger value='overview'>概览</TabsTrigger>
-              <TabsTrigger value='rules'>告警规则</TabsTrigger>
               <TabsTrigger value='events'>告警事件</TabsTrigger>
+              <TabsTrigger value='rules'>告警规则</TabsTrigger>
             </TabsList>
             <div className='flex flex-wrap items-center gap-2'>
+              <Button variant='outline' size='sm' onClick={() => setDialogOpen(true)}>
+                <Plus className='size-4' />
+                新建规则
+              </Button>
               <Select
                 value={eventRange}
                 onValueChange={(value) => value && setEventRange(value)}
@@ -959,16 +969,16 @@ export function OpsMonitor() {
           <TabsContent value='overview'>
             <OverviewTab data={data} />
           </TabsContent>
+          <TabsContent value='events'>
+            <EventsTab events={events} metrics={metrics} />
+          </TabsContent>
           <TabsContent value='rules'>
             <RulesTab
               rules={rules}
               metrics={metrics}
-              onCreate={createRule}
+              onCreate={() => setDialogOpen(true)}
               onDelete={removeRule}
             />
-          </TabsContent>
-          <TabsContent value='events'>
-            <EventsTab events={events} metrics={metrics} />
           </TabsContent>
         </Tabs>
 
