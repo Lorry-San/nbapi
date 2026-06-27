@@ -40,7 +40,13 @@ func ChatCompletionsToResponsesHandler(c *gin.Context, info *relaycommon.RelayIn
 	}
 
 	responseID := responseIDForResponses(c)
-	responsesResp, usage, err := service.ChatCompletionsResponseToResponsesResponse(&chatResp, responseID)
+	responsesResp, usage, err := service.ChatCompletionsResponseToResponsesResponseWithOptions(
+		&chatResp,
+		responseID,
+		service.ChatCompletionsToResponsesOptions{
+			ThinkingToContent: info != nil && info.ChannelSetting.ThinkingToContent,
+		},
+	)
 	if err != nil {
 		return nil, types.NewOpenAIError(err, types.ErrorCodeBadResponseBody, http.StatusInternalServerError)
 	}
@@ -79,6 +85,8 @@ func ChatCompletionsToResponsesStreamHandler(c *gin.Context, info *relaycommon.R
 	var sentCreated bool
 	var sentMessageAdded bool
 	var sentContentAdded bool
+	var sentThinkingStart bool
+	var sentThinkingEnd bool
 	toolCallOutputIndexByID := make(map[string]int)
 	toolCallIDByChatIndex := make(map[int]string)
 	toolCallNameByID := make(map[string]string)
@@ -144,7 +152,7 @@ func ChatCompletionsToResponsesStreamHandler(c *gin.Context, info *relaycommon.R
 		return true
 	}
 
-	sendTextDelta := func(delta string) bool {
+	sendTextDeltaWithUsage := func(delta string, includeUsage bool) bool {
 		if delta == "" {
 			return true
 		}
@@ -152,13 +160,47 @@ func ChatCompletionsToResponsesStreamHandler(c *gin.Context, info *relaycommon.R
 			return false
 		}
 		outputText.WriteString(delta)
-		usageText.WriteString(delta)
+		if includeUsage {
+			usageText.WriteString(delta)
+		}
 		outputIndex := messageOutputIndex
 		return sendEvent("response.output_text.delta", dto.ResponsesStreamResponse{
 			OutputIndex:  &outputIndex,
 			ContentIndex: &contentIndex,
 			Delta:        delta,
 		})
+	}
+
+	sendTextDelta := func(delta string) bool {
+		return sendTextDeltaWithUsage(delta, true)
+	}
+
+	sendReasoningDelta := func(delta string) bool {
+		if delta == "" {
+			return true
+		}
+		usageText.WriteString(delta)
+		if info == nil || !info.ChannelSetting.ThinkingToContent {
+			return true
+		}
+		if !sentThinkingStart {
+			if !sendTextDeltaWithUsage("<think>\n", false) {
+				return false
+			}
+			sentThinkingStart = true
+		}
+		return sendTextDeltaWithUsage(delta, false)
+	}
+
+	closeThinkingIfNeeded := func() bool {
+		if !sentThinkingStart || sentThinkingEnd {
+			return true
+		}
+		if !sendTextDeltaWithUsage("\n</think>\n", false) {
+			return false
+		}
+		sentThinkingEnd = true
+		return true
 	}
 
 	sendToolCallDelta := func(call dto.ToolCallResponse) bool {
@@ -242,16 +284,21 @@ func ChatCompletionsToResponsesStreamHandler(c *gin.Context, info *relaycommon.R
 		}
 
 		for _, choice := range chunk.Choices {
+			if choice.Delta.GetContentString() != "" {
+				if !closeThinkingIfNeeded() {
+					sr.Stop(streamErr)
+					return
+				}
+			}
 			if !sendTextDelta(choice.Delta.GetContentString()) {
 				sr.Stop(streamErr)
 				return
 			}
 			if reasoning := choice.Delta.GetReasoningContent(); reasoning != "" {
-				// Chat completions providers may stream private reasoning in a
-				// side-channel field. Responses clients should only receive
-				// assistant output text here; keep reasoning hidden while still
-				// counting it for fallback usage estimation.
-				usageText.WriteString(reasoning)
+				if !sendReasoningDelta(reasoning) {
+					sr.Stop(streamErr)
+					return
+				}
 			}
 			for _, call := range choice.Delta.ToolCalls {
 				if !sendToolCallDelta(call) {
@@ -263,6 +310,10 @@ func ChatCompletionsToResponsesStreamHandler(c *gin.Context, info *relaycommon.R
 	})
 
 	if streamErr != nil {
+		return nil, streamErr
+	}
+
+	if !closeThinkingIfNeeded() {
 		return nil, streamErr
 	}
 

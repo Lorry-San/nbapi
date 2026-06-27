@@ -212,6 +212,137 @@ func TestChatCompletionsToResponsesStreamHandlerHidesReasoningContent(t *testing
 	require.Equal(t, "visible answer", completed.Output[0].Content[0].Text)
 }
 
+func TestChatCompletionsToResponsesStreamHandlerShowsReasoningWhenEnabled(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	oldTimeout := constant.StreamingTimeout
+	constant.StreamingTimeout = 30
+	t.Cleanup(func() {
+		constant.StreamingTimeout = oldTimeout
+	})
+
+	sse := strings.Join([]string{
+		chatSSE(t, map[string]any{
+			"id":      "chatcmpl_reasoning_visible",
+			"object":  "chat.completion.chunk",
+			"created": 123,
+			"model":   "kimi-k2.7",
+			"choices": []map[string]any{{
+				"index": 0,
+				"delta": map[string]any{
+					"reasoning_content": "visible reasoning",
+				},
+			}},
+		}),
+		chatSSE(t, map[string]any{
+			"id":      "chatcmpl_reasoning_visible",
+			"object":  "chat.completion.chunk",
+			"created": 123,
+			"model":   "kimi-k2.7",
+			"choices": []map[string]any{{
+				"index": 0,
+				"delta": map[string]any{
+					"content": "visible answer",
+				},
+			}},
+		}),
+		"data: [DONE]\n",
+	}, "")
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Set(common.RequestIdKey, "test")
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+
+	resp := &http.Response{
+		Body: io.NopCloser(strings.NewReader(sse)),
+	}
+	info := &relaycommon.RelayInfo{
+		ChannelMeta: &relaycommon.ChannelMeta{
+			UpstreamModelName: "kimi-k2.7",
+			ChannelSetting:    dto.ChannelSettings{ThinkingToContent: true},
+		},
+	}
+
+	usage, err := ChatCompletionsToResponsesStreamHandler(c, info, resp)
+	require.Nil(t, err)
+	require.NotNil(t, usage)
+
+	events := parseResponsesSSEEvents(t, recorder.Body.String())
+	var deltas []string
+	var completed *dto.OpenAIResponsesResponse
+	for _, event := range events {
+		if event.Type == "response.output_text.delta" {
+			deltas = append(deltas, event.Delta)
+		}
+		if event.Type == "response.completed" {
+			completed = event.Response
+		}
+	}
+
+	require.Equal(t, []string{"<think>\n", "visible reasoning", "\n</think>\n", "visible answer"}, deltas)
+	require.NotNil(t, completed)
+	require.Len(t, completed.Output, 1)
+	require.Equal(t, "<think>\nvisible reasoning\n</think>\nvisible answer", completed.Output[0].Content[0].Text)
+}
+
+func TestChatCompletionsToResponsesStreamHandlerClosesReasoningOnlyOutput(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	oldTimeout := constant.StreamingTimeout
+	constant.StreamingTimeout = 30
+	t.Cleanup(func() {
+		constant.StreamingTimeout = oldTimeout
+	})
+
+	sse := strings.Join([]string{
+		chatSSE(t, map[string]any{
+			"id":      "chatcmpl_reasoning_only",
+			"object":  "chat.completion.chunk",
+			"created": 123,
+			"model":   "kimi-k2.7",
+			"choices": []map[string]any{{
+				"index": 0,
+				"delta": map[string]any{
+					"reasoning": "visible reasoning",
+				},
+			}},
+		}),
+		"data: [DONE]\n",
+	}, "")
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Set(common.RequestIdKey, "test")
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+
+	resp := &http.Response{
+		Body: io.NopCloser(strings.NewReader(sse)),
+	}
+	info := &relaycommon.RelayInfo{
+		ChannelMeta: &relaycommon.ChannelMeta{
+			UpstreamModelName: "kimi-k2.7",
+			ChannelSetting:    dto.ChannelSettings{ThinkingToContent: true},
+		},
+	}
+
+	usage, err := ChatCompletionsToResponsesStreamHandler(c, info, resp)
+	require.Nil(t, err)
+	require.NotNil(t, usage)
+
+	events := parseResponsesSSEEvents(t, recorder.Body.String())
+	var completed *dto.OpenAIResponsesResponse
+	for _, event := range events {
+		if event.Type == "response.completed" {
+			completed = event.Response
+		}
+	}
+
+	require.NotNil(t, completed)
+	require.Len(t, completed.Output, 1)
+	require.Equal(t, "<think>\nvisible reasoning\n</think>\n", completed.Output[0].Content[0].Text)
+}
+
 func chatSSE(t *testing.T, event map[string]any) string {
 	t.Helper()
 	raw, err := common.Marshal(event)

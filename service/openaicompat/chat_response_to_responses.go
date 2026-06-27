@@ -9,7 +9,15 @@ import (
 	"github.com/QuantumNous/new-api/dto"
 )
 
+type ChatCompletionsToResponsesOptions struct {
+	ThinkingToContent bool
+}
+
 func ChatCompletionsResponseToResponsesResponse(resp *dto.OpenAITextResponse, id string) (*dto.OpenAIResponsesResponse, *dto.Usage, error) {
+	return ChatCompletionsResponseToResponsesResponseWithOptions(resp, id, ChatCompletionsToResponsesOptions{})
+}
+
+func ChatCompletionsResponseToResponsesResponseWithOptions(resp *dto.OpenAITextResponse, id string, options ChatCompletionsToResponsesOptions) (*dto.OpenAIResponsesResponse, *dto.Usage, error) {
 	if resp == nil {
 		return nil, nil, fmt.Errorf("chat completions response is nil")
 	}
@@ -44,6 +52,9 @@ func ChatCompletionsResponseToResponsesResponse(resp *dto.OpenAITextResponse, id
 	if len(resp.Choices) > 0 {
 		choice := resp.Choices[0]
 		text := choice.Message.StringContent()
+		if options.ThinkingToContent {
+			text = JoinVisibleReasoningAndContent(choice.Message.GetReasoningContent(), text)
+		}
 		if text != "" {
 			output = append(output, dto.ResponsesOutput{
 				Type:   "message",
@@ -98,6 +109,17 @@ func ChatCompletionsResponseToResponsesResponse(resp *dto.OpenAITextResponse, id
 		Usage:     &usage,
 	}
 	return out, &usage, nil
+}
+
+func JoinVisibleReasoningAndContent(reasoning string, content string) string {
+	if reasoning == "" {
+		return content
+	}
+	visibleReasoning := "<think>\n" + reasoning + "\n</think>"
+	if content == "" {
+		return visibleReasoning
+	}
+	return visibleReasoning + "\n" + content
 }
 
 func chatToolArgumentsToResponsesRaw(arguments string) json.RawMessage {
