@@ -247,10 +247,11 @@ func ChatCompletionsToResponsesStreamHandler(c *gin.Context, info *relaycommon.R
 				return
 			}
 			if reasoning := choice.Delta.GetReasoningContent(); reasoning != "" {
-				if !sendTextDelta(reasoning) {
-					sr.Stop(streamErr)
-					return
-				}
+				// Chat completions providers may stream private reasoning in a
+				// side-channel field. Responses clients should only receive
+				// assistant output text here; keep reasoning hidden while still
+				// counting it for fallback usage estimation.
+				usageText.WriteString(reasoning)
 			}
 			for _, call := range choice.Delta.ToolCalls {
 				if !sendToolCallDelta(call) {
