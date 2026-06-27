@@ -53,7 +53,7 @@ func ResponsesRequestToChatCompletionsRequest(req *dto.OpenAIResponsesRequest) (
 		Tools:               convertResponsesToolsToChatTools(req.Tools),
 		ToolChoice:          convertResponsesToolChoiceToChatToolChoice(req.ToolChoice),
 		User:                req.User,
-		ServiceTier:         stringToRawMessage(req.ServiceTier),
+		ServiceTier:         stringToJSONRawMessage(req.ServiceTier),
 		Store:               req.Store,
 		PromptCacheKey:       rawMessageToPlainString(req.PromptCacheKey),
 		PromptCacheRetention: req.PromptCacheRetention,
@@ -365,6 +365,14 @@ func rawJSONToString(raw json.RawMessage) string {
 
 func rawMessageToPlainString(raw json.RawMessage) string {
 	return strings.TrimSpace(rawJSONToString(raw))
+}
+
+func stringToJSONRawMessage(s string) json.RawMessage {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	raw, _ := common.Marshal(s)
+	return raw
 }
 
 func rawAnyToString(v any) string {
