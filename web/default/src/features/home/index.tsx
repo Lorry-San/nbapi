@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import type { CSSProperties, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/auth-store'
 import { Markdown } from '@/components/ui/markdown'
@@ -28,11 +29,48 @@ function isLikelyHtml(value: string) {
   return /<\/?[a-z][\s\S]*>/i.test(value)
 }
 
+function backgroundStyle(background: string): CSSProperties | undefined {
+  const trimmed = background.trim()
+  if (!trimmed) return undefined
+  const safeUrl = trimmed.replace(/["\\\n\r]/g, '')
+  return {
+    backgroundImage: `url("${safeUrl}")`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundAttachment: 'fixed',
+  }
+}
+
+function HomeBackground({
+  background,
+  children,
+}: {
+  background: string
+  children: ReactNode
+}) {
+  if (!background.trim()) return <>{children}</>
+
+  return (
+    <div className='relative isolate min-h-screen overflow-hidden'>
+      <div
+        aria-hidden
+        className='absolute inset-0 -z-20'
+        style={backgroundStyle(background)}
+      />
+      <div
+        aria-hidden
+        className='bg-background/78 absolute inset-0 -z-10 backdrop-blur-[1px] dark:bg-background/70'
+      />
+      {children}
+    </div>
+  )
+}
+
 export function Home() {
   const { t } = useTranslation()
   const { auth } = useAuthStore()
   const isAuthenticated = !!auth.user
-  const { content, isLoaded, isUrl } = useHomePageContent()
+  const { content, background, isLoaded, isUrl } = useHomePageContent()
   const isHtml = content && !isUrl && isLikelyHtml(content)
 
   if (!isLoaded) {
@@ -56,14 +94,18 @@ export function Home() {
               title={t('Custom Home Page')}
             />
           ) : isHtml ? (
-            <div
-              className='custom-home-html min-h-screen'
-              dangerouslySetInnerHTML={{ __html: content }}
-            />
+            <HomeBackground background={background}>
+              <div
+                className='custom-home-html min-h-screen'
+                dangerouslySetInnerHTML={{ __html: content }}
+              />
+            </HomeBackground>
           ) : (
-            <div className='container mx-auto py-8'>
-              <Markdown className='custom-home-content'>{content}</Markdown>
-            </div>
+            <HomeBackground background={background}>
+              <div className='container mx-auto py-8'>
+                <Markdown className='custom-home-content'>{content}</Markdown>
+              </div>
+            </HomeBackground>
           )}
         </main>
       </PublicLayout>
@@ -72,12 +114,14 @@ export function Home() {
 
   return (
     <PublicLayout showMainContainer={false}>
-      <Hero isAuthenticated={isAuthenticated} />
-      <Stats />
-      <Features />
-      <HowItWorks />
-      <CTA isAuthenticated={isAuthenticated} />
-      <Footer />
+      <HomeBackground background={background}>
+        <Hero isAuthenticated={isAuthenticated} />
+        <Stats />
+        <Features />
+        <HowItWorks />
+        <CTA isAuthenticated={isAuthenticated} />
+        <Footer />
+      </HomeBackground>
     </PublicLayout>
   )
 }

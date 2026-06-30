@@ -53,6 +53,7 @@ export type SiteSettings = {
   Footer: string
   About: string
   HomePageContent: string
+  HomePageBackground: string
   ServerAddress: string
   'legal.user_agreement': string
   'legal.privacy_policy': string

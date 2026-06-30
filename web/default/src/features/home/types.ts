@@ -27,6 +27,7 @@ export interface HomePageContentResponse {
   success: boolean
   message?: string
   data?: string
+  background?: string
 }
 
 /**
@@ -34,6 +35,7 @@ export interface HomePageContentResponse {
  */
 export interface HomePageContentResult {
   content: string
+  background: string
   isLoaded: boolean
   isUrl: boolean
 }

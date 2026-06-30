@@ -315,7 +315,8 @@ func GetHomePageContent(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    common.OptionMap["HomePageContent"],
+		"data":       common.OptionMap["HomePageContent"],
+		"background": common.OptionMap["HomePageBackground"],
 	})
 	return
 }

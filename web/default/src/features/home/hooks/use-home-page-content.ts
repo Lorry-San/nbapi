@@ -23,6 +23,7 @@ import { getHomePageContent } from '../api'
 import type { HomePageContentResult } from '../types'
 
 const STORAGE_KEY = 'home_page_content'
+const BACKGROUND_STORAGE_KEY = 'home_page_background'
 
 /**
  * Hook to load and manage custom home page content
@@ -30,6 +31,7 @@ const STORAGE_KEY = 'home_page_content'
  */
 export function useHomePageContent(): HomePageContentResult {
   const [content, setContent] = useState<string>('')
+  const [background, setBackground] = useState<string>('')
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
@@ -41,10 +43,14 @@ export function useHomePageContent(): HomePageContentResult {
       if (cached && mounted) {
         setContent(cached)
       }
+      const cachedBackground = localStorage.getItem(BACKGROUND_STORAGE_KEY)
+      if (cachedBackground && mounted) {
+        setBackground(cachedBackground)
+      }
 
       try {
         const response = await getHomePageContent()
-        const { success, data } = response
+        const { success, data, background: backgroundUrl } = response
 
         if (!mounted) return
 
@@ -55,6 +61,14 @@ export function useHomePageContent(): HomePageContentResult {
           // Clear content if API returns empty
           setContent('')
           localStorage.removeItem(STORAGE_KEY)
+        }
+
+        if (success && backgroundUrl) {
+          setBackground(backgroundUrl)
+          localStorage.setItem(BACKGROUND_STORAGE_KEY, backgroundUrl)
+        } else {
+          setBackground('')
+          localStorage.removeItem(BACKGROUND_STORAGE_KEY)
         }
       } catch (error) {
         if (!mounted) return
@@ -83,5 +97,5 @@ export function useHomePageContent(): HomePageContentResult {
     // not a URL
   }
 
-  return { content, isLoaded, isUrl }
+  return { content, background, isLoaded, isUrl }
 }
