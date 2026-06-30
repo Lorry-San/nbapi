@@ -92,6 +92,8 @@ func ChatCompletionsToResponsesStreamHandler(c *gin.Context, info *relaycommon.R
 	toolCallNameByID := make(map[string]string)
 	toolCallArgsByID := make(map[string]string)
 	toolCallStarted := make(map[string]bool)
+	allowParallelToolCalls := responsesRequestAllowsParallelToolCalls(info)
+	serialToolCallIndex := -1
 
 	sendEvent := func(eventType string, payload dto.ResponsesStreamResponse) bool {
 		payload.Type = eventType
@@ -210,6 +212,15 @@ func ChatCompletionsToResponsesStreamHandler(c *gin.Context, info *relaycommon.R
 		chatIdx := len(toolCallIDByChatIndex)
 		if call.Index != nil {
 			chatIdx = *call.Index
+		} else if !allowParallelToolCalls && serialToolCallIndex >= 0 {
+			chatIdx = serialToolCallIndex
+		}
+		if !allowParallelToolCalls {
+			if serialToolCallIndex < 0 {
+				serialToolCallIndex = chatIdx
+			} else if chatIdx != serialToolCallIndex {
+				return true
+			}
 		}
 		callID := strings.TrimSpace(call.ID)
 		if callID == "" {
@@ -300,7 +311,11 @@ func ChatCompletionsToResponsesStreamHandler(c *gin.Context, info *relaycommon.R
 					return
 				}
 			}
-			for _, call := range choice.Delta.ToolCalls {
+			for callPos := range choice.Delta.ToolCalls {
+				call := choice.Delta.ToolCalls[callPos]
+				if call.Index == nil && len(choice.Delta.ToolCalls) > 1 {
+					call.SetIndex(callPos)
+				}
 				if !sendToolCallDelta(call) {
 					sr.Stop(streamErr)
 					return
@@ -444,6 +459,21 @@ func jsonRawMessageOrEmpty(s string) json.RawMessage {
 		return json.RawMessage(`{}`)
 	}
 	return quoted
+}
+
+func responsesRequestAllowsParallelToolCalls(info *relaycommon.RelayInfo) bool {
+	if info == nil || info.Request == nil {
+		return true
+	}
+	req, ok := info.Request.(*dto.OpenAIResponsesRequest)
+	if !ok || len(req.ParallelToolCalls) == 0 {
+		return true
+	}
+	var allow bool
+	if err := common.Unmarshal(req.ParallelToolCalls, &allow); err != nil {
+		return true
+	}
+	return allow
 }
 
 func sortedToolCallIDsByIndex(indexByID map[string]int) []string {

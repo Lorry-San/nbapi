@@ -212,6 +212,97 @@ func TestChatCompletionsToResponsesStreamHandlerHidesReasoningContent(t *testing
 	require.Equal(t, "visible answer", completed.Output[0].Content[0].Text)
 }
 
+func TestChatCompletionsToResponsesStreamHandlerHonorsSerialToolCalls(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	oldTimeout := constant.StreamingTimeout
+	constant.StreamingTimeout = 30
+	t.Cleanup(func() {
+		constant.StreamingTimeout = oldTimeout
+	})
+
+	sse := strings.Join([]string{
+		chatSSE(t, map[string]any{
+			"id":      "chatcmpl_serial_tools",
+			"object":  "chat.completion.chunk",
+			"created": 123,
+			"model":   "kimi-k2.7",
+			"choices": []map[string]any{{
+				"index": 0,
+				"delta": map[string]any{
+					"tool_calls": []map[string]any{{
+						"index": 0,
+						"id":    "call_first",
+						"type":  "function",
+						"function": map[string]any{
+							"name":      "shell_command",
+							"arguments": `{"command":"Get-ComputerInfo"}`,
+						},
+					}},
+				},
+			}},
+		}),
+		chatSSE(t, map[string]any{
+			"id":      "chatcmpl_serial_tools",
+			"object":  "chat.completion.chunk",
+			"created": 123,
+			"model":   "kimi-k2.7",
+			"choices": []map[string]any{{
+				"index": 0,
+				"delta": map[string]any{
+					"tool_calls": []map[string]any{{
+						"index": 1,
+						"id":    "call_second",
+						"type":  "function",
+						"function": map[string]any{
+							"name":      "shell_command",
+							"arguments": `{"command":"Get-CimInstance Win32_Processor"}`,
+						},
+					}},
+				},
+			}},
+		}),
+		"data: [DONE]\n",
+	}, "")
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Set(common.RequestIdKey, "test")
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+
+	resp := &http.Response{
+		Body: io.NopCloser(strings.NewReader(sse)),
+	}
+	info := &relaycommon.RelayInfo{
+		Request: &dto.OpenAIResponsesRequest{
+			ParallelToolCalls: jsonRaw(t, false),
+		},
+		ChannelMeta: &relaycommon.ChannelMeta{UpstreamModelName: "kimi-k2.7"},
+	}
+
+	usage, err := ChatCompletionsToResponsesStreamHandler(c, info, resp)
+	require.Nil(t, err)
+	require.NotNil(t, usage)
+
+	events := parseResponsesSSEEvents(t, recorder.Body.String())
+	var completed *dto.OpenAIResponsesResponse
+	var toolCallNames []string
+	for _, event := range events {
+		if event.Type == dto.ResponsesOutputTypeItemDone && event.Item != nil && event.Item.Type == "function_call" {
+			toolCallNames = append(toolCallNames, event.Item.CallId)
+		}
+		if event.Type == "response.completed" {
+			completed = event.Response
+		}
+	}
+
+	require.Equal(t, []string{"call_first"}, toolCallNames)
+	require.NotNil(t, completed)
+	require.Len(t, completed.Output, 1)
+	require.Equal(t, "call_first", completed.Output[0].CallId)
+	require.JSONEq(t, `{"command":"Get-ComputerInfo"}`, string(completed.Output[0].Arguments))
+}
+
 func TestChatCompletionsToResponsesStreamHandlerShowsReasoningWhenEnabled(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -375,4 +466,11 @@ func rawStatusString(t *testing.T, raw []byte) string {
 	var status string
 	require.NoError(t, common.Unmarshal(raw, &status))
 	return status
+}
+
+func jsonRaw(t *testing.T, value any) []byte {
+	t.Helper()
+	raw, err := common.Marshal(value)
+	require.NoError(t, err)
+	return raw
 }
