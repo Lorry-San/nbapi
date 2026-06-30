@@ -37,59 +37,16 @@ NBAPI is an **advanced AI API gateway and operations management system** built o
 
 ## ✨ Key Features
 
-### 🎨 Enhanced Operations (NBAPI Exclusive)
-
-<table>
-<tr>
-<td width="50%">
-
-**🔧 Admin & Branding**
-- Rebrand to NBAPI with "Based on New API" attribution
-- Super admin management & one-click user login
-- Forced IP logging for compliance
-- CSV export for usage records (Classic theme)
-
-</td>
-<td width="50%">
-
-**📊 Monitoring & Alerts**
-- Real-time dashboard with SLA, QPS/TPS, P95/P99 latency
-- Channel-level observability with error tracking
-- Customizable alert rules (error rate, latency thresholds)
-- Email notifications via SMTP
-
-</td>
-</tr>
-<tr>
-<td>
-
-**🎨 Dual Themes**
-- **Default**: Modern responsive UI
-- **Classic**: Traditional admin panel
-- Both themes fully customized with NBAPI features
-
-</td>
-<td>
-
-**⚙️ Flexible Configuration**
-- Custom OpenAI API version paths (`/v1`, `/v3`, etc.)
-- Compliance statement enforcement before payment
-- Docker-ready with GHCR images
-
-</td>
-</tr>
-</table>
-
-### 🌐 Core Gateway Capabilities (Inherited from New API)
-
 | Category | Features |
 |----------|----------|
-| **🤖 Model Support** | OpenAI, Claude, Gemini, Azure OpenAI, DeepSeek, Qwen, Doubao, Hunyuan, Yi, Moonshot, Baichuan, Minimax, Groq, Ollama, etc. |
-| **🔌 API Protocols** | OpenAI Compatible (`/v1/chat/completions`, Embeddings, Images, Audio), Claude Messages, Gemini, Responses API, Realtime API, Rerank (Cohere, Jina) |
-| **🔀 Routing & Fallback** | Model mapping, channel groups, priority-based routing, automatic failover, load balancing |
-| **👥 User Management** | Multi-user system, token-based access, quota limits, subscription plans, invite rewards |
-| **💳 Payment Integration** | Redemption codes, Epay, Waffo Pancake, Stripe, Creem, and other payment gateways |
-| **📈 Analytics** | Request logs, token consumption, cost tracking, daily/monthly reports |
+| **📊 Monitoring & Alerts** <br/> *(NBAPI Enhanced)* | • Real-time dashboard with SLA, QPS/TPS, P95/P99 latency <br/> • Channel-level observability with error tracking <br/> • Customizable alert rules (error rate, latency thresholds) <br/> • Email notifications via SMTP <br/> • Request time delay metrics (avg, P95/P99, first token time) <br/> • Upstream error aggregation and slow channel identification |
+| **🔧 Admin & Operations** <br/> *(NBAPI Enhanced)* | • Super admin management & one-click user login <br/> • Forced IP logging for compliance <br/> • CSV export for usage records (Classic theme) <br/> • Custom OpenAI API version paths (`/v1`, `/v3`, etc.) <br/> • Compliance statement enforcement before payment <br/> • Dual themes (Default modern UI + Classic admin panel) |
+| **🤖 Model Support** | • **50+ Providers**: OpenAI, Claude, Gemini, Azure OpenAI, DeepSeek, Qwen (通义千问), Doubao (豆包), Hunyuan (混元), Yi (零一万物), Moonshot (月之暗面), Baichuan (百川), Minimax, Groq, Ollama, etc. <br/> • Support for all major LLM families and regional providers |
+| **🔌 API Protocols** | • **OpenAI Compatible**: `/v1/chat/completions`, Embeddings, Images, Audio <br/> • **Claude Messages**: Anthropic native format <br/> • **Gemini**: Google AI format <br/> • **Responses API**: Extended response handling <br/> • **Realtime API**: WebSocket streaming <br/> • **Rerank**: Cohere, Jina semantic search reranking |
+| **🔀 Routing & Fallback** | • Model mapping and aliasing <br/> • Channel groups with priority-based routing <br/> • Automatic failover on errors <br/> • Load balancing across channels <br/> • Custom retry strategies |
+| **👥 User Management** | • Multi-user system with role-based access <br/> • Token-based API authentication <br/> • Per-user quota limits and rate limiting <br/> • Subscription plans and tier management <br/> • Invite system with referral rewards |
+| **💳 Payment Integration** | • Redemption codes and gift cards <br/> • Epay, Waffo Pancake payment gateways <br/> • Stripe, Creem international payments <br/> • Custom payment gateway support <br/> • Transaction history and invoice generation |
+| **📈 Analytics & Logs** | • Detailed request logs with filters <br/> • Token consumption tracking (prompt/completion) <br/> • Cost calculation and billing <br/> • Daily/monthly usage reports <br/> • Export capabilities for accounting |
 
 ---
 
@@ -167,30 +124,6 @@ docker compose --env-file .env.docker -f docker-compose.github.yml up -d
 | `REDIS_CONN_STRING` | Redis connection (optional but recommended) | `redis://redis:6379` |
 | `SMTP_*` | Email settings for alerts | See `.env.docker.example` |
 | `FRONTEND_BASE_URL` | Public access URL | `https://api.example.com` |
-
----
-
-## 📊 Monitoring & Alerts
-
-NBAPI includes a **comprehensive monitoring dashboard** accessible to admins:
-
-### Real-Time Metrics
-- **Request Volume**: Total requests, successful/failed counts
-- **Performance**: Average latency, P95/P99 latency, time to first token
-- **Throughput**: QPS (queries per second), TPS (tokens per second)
-- **SLA**: Success rate percentage over time
-
-### Channel Observability
-- Per-channel request counts and error rates
-- Channel switching trends
-- Upstream error aggregation (status codes, error messages)
-- Slow channel identification
-
-### Alert Rules
-- Create custom alert rules with thresholds
-- Built-in templates: error rate, success rate, P95/P99 latency, CPU, memory
-- Email notifications to enabled admins
-- Alert event history with trigger/recovery tracking
 
 ---
 

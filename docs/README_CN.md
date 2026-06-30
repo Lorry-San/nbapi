@@ -37,59 +37,16 @@ NBAPI 是基于 [New API](https://github.com/QuantumNous/new-api) 的**高级 AI
 
 ## ✨ 核心特性
 
-### 🎨 运营增强功能（NBAPI 独有）
-
-<table>
-<tr>
-<td width="50%">
-
-**🔧 管理与品牌**
-- NBAPI 品牌化，保留"基于 New API"归属说明
-- 超级管理员管理与一键登录其他用户
-- 强制 IP 记录以满足合规要求
-- 使用记录 CSV 导出（Classic 主题）
-
-</td>
-<td width="50%">
-
-**📊 监控与告警**
-- 实时仪表盘：SLA、QPS/TPS、P95/P99 延迟
-- 渠道级可观测性与错误追踪
-- 自定义告警规则（错误率、延迟阈值等）
-- SMTP 邮件通知
-
-</td>
-</tr>
-<tr>
-<td>
-
-**🎨 双主题界面**
-- **Default**：现代响应式 UI
-- **Classic**：传统管理面板
-- 两套主题均包含 NBAPI 定制功能
-
-</td>
-<td>
-
-**⚙️ 灵活配置**
-- 自定义 OpenAI API 版本路径（`/v1`、`/v3` 等）
-- 支付前强制合规声明确认
-- Docker 部署就绪，提供 GHCR 镜像
-
-</td>
-</tr>
-</table>
-
-### 🌐 核心网关能力（继承自 New API）
-
 | 分类 | 功能 |
 |----------|----------|
-| **🤖 模型支持** | OpenAI、Claude、Gemini、Azure OpenAI、DeepSeek、通义千问、豆包、混元、零一万物、月之暗面、百川、Minimax、Groq、Ollama 等 |
-| **🔌 API 协议** | OpenAI Compatible（`/v1/chat/completions`、Embeddings、Images、Audio）、Claude Messages、Gemini、Responses API、Realtime API、Rerank（Cohere、Jina） |
-| **🔀 路由与容错** | 模型映射、渠道分组、基于优先级的路由、自动故障转移、负载均衡 |
-| **👥 用户管理** | 多用户系统、基于令牌的访问、额度限制、订阅计划、邀请奖励 |
-| **💳 支付集成** | 兑换码、易支付、Waffo Pancake、Stripe、Creem 及其他支付网关 |
-| **📈 数据分析** | 请求日志、令牌消耗、成本跟踪、日报/月报 |
+| **📊 监控与告警** <br/> *(NBAPI 增强)* | • 实时仪表盘：SLA、QPS/TPS、P95/P99 延迟 <br/> • 渠道级可观测性与错误追踪 <br/> • 自定义告警规则（错误率、延迟阈值等） <br/> • SMTP 邮件通知 <br/> • 请求时延指标（平均、P95/P99、首 Token 时间） <br/> • 上游错误聚合与慢渠道识别 |
+| **🔧 管理与运营** <br/> *(NBAPI 增强)* | • 超级管理员管理与一键登录其他用户 <br/> • 强制 IP 记录以满足合规要求 <br/> • 使用记录 CSV 导出（Classic 主题） <br/> • 自定义 OpenAI API 版本路径（`/v1`、`/v3` 等） <br/> • 支付前强制合规声明确认 <br/> • 双主题界面（Default 现代 UI + Classic 管理面板） |
+| **🤖 模型支持** | • **50+ 提供商**：OpenAI、Claude、Gemini、Azure OpenAI、DeepSeek、通义千问、豆包、混元、零一万物、月之暗面、百川、Minimax、Groq、Ollama 等 <br/> • 支持所有主流 LLM 系列及区域性提供商 |
+| **🔌 API 协议** | • **OpenAI Compatible**：`/v1/chat/completions`、Embeddings、Images、Audio <br/> • **Claude Messages**：Anthropic 原生格式 <br/> • **Gemini**：Google AI 格式 <br/> • **Responses API**：扩展响应处理 <br/> • **Realtime API**：WebSocket 流式传输 <br/> • **Rerank**：Cohere、Jina 语义搜索重排序 |
+| **🔀 路由与容错** | • 模型映射与别名 <br/> • 基于优先级的渠道分组路由 <br/> • 错误时自动故障转移 <br/> • 跨渠道负载均衡 <br/> • 自定义重试策略 |
+| **👥 用户管理** | • 基于角色的多用户系统 <br/> • 基于令牌的 API 认证 <br/> • 每用户额度限制与速率限制 <br/> • 订阅计划与分级管理 <br/> • 邀请系统与推荐奖励 |
+| **💳 支付集成** | • 兑换码与礼品卡 <br/> • 易支付、Waffo Pancake 支付网关 <br/> • Stripe、Creem 国际支付 <br/> • 自定义支付网关支持 <br/> • 交易历史与发票生成 |
+| **📈 数据分析** | • 详细的请求日志与筛选 <br/> • 令牌消耗跟踪（prompt/completion） <br/> • 成本计算与计费 <br/> • 日报/月报使用统计 <br/> • 会计导出功能 |
 
 ---
 
@@ -131,13 +88,6 @@ docker compose --env-file .env.docker -f docker-compose.github.yml up -d
 > [!TIP]
 > **首次部署**：部署前请至少修改 `.env.docker` 中的 `POSTGRES_PASSWORD`、`REDIS_PASSWORD` 和 `SESSION_SECRET`。
 
-### 默认登录凭据
-
-- **用户名**：`root`
-- **密码**：`123456`
-
-⚠️ **首次登录后请立即修改 root 密码！**
-
 ---
 
 ## 🐳 Docker 部署
@@ -167,30 +117,6 @@ docker compose --env-file .env.docker -f docker-compose.github.yml up -d
 | `REDIS_CONN_STRING` | Redis 连接（可选但推荐） | `redis://redis:6379` |
 | `SMTP_*` | 告警邮件设置 | 见 `.env.docker.example` |
 | `FRONTEND_BASE_URL` | 公网访问 URL | `https://api.example.com` |
-
----
-
-## 📊 监控与告警
-
-NBAPI 包含**全面的监控仪表盘**，管理员可访问：
-
-### 实时指标
-- **请求量**：总请求数、成功/失败计数
-- **性能**：平均延迟、P95/P99 延迟、首 Token 时间
-- **吞吐量**：QPS（每秒查询数）、TPS（每秒令牌数）
-- **SLA**：随时间变化的成功率百分比
-
-### 渠道可观测性
-- 每个渠道的请求数和错误率
-- 渠道切换趋势
-- 上游错误聚合（状态码、错误信息）
-- 慢渠道识别
-
-### 告警规则
-- 创建带阈值的自定义告警规则
-- 内置模板：错误率、成功率、P95/P99 延迟、CPU、内存
-- 向启用的管理员发送邮件通知
-- 告警事件历史，包含触发/恢复跟踪
 
 ---
 
