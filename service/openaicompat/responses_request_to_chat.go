@@ -112,7 +112,8 @@ func convertResponsesInputToChatMessages(raw json.RawMessage) ([]dto.Message, er
 
 func convertResponsesInputItemsToChatMessages(items []map[string]any) []dto.Message {
 	messages := make([]dto.Message, 0, len(items))
-	for _, item := range items {
+	for i := 0; i < len(items); i++ {
+		item := items[i]
 		itemType := strings.TrimSpace(common.Interface2String(item["type"]))
 		switch itemType {
 		case "function_call_output":
@@ -131,26 +132,26 @@ func convertResponsesInputItemsToChatMessages(items []map[string]any) []dto.Mess
 				Content:    output,
 			})
 		case "function_call":
-			name := strings.TrimSpace(common.Interface2String(item["name"]))
-			callID := strings.TrimSpace(common.Interface2String(item["call_id"]))
-			if callID == "" {
-				callID = strings.TrimSpace(common.Interface2String(item["id"]))
+			toolCalls := make([]dto.ToolCallRequest, 0, 1)
+			for ; i < len(items); i++ {
+				nextItem := items[i]
+				if strings.TrimSpace(common.Interface2String(nextItem["type"])) != "function_call" {
+					break
+				}
+				toolCall, ok := responsesFunctionCallToChatToolCall(nextItem)
+				if ok {
+					toolCalls = append(toolCalls, toolCall)
+				}
 			}
-			if name == "" || callID == "" {
+			i--
+			if len(toolCalls) == 0 {
 				continue
 			}
 			msg := dto.Message{
 				Role:    "assistant",
 				Content: nil,
 			}
-			msg.SetToolCalls([]dto.ToolCallRequest{{
-				ID:   callID,
-				Type: "function",
-				Function: dto.FunctionRequest{
-					Name:      name,
-					Arguments: rawAnyToString(item["arguments"]),
-				},
-			}})
+			msg.SetToolCalls(toolCalls)
 			messages = append(messages, msg)
 		case "message", "":
 			role := strings.TrimSpace(common.Interface2String(item["role"]))
@@ -169,6 +170,25 @@ func convertResponsesInputItemsToChatMessages(items []map[string]any) []dto.Mess
 		}
 	}
 	return messages
+}
+
+func responsesFunctionCallToChatToolCall(item map[string]any) (dto.ToolCallRequest, bool) {
+	name := strings.TrimSpace(common.Interface2String(item["name"]))
+	callID := strings.TrimSpace(common.Interface2String(item["call_id"]))
+	if callID == "" {
+		callID = strings.TrimSpace(common.Interface2String(item["id"]))
+	}
+	if name == "" || callID == "" {
+		return dto.ToolCallRequest{}, false
+	}
+	return dto.ToolCallRequest{
+		ID:   callID,
+		Type: "function",
+		Function: dto.FunctionRequest{
+			Name:      name,
+			Arguments: rawAnyToString(item["arguments"]),
+		},
+	}, true
 }
 
 func convertResponsesContentToChatContent(content any, role string) any {

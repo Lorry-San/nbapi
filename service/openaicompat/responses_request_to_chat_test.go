@@ -86,6 +86,35 @@ func TestResponsesRequestToChatCompletionsRequestRejectsPreviousResponseID(t *te
 	require.Error(t, err)
 }
 
+func TestResponsesRequestToChatCompletionsRequestGroupsConsecutiveFunctionCalls(t *testing.T) {
+	out, err := ResponsesRequestToChatCompletionsRequest(&dto.OpenAIResponsesRequest{
+		Model: "kimi-k2.7",
+		Input: json.RawMessage(`[
+			{"type":"function_call","name":"shell_command","call_id":"call_a","arguments":"{\"command\":\"Get-Location\"}"},
+			{"type":"function_call","name":"shell_command","call_id":"call_b","arguments":"{\"command\":\"git status --short\"}"},
+			{"type":"function_call_output","call_id":"call_a","output":"A"},
+			{"type":"function_call_output","call_id":"call_b","output":"B"}
+		]`),
+	})
+	require.NoError(t, err)
+	require.Len(t, out.Messages, 3)
+
+	require.Equal(t, "assistant", out.Messages[0].Role)
+	toolCalls := out.Messages[0].ParseToolCalls()
+	require.Len(t, toolCalls, 2)
+	require.Equal(t, "call_a", toolCalls[0].ID)
+	require.Equal(t, "call_b", toolCalls[1].ID)
+	require.JSONEq(t, `{"command":"Get-Location"}`, toolCalls[0].Function.Arguments)
+	require.JSONEq(t, `{"command":"git status --short"}`, toolCalls[1].Function.Arguments)
+
+	require.Equal(t, "tool", out.Messages[1].Role)
+	require.Equal(t, "call_a", out.Messages[1].ToolCallId)
+	require.Equal(t, "A", out.Messages[1].Content)
+	require.Equal(t, "tool", out.Messages[2].Role)
+	require.Equal(t, "call_b", out.Messages[2].ToolCallId)
+	require.Equal(t, "B", out.Messages[2].Content)
+}
+
 func TestChatCompletionsResponseToResponsesResponsePreservesToolCalls(t *testing.T) {
 	msg := dto.Message{Role: "assistant", Content: "need a lookup"}
 	msg.SetToolCalls([]dto.ToolCallRequest{{
