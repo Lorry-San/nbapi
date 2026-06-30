@@ -107,6 +107,7 @@ func TestChatCompletionsToResponsesStreamHandlerPreservesTextAndToolCalls(t *tes
 	var sawText bool
 	var sawToolName bool
 	var argsDone string
+	var argsDoneArguments string
 	var completed *dto.OpenAIResponsesResponse
 
 	for _, event := range events {
@@ -121,6 +122,7 @@ func TestChatCompletionsToResponsesStreamHandlerPreservesTextAndToolCalls(t *tes
 			}
 		case "response.function_call_arguments.done":
 			argsDone = event.Delta
+			argsDoneArguments = event.Arguments
 		case "response.completed":
 			completed = event.Response
 		}
@@ -129,12 +131,16 @@ func TestChatCompletionsToResponsesStreamHandlerPreservesTextAndToolCalls(t *tes
 	require.True(t, sawText)
 	require.True(t, sawToolName)
 	require.JSONEq(t, `{"query":"nbapi"}`, argsDone)
+	require.JSONEq(t, `{"query":"nbapi"}`, argsDoneArguments)
 	require.NotNil(t, completed)
 	require.Equal(t, "completed", rawStatusString(t, completed.Status))
 	require.Len(t, completed.Output, 2)
 	require.Equal(t, "message", completed.Output[0].Type)
 	require.Equal(t, "function_call", completed.Output[1].Type)
 	require.JSONEq(t, `{"query":"nbapi"}`, string(completed.Output[1].Arguments))
+	body, err := common.Marshal(completed)
+	require.NoError(t, err)
+	require.Contains(t, string(body), `"arguments":"{\"query\":\"nbapi\"}"`)
 }
 
 func TestChatCompletionsToResponsesStreamHandlerHidesReasoningContent(t *testing.T) {
@@ -375,6 +381,156 @@ func TestChatCompletionsToResponsesStreamHandlerShowsReasoningWhenEnabled(t *tes
 	require.NotNil(t, completed)
 	require.Len(t, completed.Output, 1)
 	require.Equal(t, "<think>\nvisible reasoning\n</think>\nvisible answer", completed.Output[0].Content[0].Text)
+}
+
+func TestChatCompletionsToResponsesStreamHandlerHidesThinkTagsByDefault(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	oldTimeout := constant.StreamingTimeout
+	constant.StreamingTimeout = 30
+	t.Cleanup(func() {
+		constant.StreamingTimeout = oldTimeout
+	})
+
+	sse := strings.Join([]string{
+		chatSSE(t, map[string]any{
+			"id":      "chatcmpl_think_tags",
+			"object":  "chat.completion.chunk",
+			"created": 123,
+			"model":   "kimi-k2.7",
+			"choices": []map[string]any{{
+				"index": 0,
+				"delta": map[string]any{
+					"content": "<thi",
+				},
+			}},
+		}),
+		chatSSE(t, map[string]any{
+			"id":      "chatcmpl_think_tags",
+			"object":  "chat.completion.chunk",
+			"created": 123,
+			"model":   "kimi-k2.7",
+			"choices": []map[string]any{{
+				"index": 0,
+				"delta": map[string]any{
+					"content": "nk>hidden thought</thi",
+				},
+			}},
+		}),
+		chatSSE(t, map[string]any{
+			"id":      "chatcmpl_think_tags",
+			"object":  "chat.completion.chunk",
+			"created": 123,
+			"model":   "kimi-k2.7",
+			"choices": []map[string]any{{
+				"index": 0,
+				"delta": map[string]any{
+					"content": "nk>visible answer",
+				},
+			}},
+		}),
+		"data: [DONE]\n",
+	}, "")
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Set(common.RequestIdKey, "test")
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+
+	resp := &http.Response{
+		Body: io.NopCloser(strings.NewReader(sse)),
+	}
+	info := &relaycommon.RelayInfo{
+		ChannelMeta: &relaycommon.ChannelMeta{UpstreamModelName: "kimi-k2.7"},
+	}
+
+	usage, err := ChatCompletionsToResponsesStreamHandler(c, info, resp)
+	require.Nil(t, err)
+	require.NotNil(t, usage)
+
+	body := recorder.Body.String()
+	require.NotContains(t, body, "hidden thought")
+	require.Contains(t, body, "visible answer")
+
+	events := parseResponsesSSEEvents(t, body)
+	var deltas []string
+	var completed *dto.OpenAIResponsesResponse
+	for _, event := range events {
+		if event.Type == "response.output_text.delta" {
+			deltas = append(deltas, event.Delta)
+		}
+		if event.Type == "response.completed" {
+			completed = event.Response
+		}
+	}
+
+	require.Equal(t, []string{"visible answer"}, deltas)
+	require.NotNil(t, completed)
+	require.Len(t, completed.Output, 1)
+	require.Equal(t, "visible answer", completed.Output[0].Content[0].Text)
+}
+
+func TestChatCompletionsToResponsesStreamHandlerKeepsThinkTagsWhenEnabled(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	oldTimeout := constant.StreamingTimeout
+	constant.StreamingTimeout = 30
+	t.Cleanup(func() {
+		constant.StreamingTimeout = oldTimeout
+	})
+
+	sse := strings.Join([]string{
+		chatSSE(t, map[string]any{
+			"id":      "chatcmpl_think_tags_visible",
+			"object":  "chat.completion.chunk",
+			"created": 123,
+			"model":   "kimi-k2.7",
+			"choices": []map[string]any{{
+				"index": 0,
+				"delta": map[string]any{
+					"content": "<think>visible thought</think>visible answer",
+				},
+			}},
+		}),
+		"data: [DONE]\n",
+	}, "")
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Set(common.RequestIdKey, "test")
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+
+	resp := &http.Response{
+		Body: io.NopCloser(strings.NewReader(sse)),
+	}
+	info := &relaycommon.RelayInfo{
+		ChannelMeta: &relaycommon.ChannelMeta{
+			UpstreamModelName: "kimi-k2.7",
+			ChannelSetting:    dto.ChannelSettings{ThinkingToContent: true},
+		},
+	}
+
+	usage, err := ChatCompletionsToResponsesStreamHandler(c, info, resp)
+	require.Nil(t, err)
+	require.NotNil(t, usage)
+
+	body := recorder.Body.String()
+	events := parseResponsesSSEEvents(t, body)
+	var deltas []string
+	var completed *dto.OpenAIResponsesResponse
+	for _, event := range events {
+		if event.Type == "response.output_text.delta" {
+			deltas = append(deltas, event.Delta)
+		}
+		if event.Type == "response.completed" {
+			completed = event.Response
+		}
+	}
+
+	require.Equal(t, []string{"<think>visible thought</think>visible answer"}, deltas)
+	require.NotNil(t, completed)
+	require.Len(t, completed.Output, 1)
+	require.Equal(t, "<think>visible thought</think>visible answer", completed.Output[0].Content[0].Text)
 }
 
 func TestChatCompletionsToResponsesStreamHandlerClosesReasoningOnlyOutput(t *testing.T) {

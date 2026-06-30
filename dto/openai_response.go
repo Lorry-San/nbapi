@@ -350,6 +350,43 @@ type ResponsesOutput struct {
 	Arguments json.RawMessage          `json:"arguments,omitempty"`
 }
 
+type responsesOutputAlias ResponsesOutput
+type responsesOutputWithoutArguments struct {
+	Type    string                   `json:"type"`
+	ID      string                   `json:"id"`
+	Status  string                   `json:"status"`
+	Role    string                   `json:"role"`
+	Content []ResponsesOutputContent `json:"content"`
+	Quality string                   `json:"quality"`
+	Size    string                   `json:"size"`
+	CallId  string                   `json:"call_id,omitempty"`
+	Name    string                   `json:"name,omitempty"`
+}
+
+func (r ResponsesOutput) MarshalJSON() ([]byte, error) {
+	type responsesOutputWithStringArguments struct {
+		responsesOutputWithoutArguments
+		Arguments string `json:"arguments,omitempty"`
+	}
+	if r.Type == "function_call" {
+		return json.Marshal(responsesOutputWithStringArguments{
+			responsesOutputWithoutArguments: responsesOutputWithoutArguments{
+				Type:    r.Type,
+				ID:      r.ID,
+				Status:  r.Status,
+				Role:    r.Role,
+				Content: r.Content,
+				Quality: r.Quality,
+				Size:    r.Size,
+				CallId:  r.CallId,
+				Name:    r.Name,
+			},
+			Arguments: r.ArgumentsString(),
+		})
+	}
+	return json.Marshal(responsesOutputAlias(r))
+}
+
 // ArgumentsString returns function call arguments in the string form expected by Chat Completions.
 func (r *ResponsesOutput) ArgumentsString() string {
 	if r == nil {
@@ -393,6 +430,7 @@ type ResponsesStreamResponse struct {
 	Type     string                   `json:"type"`
 	Response *OpenAIResponsesResponse `json:"response,omitempty"`
 	Delta    string                   `json:"delta,omitempty"`
+	Arguments string                  `json:"arguments,omitempty"`
 	Item     *ResponsesOutput         `json:"item,omitempty"`
 	// - response.function_call_arguments.delta
 	// - response.function_call_arguments.done

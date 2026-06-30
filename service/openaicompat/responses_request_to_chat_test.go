@@ -124,6 +124,7 @@ func TestChatCompletionsResponseToResponsesResponsePreservesToolCalls(t *testing
 	require.NoError(t, err)
 	require.JSONEq(t, `"completed"`, string(out.Status))
 	require.Contains(t, string(body), `"object":"response"`)
+	require.Contains(t, string(body), `"arguments":"{\"q\":\"nbapi\"}"`)
 }
 
 func TestChatCompletionsResponseToResponsesResponseThinkingToContentOption(t *testing.T) {
@@ -154,4 +155,32 @@ func TestChatCompletionsResponseToResponsesResponseThinkingToContentOption(t *te
 	require.NoError(t, err)
 	require.Len(t, visible.Output, 1)
 	require.Equal(t, "<think>\nvisible reasoning\n</think>\nvisible answer", visible.Output[0].Content[0].Text)
+}
+
+func TestChatCompletionsResponseToResponsesResponseStripsThinkTagsByDefault(t *testing.T) {
+	resp := &dto.OpenAITextResponse{
+		Id:      "chatcmpl_think_tags",
+		Model:   "kimi-k2.7",
+		Created: float64(123),
+		Choices: []dto.OpenAITextResponseChoice{{
+			Message: dto.Message{
+				Role:    "assistant",
+				Content: "<think>hidden thought</think>visible answer",
+			},
+			FinishReason: "stop",
+		}},
+		Usage: dto.Usage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15},
+	}
+
+	hidden, _, err := ChatCompletionsResponseToResponsesResponse(resp, "resp_hidden_tags")
+	require.NoError(t, err)
+	require.Len(t, hidden.Output, 1)
+	require.Equal(t, "visible answer", hidden.Output[0].Content[0].Text)
+
+	visible, _, err := ChatCompletionsResponseToResponsesResponseWithOptions(resp, "resp_visible_tags", ChatCompletionsToResponsesOptions{
+		ThinkingToContent: true,
+	})
+	require.NoError(t, err)
+	require.Len(t, visible.Output, 1)
+	require.Equal(t, "<think>hidden thought</think>visible answer", visible.Output[0].Content[0].Text)
 }

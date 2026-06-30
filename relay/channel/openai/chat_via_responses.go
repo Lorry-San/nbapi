@@ -437,6 +437,24 @@ func OaiResponsesToChatStreamHandler(c *gin.Context, info *relaycommon.RelayInfo
 			}
 
 		case "response.function_call_arguments.done":
+			itemID := strings.TrimSpace(streamResp.ItemID)
+			callID := toolCallCanonicalIDByItemID[itemID]
+			if callID == "" {
+				callID = itemID
+			}
+			if callID == "" || streamResp.Arguments == "" {
+				break
+			}
+			prevArgs := toolCallArgsByID[callID]
+			argsDelta := streamResp.Arguments
+			if strings.HasPrefix(streamResp.Arguments, prevArgs) {
+				argsDelta = streamResp.Arguments[len(prevArgs):]
+			}
+			toolCallArgsByID[callID] = streamResp.Arguments
+			if !sendToolCallDelta(callID, "", argsDelta) {
+				sr.Stop(streamErr)
+				return
+			}
 
 		case "response.completed":
 			if streamResp.Response != nil {

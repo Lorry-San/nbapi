@@ -15,6 +15,7 @@ import (
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relay/helper"
 	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/service/openaicompat"
 	"github.com/QuantumNous/new-api/types"
 
 	"github.com/gin-gonic/gin"
@@ -87,6 +88,10 @@ func ChatCompletionsToResponsesStreamHandler(c *gin.Context, info *relaycommon.R
 	var sentContentAdded bool
 	var sentThinkingStart bool
 	var sentThinkingEnd bool
+	var textFilter *openaicompat.ThinkTagStreamFilter
+	if info == nil || !info.ChannelSetting.ThinkingToContent {
+		textFilter = openaicompat.NewThinkTagStreamFilter()
+	}
 	toolCallOutputIndexByID := make(map[string]int)
 	toolCallIDByChatIndex := make(map[int]string)
 	toolCallNameByID := make(map[string]string)
@@ -174,7 +179,19 @@ func ChatCompletionsToResponsesStreamHandler(c *gin.Context, info *relaycommon.R
 	}
 
 	sendTextDelta := func(delta string) bool {
+		if textFilter != nil {
+			usageText.WriteString(delta)
+			delta = textFilter.Push(delta)
+			return sendTextDeltaWithUsage(delta, false)
+		}
 		return sendTextDeltaWithUsage(delta, true)
+	}
+
+	flushTextFilter := func() bool {
+		if textFilter == nil {
+			return true
+		}
+		return sendTextDeltaWithUsage(textFilter.Flush(), false)
 	}
 
 	sendReasoningDelta := func(delta string) bool {
@@ -331,6 +348,9 @@ func ChatCompletionsToResponsesStreamHandler(c *gin.Context, info *relaycommon.R
 	if !closeThinkingIfNeeded() {
 		return nil, streamErr
 	}
+	if !flushTextFilter() {
+		return nil, streamErr
+	}
 
 	if usage == nil || usage.TotalTokens == 0 {
 		usage = service.ResponseText2Usage(c, usageText.String(), info.UpstreamModelName, info.GetEstimatePromptTokens())
@@ -402,6 +422,7 @@ func ChatCompletionsToResponsesStreamHandler(c *gin.Context, info *relaycommon.R
 			OutputIndex: &outputIdx,
 			ItemID:      item.ID,
 			Delta:       toolCallArgsByID[callID],
+			Arguments:   toolCallArgsByID[callID],
 		}) {
 			return nil, streamErr
 		}

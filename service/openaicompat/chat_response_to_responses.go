@@ -54,6 +54,8 @@ func ChatCompletionsResponseToResponsesResponseWithOptions(resp *dto.OpenAITextR
 		text := choice.Message.StringContent()
 		if options.ThinkingToContent {
 			text = JoinVisibleReasoningAndContent(choice.Message.GetReasoningContent(), text)
+		} else {
+			text = StripThinkTags(text)
 		}
 		if text != "" {
 			output = append(output, dto.ResponsesOutput{
