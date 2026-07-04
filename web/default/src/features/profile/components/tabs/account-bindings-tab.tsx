@@ -16,8 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Mail, Shield, Send, Link2, Unlink } from 'lucide-react'
 import { useEffect, useMemo, useState, useCallback } from 'react'
+import { Mail, Shield, Send, Link2, Unlink, Building2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { SiGithub, SiWechat, SiLinux } from 'react-icons/si'
 import { toast } from 'sonner'
@@ -36,9 +36,10 @@ import {
   handleDiscordOAuth,
   handleLinuxDOOAuth,
 } from '@/lib/oauth'
-
+import { MOFANG_CALLBACK_STORAGE_KEY } from '@/features/auth/lib/mofang-callback'
 import {
   getSelfOAuthBindings,
+  bindMofang,
   unbindCustomOAuth,
   type CustomOAuthBinding,
 } from '../../api'
@@ -58,6 +59,28 @@ interface AccountBindingsTabProps {
 
 type DialogKey = 'email' | 'wechat' | 'telegram'
 
+function parseStoredMofangJwt(value: string | null, maxAgeMs: number): string {
+  if (!value) return ''
+  try {
+    const payload = JSON.parse(value) as {
+      type?: string
+      jwt?: unknown
+      timestamp?: unknown
+    }
+    if (payload?.type !== 'mofang-jwt') return ''
+    if (typeof payload.jwt !== 'string' || !payload.jwt.trim()) return ''
+    if (
+      typeof payload.timestamp === 'number' &&
+      Date.now() - payload.timestamp > maxAgeMs
+    ) {
+      return ''
+    }
+    return payload.jwt.trim()
+  } catch {
+    return ''
+  }
+}
+
 export function AccountBindingsTab({
   profile,
   onUpdate,
@@ -70,6 +93,7 @@ export function AccountBindingsTab({
     null
   )
   const [unbinding, setUnbinding] = useState(false)
+  const [mofangBinding, setMofangBinding] = useState(false)
 
   const customProviders = status?.custom_oauth_providers as
     | Array<{ id: string; name: string }>
@@ -118,6 +142,133 @@ export function AccountBindingsTab({
   const handleBindCustomOAuth = (provider: { id: string; name: string }) => {
     const redirectUrl = `${window.location.origin}/oauth/${provider.id}?bind=true`
     window.location.href = `/api/oauth/${provider.id}?redirect=${encodeURIComponent(redirectUrl)}`
+  }
+
+  const handleBindMofang = () => {
+    if (!status?.mofang_login_url) {
+      toast.error(t('Mofang login failed'))
+      return
+    }
+
+    let loginUrl: URL
+    try {
+      loginUrl = new URL(status.mofang_login_url)
+    } catch {
+      toast.error(t('Mofang login failed'))
+      return
+    }
+
+    loginUrl.searchParams.set('redirect_url', window.location.origin)
+    loginUrl.searchParams.set('origin', window.location.origin)
+
+    const popup = window.open(
+      'about:blank',
+      'mofang-oauth',
+      'popup=yes,width=480,height=680,menubar=no,toolbar=no,location=no,status=no'
+    )
+
+    if (!popup) {
+      toast.error(t('Failed to open Mofang login window'))
+      return
+    }
+
+    const timeoutMs = 120000
+    try {
+      window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY)
+    } catch {
+      // ignore storage cleanup failures
+    }
+
+    const allowedOrigins = new Set([loginUrl.origin, window.location.origin])
+    let finished = false
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+    let closeCheckId: ReturnType<typeof setInterval> | undefined
+
+    const cleanup = () => {
+      finished = true
+      if (timeoutId) clearTimeout(timeoutId)
+      if (closeCheckId) clearInterval(closeCheckId)
+      window.removeEventListener('message', handleMessage)
+      window.removeEventListener('storage', handleStorage)
+      setMofangBinding(false)
+    }
+
+    const completeWithJWT = async (jwt: string) => {
+      try {
+        const res = await bindMofang(jwt)
+        if (!res.success) {
+          toast.error(res.message || t('Mofang login failed'))
+          return
+        }
+
+        toast.success(t('Bound'))
+        popup.close()
+        onUpdate()
+      } catch {
+        toast.error(t('Mofang login failed'))
+      } finally {
+        cleanup()
+      }
+    }
+
+    function handleMessage(event: MessageEvent<{ type?: string; jwt?: unknown }>) {
+      if (finished || !allowedOrigins.has(event.origin)) return
+      if (!event.data || event.data.type !== 'mofang-jwt') return
+
+      const jwt = event.data.jwt
+      if (typeof jwt !== 'string' || !jwt.trim()) {
+        toast.error(t('Mofang login failed'))
+        cleanup()
+        return
+      }
+
+      void completeWithJWT(jwt.trim())
+    }
+
+    function consumeStoredToken() {
+      if (finished) return
+      const jwt = parseStoredMofangJwt(
+        window.localStorage.getItem(MOFANG_CALLBACK_STORAGE_KEY),
+        timeoutMs
+      )
+      if (!jwt) return
+      try {
+        window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY)
+      } catch {
+        // ignore storage cleanup failures
+      }
+      void completeWithJWT(jwt)
+    }
+
+    function handleStorage(event: StorageEvent) {
+      if (event.key !== MOFANG_CALLBACK_STORAGE_KEY) return
+      const jwt = parseStoredMofangJwt(event.newValue, timeoutMs)
+      if (!jwt) return
+      try {
+        window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY)
+      } catch {
+        // ignore storage cleanup failures
+      }
+      void completeWithJWT(jwt)
+    }
+
+    setMofangBinding(true)
+    window.addEventListener('message', handleMessage)
+    window.addEventListener('storage', handleStorage)
+    timeoutId = setTimeout(() => {
+      if (finished) return
+      toast.error(t('Mofang login timed out'))
+      cleanup()
+    }, timeoutMs)
+    closeCheckId = setInterval(() => {
+      if (finished) return
+      consumeStoredToken()
+      if (popup.closed) {
+        cleanup()
+      }
+    }, 1000)
+
+    popup.location.href = loginUrl.toString()
   }
 
   useEffect(() => {
@@ -257,6 +408,19 @@ export function AccountBindingsTab({
           }
         },
       },
+      {
+        id: 'mofang',
+        label: t('Mofang'),
+        icon: Building2,
+        value: (profile as unknown as Record<string, unknown>).mofang_id as
+          | string
+          | undefined,
+        isBound: Boolean(
+          (profile as unknown as Record<string, unknown>).mofang_id
+        ),
+        isEnabled: status?.mofang_oauth || false,
+        onBind: handleBindMofang,
+      },
     ].filter((binding) => binding.isEnabled)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, status, t])
@@ -296,7 +460,10 @@ export function AccountBindingsTab({
               size='sm'
               className='h-7 shrink-0 px-2.5 text-xs'
               onClick={binding.onBind}
-              disabled={binding.isBound && binding.id !== 'email'}
+              disabled={
+                (binding.isBound && binding.id !== 'email') ||
+                (binding.id === 'mofang' && mofangBinding)
+              }
             >
               {binding.isBound
                 ? binding.id === 'email'

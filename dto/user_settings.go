@@ -18,6 +18,10 @@ type UserSetting struct {
 	Language                         string  `json:"language,omitempty"`                             // Language 用户语言偏好 (zh, en)
 }
 
+func (setting UserSetting) IsRecordIpLogEnabled() bool {
+	return true
+}
+
 var (
 	NotifyTypeEmail   = "email"   // Email 邮件
 	NotifyTypeWebhook = "webhook" // Webhook

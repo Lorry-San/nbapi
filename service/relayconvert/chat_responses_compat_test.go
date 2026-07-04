@@ -445,6 +445,36 @@ func TestChatCompletionsResponseToResponsesPreservesTextToolCallsAndUsage(t *tes
 	assert.Equal(t, `"{\"q\":\"x\"}"`, string(resp.Output[1].Arguments))
 }
 
+func TestChatCompletionsResponseToResponsesOptionsControlReasoningVisibility(t *testing.T) {
+	reasoning := "private reasoning"
+	chat := &dto.OpenAITextResponse{
+		Id:    "chatcmpl_1",
+		Model: "gpt-test",
+		Choices: []dto.OpenAITextResponseChoice{
+			{
+				Message: dto.Message{
+					Role:             "assistant",
+					Content:          "final answer",
+					ReasoningContent: &reasoning,
+				},
+			},
+		},
+	}
+
+	hidden, _, err := ChatCompletionsResponseToResponsesResponseWithOptions(chat, "resp_hidden", ChatCompletionsToResponsesOptions{})
+	require.NoError(t, err)
+	require.Len(t, hidden.Output, 1)
+	assert.Equal(t, responsesOutputTypeMessage, hidden.Output[0].Type)
+	assert.Equal(t, "final answer", hidden.Output[0].Content[0].Text)
+
+	visible, _, err := ChatCompletionsResponseToResponsesResponseWithOptions(chat, "resp_visible", ChatCompletionsToResponsesOptions{
+		ThinkingToContent: true,
+	})
+	require.NoError(t, err)
+	require.Len(t, visible.Output, 1)
+	assert.Equal(t, "<think>\nprivate reasoning\n</think>\nfinal answer", visible.Output[0].Content[0].Text)
+}
+
 func TestChatCompletionsResponseToResponsesMapsIncompleteFinishReasons(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -534,6 +564,46 @@ func TestChatCompletionsStreamToResponsesEventsAggregatesUsageAndToolArgs(t *tes
 	require.Len(t, events[9].Payload.Response.Output, 2)
 	assert.Equal(t, "hello", events[9].Payload.Response.Output[0].Content[0].Text)
 	assert.Equal(t, `"{\"q\":\"x\"}"`, string(events[9].Payload.Response.Output[1].Arguments))
+}
+
+func TestChatCompletionsStreamToResponsesOptionsControlReasoningVisibility(t *testing.T) {
+	hidden := NewChatToResponsesStreamStateWithOptions("resp_hidden", "gpt-test", ChatCompletionsToResponsesOptions{})
+	hiddenEvents := mustResponsesEventsFromChatChunk(t, hidden, &dto.ChatCompletionsStreamResponse{
+		Choices: []dto.ChatCompletionsStreamResponseChoice{
+			{Index: 0, Delta: dto.ChatCompletionsStreamResponseChoiceDelta{ReasoningContent: lo.ToPtr("private")}},
+		},
+	})
+	hiddenEvents = append(hiddenEvents, FinalizeChatCompletionsStreamToResponses(hidden)...)
+	for _, event := range hiddenEvents {
+		assert.NotEqual(t, responsesEventReasoningSummaryDelta, event.Type)
+		if event.Payload.Item != nil {
+			assert.NotEqual(t, responsesOutputTypeReasoning, event.Payload.Item.Type)
+		}
+	}
+	require.NotEmpty(t, hidden.UsageText())
+
+	visible := NewChatToResponsesStreamStateWithOptions("resp_visible", "gpt-test", ChatCompletionsToResponsesOptions{
+		ThinkingToContent: true,
+	})
+	visibleEvents := mustResponsesEventsFromChatChunk(t, visible, &dto.ChatCompletionsStreamResponse{
+		Choices: []dto.ChatCompletionsStreamResponseChoice{
+			{Index: 0, Delta: dto.ChatCompletionsStreamResponseChoiceDelta{ReasoningContent: lo.ToPtr("private")}},
+		},
+	})
+	visibleEvents = append(visibleEvents, mustResponsesEventsFromChatChunk(t, visible, &dto.ChatCompletionsStreamResponse{
+		Choices: []dto.ChatCompletionsStreamResponseChoice{
+			{Index: 0, Delta: dto.ChatCompletionsStreamResponseChoiceDelta{Content: lo.ToPtr("answer")}},
+		},
+	})...)
+	visibleEvents = append(visibleEvents, FinalizeChatCompletionsStreamToResponses(visible)...)
+
+	var text string
+	for _, event := range visibleEvents {
+		if event.Type == responsesEventOutputTextDelta {
+			text += event.Payload.Delta
+		}
+	}
+	assert.Equal(t, "<think>\nprivate\n</think>\nanswer", text)
 }
 
 func assistantMessageWithTool(content string, id string, name string, args string) dto.Message {

@@ -38,6 +38,7 @@ const ADVANCED_SETTINGS_FIELDS = new Set<FieldPath<ChannelFormValues>>([
   'force_format',
   'thinking_to_content',
   'pass_through_body_enabled',
+  'force_responses_to_chat_completions',
   'proxy',
   'system_prompt',
   'system_prompt_override',

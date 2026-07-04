@@ -25,6 +25,7 @@ import {
 } from './utils';
 import axios from 'axios';
 import { MESSAGE_ROLES } from '../constants/playground.constants';
+import { MOFANG_CALLBACK_STORAGE_KEY } from './mofangOAuthCallback';
 
 export let API = axios.create({
   baseURL: import.meta.env.VITE_REACT_APP_SERVER_URL
@@ -263,6 +264,7 @@ async function prepareOAuthState(options = {}) {
       await API.get('/api/user/logout', { skipErrorHandler: true });
     } catch (err) {}
     localStorage.removeItem('user');
+    localStorage.removeItem('uid');
     updateAPI();
   }
   return await getOAuthState();
@@ -313,6 +315,178 @@ export async function onLinuxDOOAuthClicked(
   redirectToOAuthUrl(
     `https://connect.linux.do/oauth2/authorize?response_type=code&client_id=${linuxdo_client_id}&state=${state}`,
   );
+}
+
+export async function onMofangOAuthClicked(mofangLoginUrl, options = {}) {
+  const {
+    onSuccess,
+    onError,
+    onFinally,
+    timeoutMs = 120000,
+    sessionEndpoint = '/api/oauth/mofang/session',
+    persistUser = true,
+    shouldLogout = true,
+    messages = {},
+  } = options;
+  const loginFailedMessage = messages.loginFailed || '魔方财务登录失败';
+  const popupBlockedMessage =
+    messages.popupBlocked || '无法打开魔方财务登录窗口';
+  const timeoutMessage = messages.timeout || '魔方财务登录超时';
+
+  let loginUrl;
+  try {
+    loginUrl = new URL(mofangLoginUrl);
+  } catch (error) {
+    showError(loginFailedMessage);
+    if (onError) onError(error);
+    if (onFinally) onFinally();
+    return;
+  }
+
+  loginUrl.searchParams.set('redirect_url', window.location.origin);
+  loginUrl.searchParams.set('origin', window.location.origin);
+
+  const popup = window.open(
+    'about:blank',
+    'mofang-oauth',
+    'popup=yes,width=480,height=680,menubar=no,toolbar=no,location=no,status=no',
+  );
+
+  if (!popup) {
+    showError(popupBlockedMessage);
+    if (onError) onError(new Error(popupBlockedMessage));
+    if (onFinally) onFinally();
+    return;
+  }
+
+  try {
+    window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY);
+  } catch (error) {}
+
+  if (shouldLogout) {
+    try {
+      await API.get('/api/user/logout', { skipErrorHandler: true });
+    } catch (err) {}
+    localStorage.removeItem('user');
+    localStorage.removeItem('uid');
+    updateAPI();
+  }
+
+  const allowedOrigins = new Set([loginUrl.origin, window.location.origin]);
+  let finished = false;
+  let timeoutId;
+  let closeCheckId;
+
+  const cleanup = () => {
+    finished = true;
+    if (timeoutId) clearTimeout(timeoutId);
+    if (closeCheckId) clearInterval(closeCheckId);
+      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('storage', handleStorage);
+    if (onFinally) onFinally();
+  };
+
+  const completeWithJWT = async (jwt) => {
+    try {
+      const res = await API.post(sessionEndpoint, { jwt });
+      const { success, message, data } = res.data || {};
+      if (!success) {
+        showError(message || loginFailedMessage);
+        if (onError) onError(new Error(message || loginFailedMessage));
+        return;
+      }
+
+      if (persistUser) {
+        if (data?.id != null) {
+          localStorage.setItem('uid', String(data.id));
+        }
+        localStorage.setItem('user', JSON.stringify(data));
+        updateAPI();
+      }
+      if (onSuccess) onSuccess(data);
+      try {
+        popup.close();
+      } catch (err) {}
+    } catch (error) {
+      showError('魔方财务登录失败');
+      if (onError) onError(error);
+    } finally {
+      cleanup();
+    }
+  };
+
+  function handleMessage(event) {
+    if (finished || !allowedOrigins.has(event.origin)) return;
+    if (!event.data || event.data.type !== 'mofang-jwt') return;
+
+    const jwt = event.data.jwt;
+    if (typeof jwt !== 'string' || !jwt.trim()) {
+      showError(loginFailedMessage);
+      if (onError) onError(new Error('Invalid Mofang JWT message'));
+      cleanup();
+      return;
+    }
+
+    completeWithJWT(jwt.trim());
+  }
+
+  function parseStoredMofangJwt(value) {
+    if (!value) return '';
+    try {
+      const payload = JSON.parse(value);
+      if (payload?.type !== 'mofang-jwt') return '';
+      if (typeof payload.jwt !== 'string' || !payload.jwt.trim()) return '';
+      if (
+        typeof payload.timestamp === 'number' &&
+        Date.now() - payload.timestamp > timeoutMs
+      ) {
+        return '';
+      }
+      return payload.jwt.trim();
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function consumeStoredToken() {
+    if (finished) return;
+    const jwt = parseStoredMofangJwt(
+      window.localStorage.getItem(MOFANG_CALLBACK_STORAGE_KEY),
+    );
+    if (!jwt) return;
+    try {
+      window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY);
+    } catch (error) {}
+    completeWithJWT(jwt);
+  }
+
+  function handleStorage(event) {
+    if (event.key !== MOFANG_CALLBACK_STORAGE_KEY) return;
+    const jwt = parseStoredMofangJwt(event.newValue);
+    if (!jwt) return;
+    try {
+      window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY);
+    } catch (error) {}
+    completeWithJWT(jwt);
+  }
+
+  window.addEventListener('message', handleMessage);
+  window.addEventListener('storage', handleStorage);
+  timeoutId = setTimeout(() => {
+    if (finished) return;
+    showError(timeoutMessage);
+    if (onError) onError(new Error('Mofang login timed out'));
+    cleanup();
+  }, timeoutMs);
+  closeCheckId = setInterval(() => {
+    if (finished) return;
+    consumeStoredToken();
+    if (popup.closed) {
+      cleanup();
+    }
+  }, 1000);
+
+  popup.location.href = loginUrl.toString();
 }
 
 /**

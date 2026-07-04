@@ -35,6 +35,7 @@ import {
   onDiscordOAuthClicked,
   onOIDCClicked,
   onLinuxDOOAuthClicked,
+  onMofangOAuthClicked,
   onCustomOAuthClicked,
   prepareCredentialRequestOptions,
   buildAssertionResult,
@@ -95,6 +96,7 @@ const LoginForm = () => {
   const [discordLoading, setDiscordLoading] = useState(false);
   const [oidcLoading, setOidcLoading] = useState(false);
   const [linuxdoLoading, setLinuxdoLoading] = useState(false);
+  const [mofangLoading, setMofangLoading] = useState(false);
   const [emailLoginLoading, setEmailLoginLoading] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
@@ -139,6 +141,7 @@ const LoginForm = () => {
       status.oidc_enabled ||
       status.wechat_login ||
       status.linuxdo_oauth ||
+      status.mofang_oauth ||
       status.telegram_oauth ||
       hasCustomOAuthProviders,
   );
@@ -387,6 +390,29 @@ const LoginForm = () => {
     }
   };
 
+  const handleMofangClick = () => {
+    if ((hasUserAgreement || hasPrivacyPolicy) && !agreedToTerms) {
+      showInfo(t('请先阅读并同意用户协议和隐私政策'));
+      return;
+    }
+    setMofangLoading(true);
+    onMofangOAuthClicked(status.mofang_login_url, {
+      onSuccess: (data) => {
+        userDispatch({ type: 'login', payload: data });
+        setUserData(data);
+        updateAPI();
+        showSuccess(t('登录成功！'));
+        navigate('/console');
+      },
+      onFinally: () => setMofangLoading(false),
+      messages: {
+        loginFailed: t('魔方财务登录失败'),
+        popupBlocked: t('无法打开魔方财务登录窗口'),
+        timeout: t('魔方财务登录超时'),
+      },
+    });
+  };
+
   // 包装的自定义OAuth登录点击处理
   const handleCustomOAuthClick = (provider) => {
     if ((hasUserAgreement || hasPrivacyPolicy) && !agreedToTerms) {
@@ -600,6 +626,19 @@ const LoginForm = () => {
                     loading={linuxdoLoading}
                   >
                     <span className='ml-3'>{t('使用 LinuxDO 继续')}</span>
+                  </Button>
+                )}
+
+                {status.mofang_oauth && (
+                  <Button
+                    theme='outline'
+                    className='w-full h-12 flex items-center justify-center !rounded-full border border-gray-200 hover:bg-gray-50 transition-colors'
+                    type='tertiary'
+                    icon={getOAuthProviderIcon('', 20)}
+                    onClick={handleMofangClick}
+                    loading={mofangLoading}
+                  >
+                    <span className='ml-3'>{t('使用魔方财务继续')}</span>
                   </Button>
                 )}
 

@@ -107,7 +107,7 @@ export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
         gotify_priority: parsed.gotify_priority ?? 5,
         accept_unset_model_ratio_model:
           parsed.accept_unset_model_ratio_model || false,
-        record_ip_log: parsed.record_ip_log || false,
+        record_ip_log: true,
         upstream_model_update_notify_enabled:
           parsed.upstream_model_update_notify_enabled || false,
       })
@@ -117,7 +117,10 @@ export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
   const handleSave = async () => {
     try {
       setLoading(true)
-      const response = await updateUserSettings(settings)
+      const response = await updateUserSettings({
+        ...settings,
+        record_ip_log: true,
+      })
 
       if (response.success) {
         toast.success(t('Settings updated successfully'))
@@ -387,8 +390,8 @@ export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
           <Switch
             id='recordIp'
             className='shrink-0'
-            checked={settings.record_ip_log}
-            onCheckedChange={(checked) => updateField('record_ip_log', checked)}
+            checked
+            disabled
           />
         </div>
       </div>

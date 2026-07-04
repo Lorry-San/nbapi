@@ -46,6 +46,7 @@ export interface AuthUser {
   oidc_id?: string
   wechat_id?: string
   telegram_id?: string
+  mofang_id?: string
   linux_do_id?: string
   setting?: Record<string, unknown> | string
   stripe_customer?: string

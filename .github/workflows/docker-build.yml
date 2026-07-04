@@ -57,21 +57,46 @@ jobs:
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
           echo "${TAG}" > VERSION
           echo "Building tag: ${TAG} for ${{ matrix.arch }}"
+          OWNER_LC=$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          echo "GHCR_IMAGE=ghcr.io/${OWNER_LC}/nbapi" >> $GITHUB_ENV
+          echo "HAS_DOCKERHUB=${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Log in to Docker Hub
+        if: env.HAS_DOCKERHUB == 'true'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Prepare image tags
+        id: image_tags
+        run: |
+          {
+            echo "tags<<EOF"
+            echo "${GHCR_IMAGE}:${TAG}-${{ matrix.arch }}"
+            echo "${GHCR_IMAGE}:latest-${{ matrix.arch }}"
+            if [ "${HAS_DOCKERHUB}" = "true" ]; then
+              echo "calciumion/new-api:${TAG}-${{ matrix.arch }}"
+              echo "calciumion/new-api:latest-${{ matrix.arch }}"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Extract metadata (labels)
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: calciumion/new-api
+          images: ${{ env.GHCR_IMAGE }}
 
       - name: Build & push
         id: build
@@ -80,9 +105,7 @@ jobs:
           context: .
           platforms: ${{ matrix.platform }}
           push: true
-          tags: |
-            calciumion/new-api:${{ env.TAG }}-${{ matrix.arch }}
-            calciumion/new-api:latest-${{ matrix.arch }}
+          tags: ${{ steps.image_tags.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -93,13 +116,13 @@ jobs:
         uses: sigstore/cosign-installer@v3
 
       - name: Sign image with cosign
-        run: cosign sign --yes calciumion/new-api@${{ steps.build.outputs.digest }}
+        run: cosign sign --yes ${GHCR_IMAGE}@${{ steps.build.outputs.digest }}
 
       - name: Image summary
         run: |
           echo "### Docker Image Digest (${{ matrix.arch }})" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "calciumion/new-api:${TAG}-${{ matrix.arch }}" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.image_tags.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
           echo "${{ steps.build.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
@@ -108,18 +131,49 @@ jobs:
     needs: [build_single_arch]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    permissions:
+      packages: write
+      contents: read
+      id-token: write
 
     steps:
       - name: Set version
-        run: echo "TAG=${{ needs.build_single_arch.outputs.tag }}" >> $GITHUB_ENV
+        run: |
+          echo "TAG=${{ needs.build_single_arch.outputs.tag }}" >> $GITHUB_ENV
+          OWNER_LC=$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          echo "GHCR_IMAGE=ghcr.io/${OWNER_LC}/nbapi" >> $GITHUB_ENV
+          echo "HAS_DOCKERHUB=${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}" >> $GITHUB_ENV
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in to Docker Hub
+        if: env.HAS_DOCKERHUB == 'true'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Create & push manifest (GHCR version)
+        run: |
+          docker buildx imagetools create \
+            -t ${GHCR_IMAGE}:${TAG} \
+            ${GHCR_IMAGE}:${TAG}-amd64 \
+            ${GHCR_IMAGE}:${TAG}-arm64
+
+      - name: Create & push manifest (GHCR latest)
+        run: |
+          docker buildx imagetools create \
+            -t ${GHCR_IMAGE}:latest \
+            ${GHCR_IMAGE}:latest-amd64 \
+            ${GHCR_IMAGE}:latest-arm64
+
       - name: Create & push manifest (version)
+        if: env.HAS_DOCKERHUB == 'true'
         run: |
           docker buildx imagetools create \
             -t calciumion/new-api:${TAG} \
@@ -127,6 +181,7 @@ jobs:
             calciumion/new-api:${TAG}-arm64
 
       - name: Create & push manifest (latest)
+        if: env.HAS_DOCKERHUB == 'true'
         run: |
           docker buildx imagetools create \
             -t calciumion/new-api:latest \
@@ -137,5 +192,5 @@ jobs:
         run: |
           echo "### Multi-arch Manifest" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          docker buildx imagetools inspect calciumion/new-api:${TAG} >> $GITHUB_STEP_SUMMARY
+          docker buildx imagetools inspect ${GHCR_IMAGE}:${TAG} >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY

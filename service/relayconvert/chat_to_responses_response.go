@@ -16,7 +16,18 @@ const (
 	chatFinishReasonContentFilter = "content_filter"
 )
 
+type ChatCompletionsToResponsesOptions struct {
+	ThinkingToContent bool
+	PreserveReasoning bool
+}
+
 func ChatCompletionsResponseToResponsesResponse(resp *dto.OpenAITextResponse, id string) (*dto.OpenAIResponsesResponse, *dto.Usage, error) {
+	return ChatCompletionsResponseToResponsesResponseWithOptions(resp, id, ChatCompletionsToResponsesOptions{
+		PreserveReasoning: true,
+	})
+}
+
+func ChatCompletionsResponseToResponsesResponseWithOptions(resp *dto.OpenAITextResponse, id string, options ChatCompletionsToResponsesOptions) (*dto.OpenAIResponsesResponse, *dto.Usage, error) {
 	if resp == nil {
 		return nil, nil, errors.New("response is nil")
 	}
@@ -42,7 +53,12 @@ func ChatCompletionsResponseToResponsesResponse(resp *dto.OpenAITextResponse, id
 		out.IncompleteDetails = details
 	}
 
-	if text := choice.Message.StringContent(); text != "" {
+	text := choice.Message.StringContent()
+	reasoning := choice.Message.GetReasoningContent()
+	if options.ThinkingToContent {
+		text = joinVisibleReasoningAndContent(reasoning, text)
+	}
+	if text != "" {
 		out.Output = append(out.Output, dto.ResponsesOutput{
 			Type:   responsesOutputTypeMessage,
 			ID:     fmt.Sprintf("%s_msg_0", id),
@@ -57,7 +73,7 @@ func ChatCompletionsResponseToResponsesResponse(resp *dto.OpenAITextResponse, id
 			},
 		})
 	}
-	if reasoning := choice.Message.GetReasoningContent(); reasoning != "" {
+	if reasoning != "" && options.PreserveReasoning && !options.ThinkingToContent {
 		out.Output = append(out.Output, dto.ResponsesOutput{
 			Type:   responsesOutputTypeReasoning,
 			ID:     fmt.Sprintf("%s_reasoning_0", id),
@@ -80,6 +96,17 @@ func ChatCompletionsResponseToResponsesResponse(resp *dto.OpenAITextResponse, id
 	}
 
 	return out, usage, nil
+}
+
+func joinVisibleReasoningAndContent(reasoning string, content string) string {
+	if reasoning == "" {
+		return content
+	}
+	visibleReasoning := "<think>\n" + reasoning + "\n</think>"
+	if content == "" {
+		return visibleReasoning
+	}
+	return visibleReasoning + "\n" + content
 }
 
 func ResponsesStatusFromChatFinishReason(finishReason string) (string, *dto.IncompleteDetails) {
@@ -154,6 +181,10 @@ type ChatToResponsesStreamState struct {
 	outputOrder       []chatToResponsesOutputRef
 	text              strings.Builder
 	reasoning         strings.Builder
+	usageText         strings.Builder
+	thinkingToContent bool
+	preserveReasoning bool
+	visibleReasoning  bool
 }
 
 type chatToResponsesStreamTool struct {
@@ -171,6 +202,12 @@ type chatToResponsesOutputRef struct {
 }
 
 func NewChatToResponsesStreamState(id string, model string) *ChatToResponsesStreamState {
+	return NewChatToResponsesStreamStateWithOptions(id, model, ChatCompletionsToResponsesOptions{
+		PreserveReasoning: true,
+	})
+}
+
+func NewChatToResponsesStreamStateWithOptions(id string, model string, options ChatCompletionsToResponsesOptions) *ChatToResponsesStreamState {
 	return &ChatToResponsesStreamState{
 		ID:              id,
 		Model:           model,
@@ -180,6 +217,8 @@ func NewChatToResponsesStreamState(id string, model string) *ChatToResponsesStre
 		textOutputIndex: -1,
 		reasoningIndex:  -1,
 		toolsByIndex:    make(map[int]*chatToResponsesStreamTool),
+		thinkingToContent: options.ThinkingToContent,
+		preserveReasoning: options.PreserveReasoning,
 	}
 }
 
@@ -213,6 +252,7 @@ func ChatCompletionsStreamChunkToResponsesEvents(chunk *dto.ChatCompletionsStrea
 			events = append(events, state.appendReasoningDelta(choice.Delta.GetReasoningContent())...)
 		}
 		if choice.Delta.GetContentString() != "" {
+			events = append(events, state.closeVisibleReasoningIfNeeded()...)
 			events = append(events, state.appendTextDelta(choice.Delta.GetContentString())...)
 		}
 		for _, toolCall := range choice.Delta.ToolCalls {
@@ -252,6 +292,9 @@ func (s *ChatToResponsesStreamState) UsageText() string {
 	if s == nil {
 		return ""
 	}
+	if s.usageText.Len() > 0 {
+		return s.usageText.String()
+	}
 	return s.text.String()
 }
 
@@ -273,6 +316,7 @@ func (s *ChatToResponsesStreamState) appendTextDelta(delta string) []ChatToRespo
 		}))
 	}
 	s.text.WriteString(delta)
+	s.usageText.WriteString(delta)
 	events = append(events, responsesStreamEvent(responsesEventOutputTextDelta, dto.ResponsesStreamResponse{
 		Type:         responsesEventOutputTextDelta,
 		OutputIndex:  intPtr(s.textOutputIndex),
@@ -284,6 +328,22 @@ func (s *ChatToResponsesStreamState) appendTextDelta(delta string) []ChatToRespo
 }
 
 func (s *ChatToResponsesStreamState) appendReasoningDelta(delta string) []ChatToResponsesStreamEvent {
+	if delta == "" {
+		return nil
+	}
+	if s.thinkingToContent {
+		events := make([]ChatToResponsesStreamEvent, 0, 2)
+		if !s.visibleReasoning {
+			s.visibleReasoning = true
+			events = append(events, s.appendTextDelta("<think>\n")...)
+		}
+		events = append(events, s.appendTextDelta(delta)...)
+		return events
+	}
+	s.usageText.WriteString(delta)
+	if !s.preserveReasoning {
+		return nil
+	}
 	events := make([]ChatToResponsesStreamEvent, 0, 2)
 	if !s.reasoningStarted {
 		s.reasoningStarted = true
@@ -308,6 +368,14 @@ func (s *ChatToResponsesStreamState) appendReasoningDelta(delta string) []ChatTo
 		ItemID:       s.reasoningID(),
 	}))
 	return events
+}
+
+func (s *ChatToResponsesStreamState) closeVisibleReasoningIfNeeded() []ChatToResponsesStreamEvent {
+	if !s.visibleReasoning {
+		return nil
+	}
+	s.visibleReasoning = false
+	return s.appendTextDelta("\n</think>\n")
 }
 
 func (s *ChatToResponsesStreamState) appendToolCallDelta(toolCall dto.ToolCallResponse) ([]ChatToResponsesStreamEvent, error) {
@@ -350,6 +418,7 @@ func (s *ChatToResponsesStreamState) appendToolCallDelta(toolCall dto.ToolCallRe
 	}
 	if toolCall.Function.Arguments != "" {
 		tool.Arguments.WriteString(toolCall.Function.Arguments)
+		s.usageText.WriteString(toolCall.Function.Arguments)
 		events = append(events, responsesStreamEvent(responsesEventFunctionArgsDelta, dto.ResponsesStreamResponse{
 			Type:        responsesEventFunctionArgsDelta,
 			OutputIndex: intPtr(tool.OutputIndex),
@@ -362,6 +431,7 @@ func (s *ChatToResponsesStreamState) appendToolCallDelta(toolCall dto.ToolCallRe
 
 func (s *ChatToResponsesStreamState) doneDeltaEvents() []ChatToResponsesStreamEvent {
 	events := make([]ChatToResponsesStreamEvent, 0)
+	events = append(events, s.closeVisibleReasoningIfNeeded()...)
 	status := s.outputStatus()
 	if s.textStarted && !s.textDone {
 		s.textDone = true

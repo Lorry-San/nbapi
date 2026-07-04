@@ -79,6 +79,9 @@ const oauthSchema = z.object({
   LinuxDOClientId: z.string(),
   LinuxDOClientSecret: z.string(),
   LinuxDOMinimumTrustLevel: z.string(),
+  MofangOAuthEnabled: z.boolean(),
+  MofangApiBase: z.string(),
+  MofangLoginUrl: z.string(),
   WeChatAuthEnabled: z.boolean(),
   WeChatServerAddress: z.string(),
   WeChatServerToken: z.string(),
@@ -108,6 +111,9 @@ type FlatOAuthDefaults = {
   LinuxDOClientId: string
   LinuxDOClientSecret: string
   LinuxDOMinimumTrustLevel: string
+  MofangOAuthEnabled: boolean
+  MofangApiBase: string
+  MofangLoginUrl: string
   WeChatAuthEnabled: boolean
   WeChatServerAddress: string
   WeChatServerToken: string
@@ -142,6 +148,9 @@ const buildFormDefaults = (defaults: FlatOAuthDefaults): OAuthFormValues => ({
   LinuxDOClientId: defaults.LinuxDOClientId ?? '',
   LinuxDOClientSecret: defaults.LinuxDOClientSecret ?? '',
   LinuxDOMinimumTrustLevel: defaults.LinuxDOMinimumTrustLevel ?? '',
+  MofangOAuthEnabled: defaults.MofangOAuthEnabled,
+  MofangApiBase: defaults.MofangApiBase ?? '',
+  MofangLoginUrl: defaults.MofangLoginUrl ?? '',
   WeChatAuthEnabled: defaults.WeChatAuthEnabled,
   WeChatServerAddress: defaults.WeChatServerAddress ?? '',
   WeChatServerToken: defaults.WeChatServerToken ?? '',
@@ -169,6 +178,9 @@ const normalizeFormValues = (values: OAuthFormValues): FlatOAuthDefaults => ({
   LinuxDOClientId: values.LinuxDOClientId,
   LinuxDOClientSecret: values.LinuxDOClientSecret,
   LinuxDOMinimumTrustLevel: values.LinuxDOMinimumTrustLevel,
+  MofangOAuthEnabled: values.MofangOAuthEnabled,
+  MofangApiBase: values.MofangApiBase,
+  MofangLoginUrl: values.MofangLoginUrl,
   WeChatAuthEnabled: values.WeChatAuthEnabled,
   WeChatServerAddress: values.WeChatServerAddress,
   WeChatServerToken: values.WeChatServerToken,
@@ -296,12 +308,13 @@ export function OAuthSection(props: OAuthSectionProps) {
             <FormDirtyIndicator isDirty={form.formState.isDirty} />
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className='grid w-full grid-cols-6'>
+              <TabsList className='grid w-full grid-cols-7'>
                 <TabsTrigger value='github'>{t('GitHub')}</TabsTrigger>
                 <TabsTrigger value='discord'>{t('Discord')}</TabsTrigger>
                 <TabsTrigger value='oidc'>{t('OIDC')}</TabsTrigger>
                 <TabsTrigger value='telegram'>{t('Telegram')}</TabsTrigger>
                 <TabsTrigger value='linuxdo'>{t('LinuxDO')}</TabsTrigger>
+                <TabsTrigger value='mofang'>{t('Mofang')}</TabsTrigger>
                 <TabsTrigger value='wechat'>{t('WeChat')}</TabsTrigger>
               </TabsList>
 
@@ -793,6 +806,73 @@ export function OAuthSection(props: OAuthSectionProps) {
                       </FormControl>
                       <FormDescription>
                         {t('Minimum LinuxDO trust level required')}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+
+              <TabsContent value='mofang' className={oauthTabContentClassName}>
+                <FormField
+                  control={form.control}
+                  name='MofangOAuthEnabled'
+                  render={({ field }) => (
+                    <SettingsSwitchItem>
+                      <SettingsSwitchContent>
+                        <FormLabel>{t('Enable Mofang OAuth')}</FormLabel>
+                        <FormDescription>
+                          {t('Allow users to sign in with Mofang Finance')}
+                        </FormDescription>
+                      </SettingsSwitchContent>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </SettingsSwitchItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name='MofangApiBase'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('API Base URL')}</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder={t('https://mofang.example.com')}
+                          autoComplete='off'
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {t('Used to verify the JWT with /v1/user')}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name='MofangLoginUrl'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('Mofang Login URL')}</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder={t(
+                            'https://mofang.example.com/loginAccessToken'
+                          )}
+                          autoComplete='off'
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {t('Popup login page that posts the JWT back to NBAPI')}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

@@ -84,6 +84,15 @@ export function getAvailableOAuthProviders(
     })
   }
 
+  if (status.mofang_oauth) {
+    providers.push({
+      name: 'Mofang',
+      type: 'mofang',
+      enabled: true,
+      authEndpoint: status.mofang_login_url,
+    })
+  }
+
   return providers
 }
 
@@ -97,6 +106,7 @@ export function hasOAuthProviders(status: SystemStatus | null): boolean {
     status.discord_oauth ||
     status.oidc_enabled ||
     status.linuxdo_oauth ||
+    status.mofang_oauth ||
     status.telegram_oauth ||
     status.wechat_login
   )

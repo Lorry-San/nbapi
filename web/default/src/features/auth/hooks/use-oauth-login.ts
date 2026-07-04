@@ -21,9 +21,8 @@ import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
-import { api } from '@/lib/api'
-import { useAuthStore } from '@/stores/auth-store'
-
+import { useAuthStore, type AuthUser } from '@/stores/auth-store'
+import { api, getSelf } from '@/lib/api'
 import { getOAuthState } from '../api'
 import {
   buildGitHubOAuthUrl,
@@ -31,10 +30,36 @@ import {
   buildOIDCOAuthUrl,
   buildLinuxDOOAuthUrl,
 } from '../lib/oauth'
+import { MOFANG_CALLBACK_STORAGE_KEY } from '../lib/mofang-callback'
 import type { SystemStatus, CustomOAuthProviderInfo } from '../types'
 
 type LogoutRequestConfig = AxiosRequestConfig & {
   skipErrorHandler?: boolean
+}
+
+type MofangJwtMessage = {
+  type?: string
+  jwt?: unknown
+}
+
+function parseStoredMofangJwt(value: string | null, maxAgeMs: number): string {
+  if (!value) return ''
+  try {
+    const payload = JSON.parse(value) as MofangJwtMessage & {
+      timestamp?: unknown
+    }
+    if (payload?.type !== 'mofang-jwt') return ''
+    if (typeof payload.jwt !== 'string' || !payload.jwt.trim()) return ''
+    if (
+      typeof payload.timestamp === 'number' &&
+      Date.now() - payload.timestamp > maxAgeMs
+    ) {
+      return ''
+    }
+    return payload.jwt.trim()
+  } catch {
+    return ''
+  }
 }
 
 /**
@@ -187,6 +212,152 @@ export function useOAuthLogin(status: SystemStatus | null) {
     }
   }
 
+  const handleMofangLogin = async () => {
+    if (!status?.mofang_login_url) return
+
+    let loginUrl: URL
+    try {
+      loginUrl = new URL(status.mofang_login_url)
+    } catch (_error) {
+      toast.error(t('Mofang login failed'))
+      return
+    }
+    loginUrl.searchParams.set('redirect_url', window.location.origin)
+    loginUrl.searchParams.set('origin', window.location.origin)
+
+    const popup = window.open(
+      'about:blank',
+      'mofang-oauth',
+      'popup=yes,width=480,height=680,menubar=no,toolbar=no,location=no,status=no'
+    )
+
+    if (!popup) {
+      toast.error(t('Failed to open Mofang login window'))
+      return
+    }
+
+    const timeoutMs = 120000
+    setIsLoading(true)
+    try {
+      window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY)
+    } catch {
+      // ignore storage cleanup failures
+    }
+    try {
+      await resetSession()
+    } catch (_error) {
+      // resetSession already ignores expected failures
+    }
+
+    const allowedOrigins = new Set([loginUrl.origin, window.location.origin])
+    let finished = false
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+    let closeCheckId: ReturnType<typeof setInterval> | undefined
+
+    const cleanup = () => {
+      finished = true
+      if (timeoutId) clearTimeout(timeoutId)
+      if (closeCheckId) clearInterval(closeCheckId)
+      window.removeEventListener('message', handleMessage)
+      window.removeEventListener('storage', handleStorage)
+      setIsLoading(false)
+    }
+
+    const completeWithJWT = async (jwt: string) => {
+      try {
+        const res = await api.post('/api/oauth/mofang/session', { jwt })
+        if (!res?.data?.success) {
+          toast.error(res?.data?.message || t('Mofang login failed'))
+          return
+        }
+
+        const loginUserId = res.data?.data?.id
+        if (loginUserId != null) {
+          window.localStorage.setItem('uid', String(loginUserId))
+        }
+        if (res.data?.data) {
+          auth.setUser(res.data.data as AuthUser)
+        }
+
+        try {
+          const self = await getSelf()
+          if (self?.success && self.data) {
+            auth.setUser(self.data)
+            if (self.data.id != null) {
+              window.localStorage.setItem('uid', String(self.data.id))
+            }
+          }
+        } catch (_error) {
+          // The session is already established; the next route load can refresh user details.
+        }
+
+        toast.success(t('Signed in successfully!'))
+        popup.close()
+        window.location.replace('/dashboard')
+      } catch (_error) {
+        toast.error(t('Mofang login failed'))
+      } finally {
+        cleanup()
+      }
+    }
+
+    function handleMessage(event: MessageEvent<MofangJwtMessage>) {
+      if (finished || !allowedOrigins.has(event.origin)) return
+      if (!event.data || event.data.type !== 'mofang-jwt') return
+      const jwt = event.data.jwt
+      if (typeof jwt !== 'string' || !jwt.trim()) {
+        toast.error(t('Mofang login failed'))
+        cleanup()
+        return
+      }
+      void completeWithJWT(jwt.trim())
+    }
+
+    function consumeStoredToken() {
+      if (finished) return
+      const jwt = parseStoredMofangJwt(
+        window.localStorage.getItem(MOFANG_CALLBACK_STORAGE_KEY),
+        timeoutMs
+      )
+      if (!jwt) return
+      try {
+        window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY)
+      } catch {
+        // ignore storage cleanup failures
+      }
+      void completeWithJWT(jwt)
+    }
+
+    function handleStorage(event: StorageEvent) {
+      if (event.key !== MOFANG_CALLBACK_STORAGE_KEY) return
+      const jwt = parseStoredMofangJwt(event.newValue, timeoutMs)
+      if (!jwt) return
+      try {
+        window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY)
+      } catch {
+        // ignore storage cleanup failures
+      }
+      void completeWithJWT(jwt)
+    }
+
+    window.addEventListener('message', handleMessage)
+    window.addEventListener('storage', handleStorage)
+    timeoutId = setTimeout(() => {
+      if (finished) return
+      toast.error(t('Mofang login timed out'))
+      cleanup()
+    }, timeoutMs)
+    closeCheckId = setInterval(() => {
+      if (finished) return
+      consumeStoredToken()
+      if (popup.closed) {
+        cleanup()
+      }
+    }, 1000)
+
+    popup.location.href = loginUrl.toString()
+  }
+
   const handleTelegramLogin = () => {
     toast.info(t('Telegram login requires widget integration; coming soon'))
   }
@@ -231,6 +402,7 @@ export function useOAuthLogin(status: SystemStatus | null) {
     handleDiscordLogin,
     handleOIDCLogin,
     handleLinuxDOLogin,
+    handleMofangLogin,
     handleTelegramLogin,
     handleCustomOAuthLogin,
   }

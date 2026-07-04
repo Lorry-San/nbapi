@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import type { CSSProperties, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { PublicLayout } from '@/components/layout'
@@ -27,11 +28,48 @@ import { useAuthStore } from '@/stores/auth-store'
 import { CTA, Features, Hero, HowItWorks, Stats } from './components'
 import { useHomePageContent } from './hooks'
 
+function backgroundStyle(background: string): CSSProperties | undefined {
+  const trimmed = background.trim()
+  if (!trimmed) return undefined
+  const safeUrl = trimmed.replace(/["\\\n\r]/g, '')
+  return {
+    backgroundImage: `url("${safeUrl}")`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundAttachment: 'fixed',
+  }
+}
+
+function HomeBackground({
+  background,
+  children,
+}: {
+  background: string
+  children: ReactNode
+}) {
+  if (!background.trim()) return <>{children}</>
+
+  return (
+    <div className='relative isolate min-h-screen overflow-hidden'>
+      <div
+        aria-hidden
+        className='absolute inset-0 -z-20'
+        style={backgroundStyle(background)}
+      />
+      <div
+        aria-hidden
+        className='bg-background/78 absolute inset-0 -z-10 backdrop-blur-[1px] dark:bg-background/70'
+      />
+      {children}
+    </div>
+  )
+}
+
 export function Home() {
   const { t } = useTranslation()
   const { auth } = useAuthStore()
   const isAuthenticated = !!auth.user
-  const { content, isLoaded, isUrl } = useHomePageContent()
+  const { content, background, isLoaded, isUrl } = useHomePageContent()
 
   if (!isLoaded) {
     return (
@@ -73,26 +111,30 @@ export function Home() {
     }
 
     return (
-      <PublicLayout>
-        <div className='mx-auto max-w-6xl px-4 py-8'>
-          <RichContent
-            mode='markdown'
-            content={content}
-            className='custom-home-content'
-          />
-        </div>
+      <PublicLayout showMainContainer={false}>
+        <HomeBackground background={background}>
+          <div className='mx-auto max-w-6xl px-4 py-8'>
+            <RichContent
+              mode='markdown'
+              content={content}
+              className='custom-home-content'
+            />
+          </div>
+        </HomeBackground>
       </PublicLayout>
     )
   }
 
   return (
     <PublicLayout showMainContainer={false}>
-      <Hero isAuthenticated={isAuthenticated} />
-      <Stats />
-      <Features />
-      <HowItWorks />
-      <CTA isAuthenticated={isAuthenticated} />
-      <Footer />
+      <HomeBackground background={background}>
+        <Hero isAuthenticated={isAuthenticated} />
+        <Stats />
+        <Features />
+        <HowItWorks />
+        <CTA isAuthenticated={isAuthenticated} />
+        <Footer />
+      </HomeBackground>
     </PublicLayout>
   )
 }

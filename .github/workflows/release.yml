@@ -63,10 +63,21 @@ jobs:
       - name: Generate checksums
         run: sha256sum new-api-* > checksums-linux.txt
 
+      - name: Prepare release notes
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          NOTES_FILE=".github/release-notes/${VERSION}.md"
+          if [ -f "$NOTES_FILE" ]; then
+            cp "$NOTES_FILE" release-body.md
+          else
+            printf 'Release %s\n' "$VERSION" > release-body.md
+          fi
+
       - name: Release
         uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
+          body_path: release-body.md
           files: |
             new-api-*
             checksums-linux.txt

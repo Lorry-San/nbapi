@@ -4977,6 +4977,19 @@
     "Zero retention": "零数据保留",
     "Zhipu": "智谱",
     "Zhipu V4": "智谱 V4",
-    "Zoom": "缩放"
+    "Zoom": "缩放",
+    "Continue with Mofang": "使用魔方财务继续",
+    "Failed to open Mofang login window": "无法打开魔方财务登录窗口",
+    "Mofang login failed": "魔方财务登录失败",
+    "Mofang login timed out": "魔方财务登录超时",
+    "Mofang": "魔方财务",
+    "Enable Mofang OAuth": "启用魔方财务 OAuth",
+    "Allow users to sign in with Mofang Finance": "允许用户使用魔方财务登录",
+    "API Base URL": "API 基础地址",
+    "Used to verify the JWT with /v1/user": "用于通过 /v1/user 校验 JWT",
+    "Mofang Login URL": "魔方财务登录地址",
+    "Popup login page that posts the JWT back to NBAPI": "弹窗登录页会把 JWT 回传给 NBAPI",
+    "https://mofang.example.com": "https://mofang.example.com",
+    "https://mofang.example.com/loginAccessToken": "https://mofang.example.com/loginAccessToken"
   }
 }

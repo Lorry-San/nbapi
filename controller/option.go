@@ -182,6 +182,14 @@ func UpdateOption(c *gin.Context) {
 			})
 			return
 		}
+	case "MofangOAuthEnabled":
+		if option.Value == "true" && (common.MofangApiBase == "" || common.MofangLoginUrl == "") {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "无法启用魔方财务登录，请先填入魔方财务 API 地址和登录地址！",
+			})
+			return
+		}
 	case "EmailDomainRestrictionEnabled":
 		if option.Value == "true" && len(common.EmailDomainWhitelist) == 0 {
 			c.JSON(http.StatusOK, gin.H{

@@ -36,12 +36,18 @@ func OaiChatToResponsesHandler(c *gin.Context, info *relaycommon.RelayInfo, resp
 	}
 
 	responseID := helper.GetResponseID(c)
-	responsesResp, usage, err := service.ChatCompletionsResponseToResponsesResponse(&chatResp, responseID)
+	responsesResp, usage, err := service.ChatCompletionsResponseToResponsesResponseWithOptions(
+		&chatResp,
+		responseID,
+		service.ChatCompletionsToResponsesOptions{
+			ThinkingToContent: info != nil && info.ChannelSetting.ThinkingToContent,
+		},
+	)
 	if err != nil {
 		return nil, types.NewOpenAIError(err, types.ErrorCodeBadResponseBody, http.StatusInternalServerError)
 	}
 	if usage == nil || usage.TotalTokens == 0 {
-		text := service.ExtractOutputTextFromResponses(responsesResp)
+		text := extractChatResponseText(&chatResp)
 		usage = service.ResponseText2Usage(c, text, info.UpstreamModelName, info.GetEstimatePromptTokens())
 		responsesResp.Usage = relayconvert.UsageFromChatUsage(usage)
 	}
@@ -62,7 +68,13 @@ func OaiChatToResponsesStreamHandler(c *gin.Context, info *relaycommon.RelayInfo
 	defer service.CloseResponseBodyGracefully(resp)
 
 	responseID := helper.GetResponseID(c)
-	state := relayconvert.NewChatToResponsesStreamState(responseID, info.UpstreamModelName)
+	state := relayconvert.NewChatToResponsesStreamStateWithOptions(
+		responseID,
+		info.UpstreamModelName,
+		relayconvert.ChatCompletionsToResponsesOptions{
+			ThinkingToContent: info != nil && info.ChannelSetting.ThinkingToContent,
+		},
+	)
 	streamErr := (*types.NewAPIError)(nil)
 
 	sendEvent := func(event relayconvert.ChatToResponsesStreamEvent) bool {
@@ -128,4 +140,16 @@ func OaiChatToResponsesStreamHandler(c *gin.Context, info *relaycommon.RelayInfo
 	}
 
 	return usage, nil
+}
+
+func extractChatResponseText(resp *dto.OpenAITextResponse) string {
+	if resp == nil {
+		return ""
+	}
+	text := ""
+	for _, choice := range resp.Choices {
+		text += choice.Message.StringContent()
+		text += choice.Message.GetReasoningContent()
+	}
+	return text
 }

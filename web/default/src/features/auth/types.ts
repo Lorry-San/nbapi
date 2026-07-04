@@ -101,6 +101,8 @@ export interface SystemStatus {
     oidc_client_id?: string
     linuxdo_oauth?: boolean
     linuxdo_client_id?: string
+    mofang_oauth?: boolean
+    mofang_login_url?: string
     telegram_oauth?: boolean
     passkey_login?: boolean
     wechat_login?: boolean
@@ -144,6 +146,8 @@ export interface SystemStatus {
   oidc_client_id?: string
   linuxdo_oauth?: boolean
   linuxdo_client_id?: string
+  mofang_oauth?: boolean
+  mofang_login_url?: string
   telegram_oauth?: boolean
   passkey_login?: boolean
   wechat_login?: boolean
@@ -181,7 +185,14 @@ export interface SystemStatus {
 
 export interface OAuthProvider {
   name: string
-  type: 'github' | 'discord' | 'oidc' | 'linuxdo' | 'telegram' | 'wechat'
+  type:
+    | 'github'
+    | 'discord'
+    | 'oidc'
+    | 'linuxdo'
+    | 'mofang'
+    | 'telegram'
+    | 'wechat'
   enabled: boolean
   clientId?: string
   authEndpoint?: string

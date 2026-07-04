@@ -34,6 +34,7 @@ type User struct {
 	OidcId           string                     `json:"oidc_id" gorm:"column:oidc_id;index"`
 	WeChatId         string                     `json:"wechat_id" gorm:"column:wechat_id;index"`
 	TelegramId       string                     `json:"telegram_id" gorm:"column:telegram_id;index"`
+	MofangId         string                     `json:"mofang_id" gorm:"column:mofang_id;index"`
 	VerificationCode string                     `json:"verification_code" gorm:"-:all"`                         // this field is only for Email verification, don't save it to database!
 	AccessToken      *string                    `json:"-" gorm:"type:char(32);column:access_token;uniqueIndex"` // this token is for system management
 	Quota            int                        `json:"quota" gorm:"type:int;default:0"`
@@ -597,6 +598,7 @@ func (user *User) ClearBinding(bindingType string) error {
 		"oidc":     "oidc_id",
 		"wechat":   "wechat_id",
 		"telegram": "telegram_id",
+		"mofang":   "mofang_id",
 		"linuxdo":  "linux_do_id",
 	}
 
@@ -732,6 +734,14 @@ func (user *User) FillUserByTelegramId() error {
 	return nil
 }
 
+func (user *User) FillUserByMofangId() error {
+	if user.MofangId == "" {
+		return errors.New("mofang id is empty")
+	}
+	err := DB.Where("mofang_id = ?", user.MofangId).First(user).Error
+	return err
+}
+
 func IsEmailAlreadyTaken(email string) bool {
 	return DB.Unscoped().Where("email = ?", email).Find(&User{}).RowsAffected == 1
 }
@@ -754,6 +764,12 @@ func IsOidcIdAlreadyTaken(oidcId string) bool {
 
 func IsTelegramIdAlreadyTaken(telegramId string) bool {
 	return DB.Unscoped().Where("telegram_id = ?", telegramId).Find(&User{}).RowsAffected == 1
+}
+
+func IsMofangIdAlreadyTaken(mofangId string) bool {
+	var user User
+	err := DB.Unscoped().Where("mofang_id = ?", mofangId).First(&user).Error
+	return !errors.Is(err, gorm.ErrRecordNotFound)
 }
 
 func ResetUserPasswordByEmail(email string, password string) error {

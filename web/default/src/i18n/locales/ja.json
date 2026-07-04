@@ -4977,6 +4977,19 @@
     "Zero retention": "データ保持なし",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V 4",
-    "Zoom": "ズーム"
+    "Zoom": "ズーム",
+    "Continue with Mofang": "Mofang で続行",
+    "Failed to open Mofang login window": "Mofang ログインウィンドウを開けませんでした",
+    "Mofang login failed": "Mofang ログインに失敗しました",
+    "Mofang login timed out": "Mofang ログインがタイムアウトしました",
+    "Mofang": "Mofang",
+    "Enable Mofang OAuth": "Enable Mofang OAuth",
+    "Allow users to sign in with Mofang Finance": "Allow users to sign in with Mofang Finance",
+    "API Base URL": "API Base URL",
+    "Used to verify the JWT with /v1/user": "Used to verify the JWT with /v1/user",
+    "Mofang Login URL": "Mofang Login URL",
+    "Popup login page that posts the JWT back to NBAPI": "Popup login page that posts the JWT back to NBAPI",
+    "https://mofang.example.com": "https://mofang.example.com",
+    "https://mofang.example.com/loginAccessToken": "https://mofang.example.com/loginAccessToken"
   }
 }

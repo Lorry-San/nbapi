@@ -114,6 +114,7 @@ export type SiteSettings = {
   Footer: string
   About: string
   HomePageContent: string
+  HomePageBackground: string
   ServerAddress: string
   'legal.user_agreement': string
   'legal.privacy_policy': string
@@ -149,6 +150,9 @@ export type AuthSettings = {
   LinuxDOClientId: string
   LinuxDOClientSecret: string
   LinuxDOMinimumTrustLevel: string
+  MofangOAuthEnabled: boolean
+  MofangApiBase: string
+  MofangLoginUrl: string
   WeChatAuthEnabled: boolean
   WeChatServerAddress: string
   WeChatServerToken: string

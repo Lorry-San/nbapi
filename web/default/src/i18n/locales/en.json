@@ -2127,6 +2127,7 @@
     "Hit Rate": "Hit Rate",
     "Hit tier": "Hit tier",
     "Home": "Home",
+    "Home Page Background": "Home Page Background",
     "Home Page Content": "Home Page Content",
     "Hostname or IP of your SMTP provider": "Hostname or IP of your SMTP provider",
     "Hour": "Hour",
@@ -2362,6 +2363,8 @@
     "Leave empty to keep unchanged": "Leave empty to keep unchanged",
     "Leave empty to use account email": "Leave empty to use account email",
     "Leave empty to use default": "Leave empty to use default",
+    "Image URL used as the default frontend home page background. Leave empty to use the built-in background.": "Image URL used as the default frontend home page background. Leave empty to use the built-in background.",
+    "Leave empty to use /v1. Use /v3 or /api/v3 when the upstream does not expose /v1.": "Leave empty to use /v1. Use /v3 or /api/v3 when the upstream does not expose /v1.",
     "Leave empty to use system temp directory": "Leave empty to use system temp directory",
     "Leave empty to use username": "Leave empty to use username",
     "Left to Right": "Left to Right",
@@ -4977,6 +4980,19 @@
     "Zero retention": "Zero retention",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Continue with Mofang": "Continue with Mofang",
+    "Failed to open Mofang login window": "Failed to open Mofang login window",
+    "Mofang login failed": "Mofang login failed",
+    "Mofang login timed out": "Mofang login timed out",
+    "Mofang": "Mofang",
+    "Enable Mofang OAuth": "Enable Mofang OAuth",
+    "Allow users to sign in with Mofang Finance": "Allow users to sign in with Mofang Finance",
+    "API Base URL": "API Base URL",
+    "Used to verify the JWT with /v1/user": "Used to verify the JWT with /v1/user",
+    "Mofang Login URL": "Mofang Login URL",
+    "Popup login page that posts the JWT back to NBAPI": "Popup login page that posts the JWT back to NBAPI",
+    "https://mofang.example.com": "https://mofang.example.com",
+    "https://mofang.example.com/loginAccessToken": "https://mofang.example.com/loginAccessToken"
   }
 }
