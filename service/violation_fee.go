@@ -5,12 +5,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/logger"
-	"github.com/QuantumNous/new-api/model"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	"github.com/QuantumNous/new-api/setting/model_setting"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/logger"
+	"github.com/Lorry-San/nbapi/model"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	"github.com/Lorry-San/nbapi/setting/model_setting"
+	"github.com/Lorry-San/nbapi/types"
 
 	"github.com/shopspring/decimal"
 
@@ -27,7 +27,7 @@ func IsViolationFeeCode(code types.ErrorCode) bool {
 	return strings.HasPrefix(string(code), ViolationFeeCodePrefix)
 }
 
-func HasCSAMViolationMarker(err *types.NewAPIError) bool {
+func HasCSAMViolationMarker(err *types.NBAPIError) bool {
 	if err == nil {
 		return false
 	}
@@ -38,7 +38,7 @@ func HasCSAMViolationMarker(err *types.NewAPIError) bool {
 	return strings.Contains(msg, CSAMViolationMarker) || strings.Contains(err.Error(), ContentViolatesUsageMarker)
 }
 
-func WrapAsViolationFeeGrokCSAM(err *types.NewAPIError) *types.NewAPIError {
+func WrapAsViolationFeeGrokCSAM(err *types.NBAPIError) *types.NBAPIError {
 	if err == nil {
 		return nil
 	}
@@ -53,7 +53,7 @@ func WrapAsViolationFeeGrokCSAM(err *types.NewAPIError) *types.NewAPIError {
 // - if error.code already has the violation-fee prefix, skip-retry is enabled.
 //
 // It must be called before retry decision logic.
-func NormalizeViolationFeeError(err *types.NewAPIError) *types.NewAPIError {
+func NormalizeViolationFeeError(err *types.NBAPIError) *types.NBAPIError {
 	if err == nil {
 		return nil
 	}
@@ -70,7 +70,7 @@ func NormalizeViolationFeeError(err *types.NewAPIError) *types.NewAPIError {
 	return err
 }
 
-func shouldChargeViolationFee(err *types.NewAPIError) bool {
+func shouldChargeViolationFee(err *types.NBAPIError) bool {
 	if err == nil {
 		return false
 	}
@@ -101,7 +101,7 @@ func calcViolationFeeQuota(amount, groupRatio float64) int {
 
 // ChargeViolationFeeIfNeeded charges an additional fee after the normal flow finishes (including refund).
 // It uses Grok fee settings as the fee policy.
-func ChargeViolationFeeIfNeeded(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, apiErr *types.NewAPIError) bool {
+func ChargeViolationFeeIfNeeded(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, apiErr *types.NBAPIError) bool {
 	if ctx == nil || relayInfo == nil || apiErr == nil {
 		return false
 	}

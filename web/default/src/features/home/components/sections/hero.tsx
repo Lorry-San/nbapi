@@ -49,7 +49,7 @@ export function Hero(props: HeroProps) {
   const { t } = useTranslation()
   const { status } = useStatus()
   const docsUrl =
-    (status?.docs_link as string | undefined) || 'https://docs.newapi.pro'
+    (status?.docs_link as string | undefined) || 'https://github.com/Lorry-San/nbapi'
 
   const renderDocsButton = () => {
     const isExternal = docsUrl.startsWith('http')
@@ -180,7 +180,7 @@ export function Hero(props: HeroProps) {
               </span>
               <p className='text-muted-foreground/60 text-xs leading-relaxed'>
                 {t(
-                  'Supports one-click configuration and perfectly adapts to NewAPI multi-protocol configuration.'
+                  'Supports one-click configuration and perfectly adapts to NBAPI multi-protocol configuration.'
                 )}
               </p>
             </div>

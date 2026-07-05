@@ -24,8 +24,8 @@ const LOCALES_DIR = path.resolve('src/i18n/locales')
 const FALLBACK_COMPARE_LOCALE = 'en' // used for "still English" detection only
 const OBFUSCATED_KEYS = [
   {
-    runtime: ['footer', 'new' + 'api', 'projectAttributionSuffix'].join('.'),
-    serialized: 'footer.new\\u0061pi.projectAttributionSuffix',
+    runtime: 'footer.nbapi.projectAttributionSuffix',
+    serialized: 'footer.nbapi.projectAttributionSuffix',
   },
 ]
 
@@ -64,9 +64,9 @@ const BRAND_AND_LITERAL_KEYS = new Set([
   'Mistral',
   'MokaAI',
   'Moonshot',
-  'New API',
-  'New API &lt;noreply@example.com&gt;',
-  'NewAPI',
+  'NBAPI',
+  'NBAPI &lt;noreply@example.com&gt;',
+  'NBAPI',
   'OAuth Client Secret',
   'OhMyGPT',
   'Ollama',
@@ -107,9 +107,9 @@ const BRAND_AND_LITERAL_KEYS = new Set([
   '"default": "us-central1", "claude-3-5-sonnet-20240620": "europe-west1"',
   'edit_this',
   'footer.columns.related.links.midjourney',
-  'footer.columns.related.links.newApiKeyTool',
+  'footer.columns.related.links.nbapiKeyTool',
   'my-status',
-  'new-api-key-tool',
+  'nbapi-key-tool',
   'price_xxx',
   'whsec_xxx',
 ])
@@ -144,7 +144,7 @@ function reorderLikeBase(
   fill,
   extras,
   missing,
-  currentPath = []
+  currentPath = [],
 ) {
   // If base is an object, we keep base's key order and recurse.
   if (isPlainObject(base)) {
@@ -161,7 +161,7 @@ function reorderLikeBase(
           f[key],
           extras,
           missing,
-          nextPath
+          nextPath,
         )
       } else {
         missing.push(nextPath.join('.'))
@@ -171,7 +171,7 @@ function reorderLikeBase(
           f[key],
           extras,
           missing,
-          nextPath
+          nextPath,
         )
       }
     }
@@ -257,7 +257,7 @@ async function main() {
       return { locale, score: countLeafKeys(trans) }
     })
     .sort(
-      (a, b) => b.score - a.score || a.locale.localeCompare(b.locale)
+      (a, b) => b.score - a.score || a.locale.localeCompare(b.locale),
     )[0]?.locale
 
   if (!baseLocale) throw new Error('No locale files found.')
@@ -316,7 +316,7 @@ async function main() {
       await fs.writeFile(
         path.join(extrasDir, `${locale}.extras.json`),
         stableStringify(extras),
-        'utf8'
+        'utf8',
       )
     } else {
       await fs.rm(path.join(extrasDir, `${locale}.extras.json`), {
@@ -327,7 +327,7 @@ async function main() {
       await fs.writeFile(
         path.join(reportsDir, `${locale}.untranslated.json`),
         stableStringify(untranslated),
-        'utf8'
+        'utf8',
       )
     } else {
       await fs.rm(path.join(reportsDir, `${locale}.untranslated.json`), {
@@ -342,11 +342,11 @@ async function main() {
   await fs.writeFile(
     path.join(reportsDir, '_sync-report.json'),
     stableStringify(report),
-    'utf8'
+    'utf8',
   )
 
   console.log(
-    `i18n sync done. Report: ${path.join(reportsDir, '_sync-report.json')}`
+    `i18n sync done. Report: ${path.join(reportsDir, '_sync-report.json')}`,
   )
 }
 

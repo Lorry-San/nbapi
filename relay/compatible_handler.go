@@ -6,23 +6,23 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/dto"
-	"github.com/QuantumNous/new-api/logger"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	relayconstant "github.com/QuantumNous/new-api/relay/constant"
-	"github.com/QuantumNous/new-api/relay/helper"
-	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/setting/model_setting"
-	"github.com/QuantumNous/new-api/setting/ratio_setting"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/logger"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	relayconstant "github.com/Lorry-San/nbapi/relay/constant"
+	"github.com/Lorry-San/nbapi/relay/helper"
+	"github.com/Lorry-San/nbapi/service"
+	"github.com/Lorry-San/nbapi/setting/model_setting"
+	"github.com/Lorry-San/nbapi/setting/ratio_setting"
+	"github.com/Lorry-San/nbapi/types"
 	"github.com/samber/lo"
 
 	"github.com/gin-gonic/gin"
 )
 
-func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types.NewAPIError) {
+func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (nbapiError *types.NBAPIError) {
 	info.InitChannelMeta(c)
 
 	textReq, ok := info.Request.(*dto.GeneralOpenAIRequest)
@@ -76,9 +76,9 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 		!info.ChannelSetting.PassThroughBodyEnabled &&
 		service.ShouldChatCompletionsUseResponsesGlobal(info.ChannelId, info.ChannelType, info.OriginModelName) {
 		applySystemPromptIfNeeded(c, info, request)
-		usage, newApiErr := chatCompletionsViaResponses(c, info, adaptor, request)
-		if newApiErr != nil {
-			return newApiErr
+		usage, nbapiErr := chatCompletionsViaResponses(c, info, adaptor, request)
+		if nbapiErr != nil {
+			return nbapiErr
 		}
 
 		var containAudioTokens = usage.CompletionTokenDetails.AudioTokens > 0 || usage.PromptTokensDetails.AudioTokens > 0
@@ -169,7 +169,7 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 		if len(info.ParamOverride) > 0 {
 			jsonData, err = relaycommon.ApplyParamOverrideWithRelayInfo(jsonData, info)
 			if err != nil {
-				return newAPIErrorFromParamOverride(err)
+				return nbapiErrorFromParamOverride(err)
 			}
 		}
 
@@ -197,18 +197,18 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 		httpResp = resp.(*http.Response)
 		info.IsStream = info.IsStream || strings.HasPrefix(httpResp.Header.Get("Content-Type"), "text/event-stream")
 		if httpResp.StatusCode != http.StatusOK {
-			newApiErr := service.RelayErrorHandler(c.Request.Context(), httpResp, false)
+			nbapiErr := service.RelayErrorHandler(c.Request.Context(), httpResp, false)
 			// reset status code 重置状态码
-			service.ResetStatusCode(newApiErr, statusCodeMappingStr)
-			return newApiErr
+			service.ResetStatusCode(nbapiErr, statusCodeMappingStr)
+			return nbapiErr
 		}
 	}
 
-	usage, newApiErr := adaptor.DoResponse(c, httpResp, info)
-	if newApiErr != nil {
+	usage, nbapiErr := adaptor.DoResponse(c, httpResp, info)
+	if nbapiErr != nil {
 		// reset status code 重置状态码
-		service.ResetStatusCode(newApiErr, statusCodeMappingStr)
-		return newApiErr
+		service.ResetStatusCode(nbapiErr, statusCodeMappingStr)
+		return nbapiErr
 	}
 
 	var containAudioTokens = usage.(*dto.Usage).CompletionTokenDetails.AudioTokens > 0 || usage.(*dto.Usage).PromptTokensDetails.AudioTokens > 0

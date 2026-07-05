@@ -1,6 +1,6 @@
 package perf_metrics_setting
 
-import "github.com/QuantumNous/new-api/setting/config"
+import "github.com/Lorry-San/nbapi/setting/config"
 
 type PerfMetricsSetting struct {
 	Enabled       bool   `json:"enabled"`

@@ -54,7 +54,7 @@ const OFFICIAL_RATIO_PRESET_ID = -100;
 const OFFICIAL_RATIO_PRESET_NAME = '官方倍率预设';
 const OFFICIAL_RATIO_PRESET_BASE_URL = 'https://basellm.github.io';
 const OFFICIAL_RATIO_PRESET_ENDPOINT =
-  '/llm-metadata/api/newapi/ratio_config-v1-base.json';
+  '/llm-metadata/api/nbapi/ratio_config-v1-base.json';
 const MODELS_DEV_PRESET_ID = -101;
 const MODELS_DEV_PRESET_NAME = 'models.dev 价格预设';
 const MODELS_DEV_PRESET_BASE_URL = 'https://models.dev';

@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/QuantumNous/new-api/dto"
-	"github.com/QuantumNous/new-api/service"
+	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/QuantumNous/new-api/constant"
+	"github.com/Lorry-San/nbapi/constant"
 )
 
 func TestValidateRedirectURL(t *testing.T) {

@@ -11,10 +11,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/dto"
-	"github.com/QuantumNous/new-api/logger"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/logger"
+	"github.com/Lorry-San/nbapi/types"
 )
 
 func MidjourneyErrorWrapper(code int, desc string) *dto.MidjourneyResponse {
@@ -43,7 +43,7 @@ func MidjourneyErrorWithStatusCodeWrapper(code int, desc string, statusCode int)
 //	}
 //	openAIError := dto.OpenAIError{
 //		Message: text,
-//		Type:    "new_api_error",
+//		Type:    "nbapi_error",
 //		Code:    code,
 //	}
 //	return &dto.OpenAIErrorWithStatusCode{
@@ -69,7 +69,7 @@ func ClaudeErrorWrapper(err error, code string, statusCode int) *dto.ClaudeError
 	}
 	claudeError := types.ClaudeError{
 		Message: text,
-		Type:    "new_api_error",
+		Type:    "nbapi_error",
 	}
 	return &dto.ClaudeErrorWithStatusCode{
 		Error:      claudeError,
@@ -83,8 +83,8 @@ func ClaudeErrorWrapperLocal(err error, code string, statusCode int) *dto.Claude
 	return claudeErr
 }
 
-func RelayErrorHandler(ctx context.Context, resp *http.Response, showBodyWhenFail bool) (newApiErr *types.NewAPIError) {
-	newApiErr = types.InitOpenAIError(types.ErrorCodeBadResponseStatusCode, resp.StatusCode)
+func RelayErrorHandler(ctx context.Context, resp *http.Response, showBodyWhenFail bool) (nbapiErr *types.NBAPIError) {
+	nbapiErr = types.InitOpenAIError(types.ErrorCodeBadResponseStatusCode, resp.StatusCode)
 
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -104,10 +104,10 @@ func RelayErrorHandler(ctx context.Context, resp *http.Response, showBodyWhenFai
 	err = common.Unmarshal(responseBody, &errResponse)
 	if err != nil {
 		if showBodyWhenFail {
-			newApiErr.Err = buildErrWithBody("")
+			nbapiErr.Err = buildErrWithBody("")
 		} else {
 			logger.LogError(ctx, fmt.Sprintf("bad response status code %d, body: %s", resp.StatusCode, responseBodyPreview))
-			newApiErr.Err = fmt.Errorf("bad response status code %d", resp.StatusCode)
+			nbapiErr.Err = fmt.Errorf("bad response status code %d", resp.StatusCode)
 		}
 		return
 	}
@@ -116,22 +116,22 @@ func RelayErrorHandler(ctx context.Context, resp *http.Response, showBodyWhenFai
 		// General format error (OpenAI, Anthropic, Gemini, etc.)
 		oaiError := errResponse.TryToOpenAIError()
 		if oaiError != nil {
-			newApiErr = types.WithOpenAIError(*oaiError, resp.StatusCode)
+			nbapiErr = types.WithOpenAIError(*oaiError, resp.StatusCode)
 			if showBodyWhenFail {
-				newApiErr.Err = buildErrWithBody(newApiErr.Error())
+				nbapiErr.Err = buildErrWithBody(nbapiErr.Error())
 			}
 			return
 		}
 	}
-	newApiErr = types.NewOpenAIError(errors.New(errResponse.ToMessage()), types.ErrorCodeBadResponseStatusCode, resp.StatusCode)
+	nbapiErr = types.NewOpenAIError(errors.New(errResponse.ToMessage()), types.ErrorCodeBadResponseStatusCode, resp.StatusCode)
 	if showBodyWhenFail {
-		newApiErr.Err = buildErrWithBody(newApiErr.Error())
+		nbapiErr.Err = buildErrWithBody(nbapiErr.Error())
 	}
 	return
 }
 
-func ResetStatusCode(newApiErr *types.NewAPIError, statusCodeMappingStr string) {
-	if newApiErr == nil {
+func ResetStatusCode(nbapiErr *types.NBAPIError, statusCodeMappingStr string) {
+	if nbapiErr == nil {
 		return
 	}
 	if statusCodeMappingStr == "" || statusCodeMappingStr == "{}" {
@@ -142,16 +142,16 @@ func ResetStatusCode(newApiErr *types.NewAPIError, statusCodeMappingStr string) 
 	if err != nil {
 		return
 	}
-	if newApiErr.StatusCode == http.StatusOK {
+	if nbapiErr.StatusCode == http.StatusOK {
 		return
 	}
-	codeStr := strconv.Itoa(newApiErr.StatusCode)
+	codeStr := strconv.Itoa(nbapiErr.StatusCode)
 	if value, ok := statusCodeMapping[codeStr]; ok {
 		intCode, ok := parseStatusCodeMappingValue(value)
 		if !ok {
 			return
 		}
-		newApiErr.StatusCode = intCode
+		nbapiErr.StatusCode = intCode
 	}
 }
 
@@ -209,8 +209,8 @@ func TaskErrorWrapper(err error, code string, statusCode int) *dto.TaskError {
 	return taskError
 }
 
-// TaskErrorFromAPIError 将 PreConsumeBilling 返回的 NewAPIError 转换为 TaskError。
-func TaskErrorFromAPIError(apiErr *types.NewAPIError) *dto.TaskError {
+// TaskErrorFromAPIError 将 PreConsumeBilling 返回的 NBAPIError 转换为 TaskError。
+func TaskErrorFromAPIError(apiErr *types.NBAPIError) *dto.TaskError {
 	if apiErr == nil {
 		return nil
 	}

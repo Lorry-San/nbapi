@@ -40,7 +40,7 @@ import { consumeMofangAccessTokenCallback } from './helpers/mofangOAuthCallback'
 // Welcome message (Do not remove this without permission from the original developer)
 if (typeof window !== 'undefined') {
   console.log(
-    '%cWE ❤ NEWAPI%c Github: https://github.com/QuantumNous/new-api',
+    '%cWE ❤ NBAPI%c Github: https://github.com/Lorry-San/nbapi',
     'color: #10b981; font-weight: bold; font-size: 24px;',
     'color: inherit; font-size: 14px;',
   );

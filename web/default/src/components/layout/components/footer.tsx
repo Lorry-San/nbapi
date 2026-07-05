@@ -42,11 +42,7 @@ interface FooterProps {
   className?: string
 }
 
-const NEW_API_FOOTER_ATTRIBUTION_KEY = [
-  'footer',
-  'new' + 'api',
-  'projectAttributionSuffix',
-].join('.')
+const NBAPI_FOOTER_ATTRIBUTION_KEY = 'footer.nbapi.projectAttributionSuffix'
 
 function FooterLinkItem(props: { link: FooterLink }) {
   const { t } = useTranslation()
@@ -129,14 +125,14 @@ function ProjectAttribution(props: { currentYear: number; inline?: boolean }) {
     <span className='text-muted-foreground/45'>
       &copy; {props.currentYear}{' '}
       <a
-        href='https://github.com/QuantumNous/new-api'
+        href='https://github.com/Lorry-San/nbapi'
         target='_blank'
         rel='noopener noreferrer'
         className='text-foreground/70 hover:text-foreground font-medium transition-colors'
       >
-        {t('New API')}
+        {t('NBAPI')}
       </a>
-      . {t(NEW_API_FOOTER_ATTRIBUTION_KEY)}
+      . {t(NBAPI_FOOTER_ATTRIBUTION_KEY)}
     </span>
   )
   if (props.inline) {
@@ -159,7 +155,7 @@ export function Footer(props: FooterProps) {
   } = useSystemConfig()
 
   const displayLogo = systemLogo || props.logo || '/logo.png'
-  const displayName = systemName || props.name || 'New API'
+  const displayName = systemName || props.name || 'NBAPI'
   const isDemoSiteMode = Boolean(demoSiteEnabled)
   const currentYear = new Date().getFullYear()
 
@@ -170,15 +166,15 @@ export function Footer(props: FooterProps) {
         links: [
           {
             text: t('footer.columns.about.links.aboutProject'),
-            href: 'https://docs.newapi.pro/wiki/project-introduction/',
+            href: 'https://github.com/Lorry-San/nbapi/wiki/project-introduction/',
           },
           {
             text: t('footer.columns.about.links.contact'),
-            href: 'https://docs.newapi.pro/support/community-interaction/',
+            href: 'https://github.com/Lorry-San/nbapi/support/community-interaction/',
           },
           {
             text: t('footer.columns.about.links.features'),
-            href: 'https://docs.newapi.pro/wiki/features-introduction/',
+            href: 'https://github.com/Lorry-San/nbapi/wiki/features-introduction/',
           },
         ],
       },
@@ -187,15 +183,15 @@ export function Footer(props: FooterProps) {
         links: [
           {
             text: t('footer.columns.docs.links.quickStart'),
-            href: 'https://docs.newapi.pro/getting-started/',
+            href: 'https://github.com/Lorry-San/nbapi/getting-started/',
           },
           {
             text: t('footer.columns.docs.links.installation'),
-            href: 'https://docs.newapi.pro/installation/',
+            href: 'https://github.com/Lorry-San/nbapi/installation/',
           },
           {
             text: t('footer.columns.docs.links.apiDocs'),
-            href: 'https://docs.newapi.pro/api/',
+            href: 'https://github.com/Lorry-San/nbapi/api/',
           },
         ],
       },
@@ -211,13 +207,13 @@ export function Footer(props: FooterProps) {
             href: 'https://github.com/novicezk/midjourney-proxy',
           },
           {
-            text: t('footer.columns.related.links.newApiKeyTool'),
-            href: 'https://github.com/Calcium-Ion/new-api-key-tool',
+            text: t('footer.columns.related.links.nbapiKeyTool'),
+            href: 'https://github.com/Lorry-San/nbapi-key-tool',
           },
         ],
       },
     ],
-    [t]
+    [t],
   )
 
   const displayColumns = props.columns ?? fallbackColumns
@@ -227,7 +223,7 @@ export function Footer(props: FooterProps) {
       <footer
         className={cn(
           'border-border/40 relative z-10 border-t',
-          props.className
+          props.className,
         )}
       >
         <div className='mx-auto w-full max-w-6xl px-6 py-5'>

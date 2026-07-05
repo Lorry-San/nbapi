@@ -17,77 +17,78 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState } from 'react';
-import { API, showError } from '../../helpers';
-import { marked } from 'marked';
-import { Empty } from '@douyinfe/semi-ui';
+import React, { useEffect, useState } from 'react'
+import { API, showError } from '../../helpers'
+import { marked } from 'marked'
+import { Empty } from '@douyinfe/semi-ui'
 import {
   IllustrationConstruction,
   IllustrationConstructionDark,
-} from '@douyinfe/semi-illustrations';
-import { useTranslation } from 'react-i18next';
+} from '@douyinfe/semi-illustrations'
+import { useTranslation } from 'react-i18next'
 
 const About = () => {
-  const { t } = useTranslation();
-  const [about, setAbout] = useState('');
-  const [aboutLoaded, setAboutLoaded] = useState(false);
-  const currentYear = new Date().getFullYear();
+  const { t } = useTranslation()
+  const [about, setAbout] = useState('')
+  const [aboutLoaded, setAboutLoaded] = useState(false)
+  const currentYear = new Date().getFullYear()
 
   const displayAbout = async () => {
-    setAbout(localStorage.getItem('about') || '');
-    const res = await API.get('/api/about');
-    const { success, message, data } = res.data;
+    setAbout(localStorage.getItem('about') || '')
+    const res = await API.get('/api/about')
+    const { success, message, data } = res.data
     if (success) {
-      let aboutContent = data;
+      let aboutContent = data
       if (!data.startsWith('https://')) {
-        aboutContent = marked.parse(data);
+        aboutContent = marked.parse(data)
       }
-      setAbout(aboutContent);
-      localStorage.setItem('about', aboutContent);
+      setAbout(aboutContent)
+      localStorage.setItem('about', aboutContent)
     } else {
-      showError(message);
-      setAbout(t('加载关于内容失败...'));
+      showError(message)
+      setAbout(t('加载关于内容失败...'))
     }
-    setAboutLoaded(true);
-  };
+    setAboutLoaded(true)
+  }
 
   useEffect(() => {
-    displayAbout().then();
-  }, []);
+    displayAbout().then()
+  }, [])
 
   const emptyStyle = {
     padding: '24px',
-  };
+  }
 
   const customDescription = (
     <div style={{ textAlign: 'center' }}>
       <p>{t('可在设置页面设置关于内容，支持 HTML & Markdown')}</p>
-      {t('New API项目仓库地址：')}
+      {t('NBAPI项目仓库地址：')}
       <a
-        href='https://github.com/QuantumNous/new-api'
+        href='https://github.com/Lorry-San/nbapi'
         target='_blank'
         rel='noopener noreferrer'
         className='!text-semi-color-primary'
       >
-        https://github.com/QuantumNous/new-api
+        https://github.com/Lorry-San/nbapi
       </a>
       <p>
+        &copy; {currentYear}{' '}
         <a
-          href='https://github.com/QuantumNous/new-api'
+          href='https://github.com/Lorry-San/nbapi'
           target='_blank'
           rel='noopener noreferrer'
           className='!text-semi-color-primary'
         >
-          NewAPI
+          NBAPI
         </a>{' '}
-        {t('© {{currentYear}}', { currentYear })}{' '}
+        {t('| Maintained by')}{' '}
         <a
-          href='https://github.com/QuantumNous'
+          href='https://github.com/Lorry-San'
           target='_blank'
           rel='noopener noreferrer'
           className='!text-semi-color-primary'
         >
-          QuantumNous
+          Lorry-San
         </a>{' '}
         {t('| 基于')}{' '}
         <a
@@ -97,15 +98,6 @@ const About = () => {
           className='!text-semi-color-primary'
         >
           One API v0.5.4
-        </a>{' '}
-        © 2023{' '}
-        <a
-          href='https://github.com/songquanpeng'
-          target='_blank'
-          rel='noopener noreferrer'
-          className='!text-semi-color-primary'
-        >
-          JustSong
         </a>
       </p>
       <p>
@@ -130,7 +122,7 @@ const About = () => {
         {t('的前提下使用。')}
       </p>
     </div>
-  );
+  )
 
   return (
     <div className='classic-page-fill flex flex-col pt-[60px] px-2'>
@@ -172,7 +164,7 @@ const About = () => {
         </>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default About;
+export default About

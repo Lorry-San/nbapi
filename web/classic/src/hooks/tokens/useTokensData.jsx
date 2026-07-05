@@ -233,7 +233,7 @@ export const useTokensData = (openFluentNotification, openCCSwitchModal) => {
     }
     if (url.includes('{cherryConfig}') === true) {
       let cherryConfig = {
-        id: 'new-api',
+        id: 'nbapi',
         baseUrl: serverAddress,
         apiKey: `sk-${fullKey}`,
       };
@@ -243,7 +243,7 @@ export const useTokensData = (openFluentNotification, openCCSwitchModal) => {
       url = url.replaceAll('{cherryConfig}', encodedConfig);
     } else if (url.includes('{aionuiConfig}') === true) {
       let aionuiConfig = {
-        platform: 'new-api',
+        platform: 'nbapi',
         baseUrl: serverAddress,
         apiKey: `sk-${fullKey}`,
       };
@@ -253,7 +253,7 @@ export const useTokensData = (openFluentNotification, openCCSwitchModal) => {
       url = url.replaceAll('{aionuiConfig}', encodedConfig);
     } else if (url.includes('{deepchatConfig}') === true) {
       let deepchatConfig = {
-        id: 'new-api',
+        id: 'nbapi',
         baseUrl: serverAddress,
         apiKey: `sk-${fullKey}`,
       };

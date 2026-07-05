@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/QuantumNous/new-api/common"
+	"github.com/Lorry-San/nbapi/common"
 )
 
 type OpenAIError struct {
@@ -26,7 +26,7 @@ type ClaudeError struct {
 type ErrorType string
 
 const (
-	ErrorTypeNewAPIError     ErrorType = "new_api_error"
+	ErrorTypeNBAPIError     ErrorType = "nbapi_error"
 	ErrorTypeOpenAIError     ErrorType = "openai_error"
 	ErrorTypeClaudeError     ErrorType = "claude_error"
 	ErrorTypeMidjourneyError ErrorType = "midjourney_error"
@@ -42,7 +42,7 @@ const (
 	ErrorCodeSensitiveWordsDetected ErrorCode = "sensitive_words_detected"
 	ErrorCodeViolationFeeGrokCSAM   ErrorCode = "violation_fee.grok.csam"
 
-	// new api error
+	// NBAPI error
 	ErrorCodeCountTokenFailed   ErrorCode = "count_token_failed"
 	ErrorCodeModelPriceError    ErrorCode = "model_price_error"
 	ErrorCodeInvalidApiType     ErrorCode = "invalid_api_type"
@@ -87,7 +87,7 @@ const (
 	ErrorCodePreConsumeTokenQuotaFailed ErrorCode = "pre_consume_token_quota_failed"
 )
 
-type NewAPIError struct {
+type NBAPIError struct {
 	Err            error
 	RelayError     any
 	skipRetry      bool
@@ -98,29 +98,29 @@ type NewAPIError struct {
 	Metadata       json.RawMessage
 }
 
-// Unwrap enables errors.Is / errors.As to work with NewAPIError by exposing the underlying error.
-func (e *NewAPIError) Unwrap() error {
+// Unwrap enables errors.Is / errors.As to work with NBAPIError by exposing the underlying error.
+func (e *NBAPIError) Unwrap() error {
 	if e == nil {
 		return nil
 	}
 	return e.Err
 }
 
-func (e *NewAPIError) GetErrorCode() ErrorCode {
+func (e *NBAPIError) GetErrorCode() ErrorCode {
 	if e == nil {
 		return ""
 	}
 	return e.errorCode
 }
 
-func (e *NewAPIError) GetErrorType() ErrorType {
+func (e *NBAPIError) GetErrorType() ErrorType {
 	if e == nil {
 		return ""
 	}
 	return e.errorType
 }
 
-func (e *NewAPIError) Error() string {
+func (e *NBAPIError) Error() string {
 	if e == nil {
 		return ""
 	}
@@ -131,7 +131,7 @@ func (e *NewAPIError) Error() string {
 	return e.Err.Error()
 }
 
-func (e *NewAPIError) ErrorWithStatusCode() string {
+func (e *NBAPIError) ErrorWithStatusCode() string {
 	if e == nil {
 		return ""
 	}
@@ -145,7 +145,7 @@ func (e *NewAPIError) ErrorWithStatusCode() string {
 	return fmt.Sprintf("status_code=%d, %s", e.StatusCode, msg)
 }
 
-func (e *NewAPIError) MaskSensitiveError() string {
+func (e *NBAPIError) MaskSensitiveError() string {
 	if e == nil {
 		return ""
 	}
@@ -159,7 +159,7 @@ func (e *NewAPIError) MaskSensitiveError() string {
 	return common.MaskSensitiveInfo(errStr)
 }
 
-func (e *NewAPIError) MaskSensitiveErrorWithStatusCode() string {
+func (e *NBAPIError) MaskSensitiveErrorWithStatusCode() string {
 	if e == nil {
 		return ""
 	}
@@ -173,11 +173,11 @@ func (e *NewAPIError) MaskSensitiveErrorWithStatusCode() string {
 	return fmt.Sprintf("status_code=%d, %s", e.StatusCode, msg)
 }
 
-func (e *NewAPIError) SetMessage(message string) {
+func (e *NBAPIError) SetMessage(message string) {
 	e.Err = errors.New(message)
 }
 
-func (e *NewAPIError) ToOpenAIError() OpenAIError {
+func (e *NBAPIError) ToOpenAIError() OpenAIError {
 	var result OpenAIError
 	switch e.errorType {
 	case ErrorTypeOpenAIError:
@@ -210,7 +210,7 @@ func (e *NewAPIError) ToOpenAIError() OpenAIError {
 	return result
 }
 
-func (e *NewAPIError) ToClaudeError() ClaudeError {
+func (e *NBAPIError) ToClaudeError() ClaudeError {
 	var result ClaudeError
 	switch e.errorType {
 	case ErrorTypeOpenAIError:
@@ -239,10 +239,10 @@ func (e *NewAPIError) ToClaudeError() ClaudeError {
 	return result
 }
 
-type NewAPIErrorOptions func(*NewAPIError)
+type NBAPIErrorOptions func(*NBAPIError)
 
-func NewError(err error, errorCode ErrorCode, ops ...NewAPIErrorOptions) *NewAPIError {
-	var newErr *NewAPIError
+func NewError(err error, errorCode ErrorCode, ops ...NBAPIErrorOptions) *NBAPIError {
+	var newErr *NBAPIError
 	// 保留深层传递的 new err
 	if errors.As(err, &newErr) {
 		for _, op := range ops {
@@ -250,10 +250,10 @@ func NewError(err error, errorCode ErrorCode, ops ...NewAPIErrorOptions) *NewAPI
 		}
 		return newErr
 	}
-	e := &NewAPIError{
+	e := &NBAPIError{
 		Err:        err,
 		RelayError: nil,
-		errorType:  ErrorTypeNewAPIError,
+		errorType:  ErrorTypeNBAPIError,
 		StatusCode: http.StatusInternalServerError,
 		errorCode:  errorCode,
 	}
@@ -263,8 +263,8 @@ func NewError(err error, errorCode ErrorCode, ops ...NewAPIErrorOptions) *NewAPI
 	return e
 }
 
-func NewOpenAIError(err error, errorCode ErrorCode, statusCode int, ops ...NewAPIErrorOptions) *NewAPIError {
-	var newErr *NewAPIError
+func NewOpenAIError(err error, errorCode ErrorCode, statusCode int, ops ...NBAPIErrorOptions) *NBAPIError {
+	var newErr *NBAPIError
 	// 保留深层传递的 new err
 	if errors.As(err, &newErr) {
 		if newErr.RelayError == nil {
@@ -288,7 +288,7 @@ func NewOpenAIError(err error, errorCode ErrorCode, statusCode int, ops ...NewAP
 	return WithOpenAIError(openaiError, statusCode, ops...)
 }
 
-func InitOpenAIError(errorCode ErrorCode, statusCode int, ops ...NewAPIErrorOptions) *NewAPIError {
+func InitOpenAIError(errorCode ErrorCode, statusCode int, ops ...NBAPIErrorOptions) *NBAPIError {
 	openaiError := OpenAIError{
 		Type: string(errorCode),
 		Code: errorCode,
@@ -296,14 +296,14 @@ func InitOpenAIError(errorCode ErrorCode, statusCode int, ops ...NewAPIErrorOpti
 	return WithOpenAIError(openaiError, statusCode, ops...)
 }
 
-func NewErrorWithStatusCode(err error, errorCode ErrorCode, statusCode int, ops ...NewAPIErrorOptions) *NewAPIError {
-	e := &NewAPIError{
+func NewErrorWithStatusCode(err error, errorCode ErrorCode, statusCode int, ops ...NBAPIErrorOptions) *NBAPIError {
+	e := &NBAPIError{
 		Err: err,
 		RelayError: OpenAIError{
 			Message: err.Error(),
 			Type:    string(errorCode),
 		},
-		errorType:  ErrorTypeNewAPIError,
+		errorType:  ErrorTypeNBAPIError,
 		StatusCode: statusCode,
 		errorCode:  errorCode,
 	}
@@ -314,7 +314,7 @@ func NewErrorWithStatusCode(err error, errorCode ErrorCode, statusCode int, ops 
 	return e
 }
 
-func WithOpenAIError(openAIError OpenAIError, statusCode int, ops ...NewAPIErrorOptions) *NewAPIError {
+func WithOpenAIError(openAIError OpenAIError, statusCode int, ops ...NBAPIErrorOptions) *NBAPIError {
 	code, ok := openAIError.Code.(string)
 	if !ok {
 		if openAIError.Code != nil {
@@ -326,7 +326,7 @@ func WithOpenAIError(openAIError OpenAIError, statusCode int, ops ...NewAPIError
 	if openAIError.Type == "" {
 		openAIError.Type = "upstream_error"
 	}
-	e := &NewAPIError{
+	e := &NBAPIError{
 		RelayError: openAIError,
 		errorType:  ErrorTypeOpenAIError,
 		StatusCode: statusCode,
@@ -346,11 +346,11 @@ func WithOpenAIError(openAIError OpenAIError, statusCode int, ops ...NewAPIError
 	return e
 }
 
-func WithClaudeError(claudeError ClaudeError, statusCode int, ops ...NewAPIErrorOptions) *NewAPIError {
+func WithClaudeError(claudeError ClaudeError, statusCode int, ops ...NBAPIErrorOptions) *NBAPIError {
 	if claudeError.Type == "" {
 		claudeError.Type = "upstream_error"
 	}
-	e := &NewAPIError{
+	e := &NBAPIError{
 		RelayError: claudeError,
 		errorType:  ErrorTypeClaudeError,
 		StatusCode: statusCode,
@@ -363,14 +363,14 @@ func WithClaudeError(claudeError ClaudeError, statusCode int, ops ...NewAPIError
 	return e
 }
 
-func IsChannelError(err *NewAPIError) bool {
+func IsChannelError(err *NBAPIError) bool {
 	if err == nil {
 		return false
 	}
 	return strings.HasPrefix(string(err.errorCode), "channel:")
 }
 
-func IsSkipRetryError(err *NewAPIError) bool {
+func IsSkipRetryError(err *NBAPIError) bool {
 	if err == nil {
 		return false
 	}
@@ -378,26 +378,26 @@ func IsSkipRetryError(err *NewAPIError) bool {
 	return err.skipRetry
 }
 
-func ErrOptionWithSkipRetry() NewAPIErrorOptions {
-	return func(e *NewAPIError) {
+func ErrOptionWithSkipRetry() NBAPIErrorOptions {
+	return func(e *NBAPIError) {
 		e.skipRetry = true
 	}
 }
 
-func ErrOptionWithNoRecordErrorLog() NewAPIErrorOptions {
-	return func(e *NewAPIError) {
+func ErrOptionWithNoRecordErrorLog() NBAPIErrorOptions {
+	return func(e *NBAPIError) {
 		e.recordErrorLog = common.GetPointer(false)
 	}
 }
 
-func ErrOptionWithStatusCode(statusCode int) NewAPIErrorOptions {
-	return func(e *NewAPIError) {
+func ErrOptionWithStatusCode(statusCode int) NBAPIErrorOptions {
+	return func(e *NBAPIError) {
 		e.StatusCode = statusCode
 	}
 }
 
-func ErrOptionWithHideErrMsg(replaceStr string) NewAPIErrorOptions {
-	return func(e *NewAPIError) {
+func ErrOptionWithHideErrMsg(replaceStr string) NBAPIErrorOptions {
+	return func(e *NBAPIError) {
 		if common.DebugEnabled {
 			fmt.Printf("ErrOptionWithHideErrMsg: %s, origin error: %s", replaceStr, e.Err)
 		}
@@ -405,7 +405,7 @@ func ErrOptionWithHideErrMsg(replaceStr string) NewAPIErrorOptions {
 	}
 }
 
-func IsRecordErrorLog(e *NewAPIError) bool {
+func IsRecordErrorLog(e *NBAPIError) bool {
 	if e == nil {
 		return false
 	}

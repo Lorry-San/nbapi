@@ -1,4 +1,4 @@
-# AGENTS.md — Project Conventions for new-api
+# AGENTS.md — Project Conventions for nbapi
 
 DO NOT send optional commentary
 

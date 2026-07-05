@@ -59,6 +59,8 @@ jobs:
           echo "Building tag: ${TAG} for ${{ matrix.arch }}"
           OWNER_LC=$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
           echo "GHCR_IMAGE=ghcr.io/${OWNER_LC}/nbapi" >> $GITHUB_ENV
+          DOCKERHUB_OWNER=$(printf '%s' "${{ secrets.DOCKERHUB_USERNAME }}" | tr '[:upper:]' '[:lower:]')
+          echo "DOCKERHUB_IMAGE=${DOCKERHUB_OWNER}/nbapi" >> $GITHUB_ENV
           echo "HAS_DOCKERHUB=${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
@@ -86,8 +88,8 @@ jobs:
             echo "${GHCR_IMAGE}:${TAG}-${{ matrix.arch }}"
             echo "${GHCR_IMAGE}:latest-${{ matrix.arch }}"
             if [ "${HAS_DOCKERHUB}" = "true" ]; then
-              echo "calciumion/new-api:${TAG}-${{ matrix.arch }}"
-              echo "calciumion/new-api:latest-${{ matrix.arch }}"
+              echo "${DOCKERHUB_IMAGE}:${TAG}-${{ matrix.arch }}"
+              echo "${DOCKERHUB_IMAGE}:latest-${{ matrix.arch }}"
             fi
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
@@ -142,6 +144,8 @@ jobs:
           echo "TAG=${{ needs.build_single_arch.outputs.tag }}" >> $GITHUB_ENV
           OWNER_LC=$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
           echo "GHCR_IMAGE=ghcr.io/${OWNER_LC}/nbapi" >> $GITHUB_ENV
+          DOCKERHUB_OWNER=$(printf '%s' "${{ secrets.DOCKERHUB_USERNAME }}" | tr '[:upper:]' '[:lower:]')
+          echo "DOCKERHUB_IMAGE=${DOCKERHUB_OWNER}/nbapi" >> $GITHUB_ENV
           echo "HAS_DOCKERHUB=${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}" >> $GITHUB_ENV
 
       - name: Log in to GHCR
@@ -176,17 +180,17 @@ jobs:
         if: env.HAS_DOCKERHUB == 'true'
         run: |
           docker buildx imagetools create \
-            -t calciumion/new-api:${TAG} \
-            calciumion/new-api:${TAG}-amd64 \
-            calciumion/new-api:${TAG}-arm64
+            -t ${DOCKERHUB_IMAGE}:${TAG} \
+            ${DOCKERHUB_IMAGE}:${TAG}-amd64 \
+            ${DOCKERHUB_IMAGE}:${TAG}-arm64
 
       - name: Create & push manifest (latest)
         if: env.HAS_DOCKERHUB == 'true'
         run: |
           docker buildx imagetools create \
-            -t calciumion/new-api:latest \
-            calciumion/new-api:latest-amd64 \
-            calciumion/new-api:latest-arm64
+            -t ${DOCKERHUB_IMAGE}:latest \
+            ${DOCKERHUB_IMAGE}:latest-amd64 \
+            ${DOCKERHUB_IMAGE}:latest-arm64
 
       - name: Manifest summary
         run: |

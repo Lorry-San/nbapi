@@ -14,19 +14,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/model"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/model"
 	"github.com/samber/lo"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/dto"
-	"github.com/QuantumNous/new-api/relay/channel"
-	taskcommon "github.com/QuantumNous/new-api/relay/channel/task/taskcommon"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	"github.com/QuantumNous/new-api/service"
+	"github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/relay/channel"
+	taskcommon "github.com/Lorry-San/nbapi/relay/channel/task/taskcommon"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	"github.com/Lorry-San/nbapi/service"
 )
 
 // ============================
@@ -103,7 +103,7 @@ func (a *TaskAdaptor) ValidateRequestAndSetAction(c *gin.Context, info *relaycom
 
 // BuildRequestURL constructs the upstream URL.
 func (a *TaskAdaptor) BuildRequestURL(info *relaycommon.RelayInfo) (string, error) {
-	if isNewAPIRelay(info.ApiKey) {
+	if isNBAPIRelay(info.ApiKey) {
 		return fmt.Sprintf("%s/jimeng/?Action=CVSync2AsyncSubmitTask&Version=2022-08-31", a.baseURL), nil
 	}
 	return fmt.Sprintf("%s/?Action=CVSync2AsyncSubmitTask&Version=2022-08-31", a.baseURL), nil
@@ -113,7 +113,7 @@ func (a *TaskAdaptor) BuildRequestURL(info *relaycommon.RelayInfo) (string, erro
 func (a *TaskAdaptor) BuildRequestHeader(c *gin.Context, req *http.Request, info *relaycommon.RelayInfo) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	if isNewAPIRelay(info.ApiKey) {
+	if isNBAPIRelay(info.ApiKey) {
 		req.Header.Set("Authorization", "Bearer "+info.ApiKey)
 	} else {
 		return a.signRequest(req, a.accessKey, a.secretKey)
@@ -219,7 +219,7 @@ func (a *TaskAdaptor) FetchTask(baseUrl, key string, body map[string]any, proxy 
 	}
 
 	uri := fmt.Sprintf("%s/?Action=CVSync2AsyncGetResult&Version=2022-08-31", baseUrl)
-	if isNewAPIRelay(key) {
+	if isNBAPIRelay(key) {
 		uri = fmt.Sprintf("%s/jimeng/?Action=CVSync2AsyncGetResult&Version=2022-08-31", a.baseURL)
 	}
 	payload := map[string]string{
@@ -239,7 +239,7 @@ func (a *TaskAdaptor) FetchTask(baseUrl, key string, body map[string]any, proxy 
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
 
-	if isNewAPIRelay(key) {
+	if isNBAPIRelay(key) {
 		req.Header.Set("Authorization", "Bearer "+key)
 	} else {
 		keyParts := strings.Split(key, "|")
@@ -475,6 +475,6 @@ func (a *TaskAdaptor) ConvertToOpenAIVideo(originTask *model.Task) ([]byte, erro
 	return common.Marshal(openAIVideo)
 }
 
-func isNewAPIRelay(apiKey string) bool {
+func isNBAPIRelay(apiKey string) bool {
 	return strings.HasPrefix(apiKey, "sk-")
 }

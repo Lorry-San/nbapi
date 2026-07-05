@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/QuantumNous/new-api/constant"
+	"github.com/Lorry-San/nbapi/constant"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )

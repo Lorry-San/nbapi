@@ -41,39 +41,40 @@ function EmptyAboutState() {
           <h2 className='text-2xl font-bold'>{t('No About Content Set')}</h2>
           <p className='text-muted-foreground'>
             {t(
-              'The administrator has not configured any about content yet. You can set it in the settings page, supporting HTML or URL.'
+              'The administrator has not configured any about content yet. You can set it in the settings page, supporting HTML or URL.',
             )}
           </p>
         </div>
         <div className='space-y-4 text-sm'>
           <p>
-            {t('New API Project Repository:')}{' '}
+            {t('NBAPI Project Repository:')}{' '}
             <a
-              href='https://github.com/QuantumNous/new-api'
+              href='https://github.com/Lorry-San/nbapi'
               target='_blank'
               rel='noopener noreferrer'
               className='text-primary hover:underline'
             >
-              {t('https://github.com/QuantumNous/new-api')}
+              {t('https://github.com/Lorry-San/nbapi')}
             </a>
           </p>
           <p className='text-muted-foreground'>
+            &copy; {currentYear}{' '}
             <a
-              href='https://github.com/QuantumNous/new-api'
+              href='https://github.com/Lorry-San/nbapi'
               target='_blank'
               rel='noopener noreferrer'
               className='text-primary hover:underline'
             >
-              {t('NewAPI')}
+              {t('NBAPI')}
             </a>{' '}
-            © {currentYear}{' '}
+            {t('| Maintained by')}{' '}
             <a
-              href='https://github.com/QuantumNous'
+              href='https://github.com/Lorry-San'
               target='_blank'
               rel='noopener noreferrer'
               className='text-primary hover:underline'
             >
-              {t('QuantumNous')}
+              {t('Lorry-San')}
             </a>{' '}
             {t('| Based on')}{' '}
             <a
@@ -83,21 +84,12 @@ function EmptyAboutState() {
               className='text-primary hover:underline'
             >
               {t('One API')}
-            </a>{' '}
-            © 2023{' '}
-            <a
-              href='https://github.com/songquanpeng'
-              target='_blank'
-              rel='noopener noreferrer'
-              className='text-primary hover:underline'
-            >
-              {t('JustSong')}
             </a>
           </p>
           <p className='text-muted-foreground'>
             {t('This project must be used in compliance with the')}{' '}
             <a
-              href='https://github.com/QuantumNous/new-api/blob/main/LICENSE'
+              href='https://github.com/Lorry-San/nbapi/blob/main/LICENSE'
               target='_blank'
               rel='noopener noreferrer'
               className='text-primary hover:underline'

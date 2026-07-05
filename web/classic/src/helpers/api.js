@@ -22,64 +22,62 @@ import {
   showError,
   formatMessageForAPI,
   isValidMessage,
-} from './utils';
-import axios from 'axios';
-import { MESSAGE_ROLES } from '../constants/playground.constants';
-import { MOFANG_CALLBACK_STORAGE_KEY } from './mofangOAuthCallback';
+} from './utils'
+import axios from 'axios'
+import { MESSAGE_ROLES } from '../constants/playground.constants'
+import { MOFANG_CALLBACK_STORAGE_KEY } from './mofangOAuthCallback'
 
 export let API = axios.create({
   baseURL: import.meta.env.VITE_REACT_APP_SERVER_URL
     ? import.meta.env.VITE_REACT_APP_SERVER_URL
     : '',
   headers: {
-    'New-API-User': getUserIdFromLocalStorage(),
+    'NBAPI-User': getUserIdFromLocalStorage(),
     'Cache-Control': 'no-store',
   },
-});
-
+})
 
 function redirectToOAuthUrl(url, options = {}) {
-  const { openInNewTab = false } = options;
-  const targetUrl = typeof url === 'string' ? url : url.toString();
+  const { openInNewTab = false } = options
+  const targetUrl = typeof url === 'string' ? url : url.toString()
 
   if (openInNewTab) {
-    window.open(targetUrl, '_blank');
-    return;
+    window.open(targetUrl, '_blank')
+    return
   }
 
-  window.location.assign(targetUrl);
+  window.location.assign(targetUrl)
 }
 
-
 function patchAPIInstance(instance) {
-  const originalGet = instance.get.bind(instance);
-  const inFlightGetRequests = new Map();
+  const originalGet = instance.get.bind(instance)
+  const inFlightGetRequests = new Map()
 
   const genKey = (url, config = {}) => {
-    const params = config.params ? JSON.stringify(config.params) : '{}';
-    return `${url}?${params}`;
-  };
+    const params = config.params ? JSON.stringify(config.params) : '{}'
+    return `${url}?${params}`
+  }
 
   instance.get = (url, config = {}) => {
     if (config?.disableDuplicate) {
-      return originalGet(url, config);
+      return originalGet(url, config)
     }
 
-    const key = genKey(url, config);
+    const key = genKey(url, config)
     if (inFlightGetRequests.has(key)) {
-      return inFlightGetRequests.get(key);
+      return inFlightGetRequests.get(key)
     }
 
     const reqPromise = originalGet(url, config).finally(() => {
-      inFlightGetRequests.delete(key);
-    });
+      inFlightGetRequests.delete(key)
+    })
 
-    inFlightGetRequests.set(key, reqPromise);
-    return reqPromise;
-  };
+    inFlightGetRequests.set(key, reqPromise)
+    return reqPromise
+  }
 }
 
-patchAPIInstance(API);
+patchAPIInstance(API)
 
 export function updateAPI() {
   API = axios.create({
@@ -87,12 +85,12 @@ export function updateAPI() {
       ? import.meta.env.VITE_REACT_APP_SERVER_URL
       : '',
     headers: {
-      'New-API-User': getUserIdFromLocalStorage(),
+      'NBAPI-User': getUserIdFromLocalStorage(),
       'Cache-Control': 'no-store',
     },
-  });
+  })
 
-  patchAPIInstance(API);
+  patchAPIInstance(API)
 }
 
 API.interceptors.response.use(
@@ -100,12 +98,12 @@ API.interceptors.response.use(
   (error) => {
     // 如果请求配置中显式要求跳过全局错误处理，则不弹出默认错误提示
     if (error.config && error.config.skipErrorHandler) {
-      return Promise.reject(error);
+      return Promise.reject(error)
     }
-    showError(error);
-    return Promise.reject(error);
+    showError(error)
+    return Promise.reject(error)
   },
-);
+)
 
 // playground
 
@@ -119,14 +117,14 @@ export const buildApiPayload = (
   const processedMessages = messages
     .filter(isValidMessage)
     .map(formatMessageForAPI)
-    .filter(Boolean);
+    .filter(Boolean)
 
   // 如果有系统提示，插入到消息开头
   if (systemPrompt && systemPrompt.trim()) {
     processedMessages.unshift({
       role: MESSAGE_ROLES.SYSTEM,
       content: systemPrompt.trim(),
-    });
+    })
   }
 
   const payload = {
@@ -134,7 +132,7 @@ export const buildApiPayload = (
     group: inputs.group,
     messages: processedMessages,
     stream: inputs.stream,
-  };
+  }
 
   // 添加启用的参数
   const parameterMappings = {
@@ -144,31 +142,31 @@ export const buildApiPayload = (
     frequency_penalty: 'frequency_penalty',
     presence_penalty: 'presence_penalty',
     seed: 'seed',
-  };
+  }
 
   Object.entries(parameterMappings).forEach(([key, param]) => {
-    const enabled = parameterEnabled[key];
-    const value = inputs[param];
-    const hasValue = value !== undefined && value !== null;
+    const enabled = parameterEnabled[key]
+    const value = inputs[param]
+    const hasValue = value !== undefined && value !== null
 
     if (!enabled) {
-      return;
+      return
     }
 
     if (param === 'max_tokens') {
       if (typeof value === 'number') {
-        payload[param] = value;
+        payload[param] = value
       }
-      return;
+      return
     }
 
     if (hasValue) {
-      payload[param] = value;
+      payload[param] = value
     }
-  });
+  })
 
-  return payload;
-};
+  return payload
+}
 
 // 处理API错误响应
 export const handleApiError = (error, response = null) => {
@@ -176,39 +174,39 @@ export const handleApiError = (error, response = null) => {
     error: error.message || '未知错误',
     timestamp: new Date().toISOString(),
     stack: error.stack,
-  };
+  }
 
   if (response) {
-    errorInfo.status = response.status;
-    errorInfo.statusText = response.statusText;
+    errorInfo.status = response.status
+    errorInfo.statusText = response.statusText
   }
 
   if (error.message.includes('HTTP error')) {
-    errorInfo.details = '服务器返回了错误状态码';
+    errorInfo.details = '服务器返回了错误状态码'
   } else if (error.message.includes('Failed to fetch')) {
-    errorInfo.details = '网络连接失败或服务器无响应';
+    errorInfo.details = '网络连接失败或服务器无响应'
   }
 
-  return errorInfo;
-};
+  return errorInfo
+}
 
 // 处理模型数据
 export const processModelsData = (data, currentModel) => {
   const modelOptions = data.map((model) => ({
     label: model,
     value: model,
-  }));
+  }))
 
   const hasCurrentModel = modelOptions.some(
     (option) => option.value === currentModel,
-  );
+  )
   const selectedModel =
     hasCurrentModel && modelOptions.length > 0
       ? currentModel
-      : modelOptions[0]?.value;
+      : modelOptions[0]?.value
 
-  return { modelOptions, selectedModel };
-};
+  return { modelOptions, selectedModel }
+}
 
 // 处理分组数据
 export const processGroupsData = (data, userGroup) => {
@@ -218,7 +216,7 @@ export const processGroupsData = (data, userGroup) => {
     value: group,
     ratio: info.ratio,
     fullLabel: info.desc,
-  }));
+  }))
 
   if (groupOptions.length === 0) {
     groupOptions = [
@@ -227,58 +225,58 @@ export const processGroupsData = (data, userGroup) => {
         value: '',
         ratio: 1,
       },
-    ];
+    ]
   } else if (userGroup) {
-    const userGroupIndex = groupOptions.findIndex((g) => g.value === userGroup);
+    const userGroupIndex = groupOptions.findIndex((g) => g.value === userGroup)
     if (userGroupIndex > -1) {
-      const userGroupOption = groupOptions.splice(userGroupIndex, 1)[0];
-      groupOptions.unshift(userGroupOption);
+      const userGroupOption = groupOptions.splice(userGroupIndex, 1)[0]
+      groupOptions.unshift(userGroupOption)
     }
   }
 
-  return groupOptions;
-};
+  return groupOptions
+}
 
 // 原来components中的utils.js
 
 export async function getOAuthState() {
-  let path = '/api/oauth/state';
-  let affCode = localStorage.getItem('aff');
+  let path = '/api/oauth/state'
+  let affCode = localStorage.getItem('aff')
   if (affCode && affCode.length > 0) {
-    path += `?aff=${affCode}`;
+    path += `?aff=${affCode}`
   }
-  const res = await API.get(path);
-  const { success, message, data } = res.data;
+  const res = await API.get(path)
+  const { success, message, data } = res.data
   if (success) {
-    return data;
+    return data
   } else {
-    showError(message);
-    return '';
+    showError(message)
+    return ''
   }
 }
 
 async function prepareOAuthState(options = {}) {
-  const { shouldLogout = false } = options;
+  const { shouldLogout = false } = options
   if (shouldLogout) {
     try {
-      await API.get('/api/user/logout', { skipErrorHandler: true });
+      await API.get('/api/user/logout', { skipErrorHandler: true })
     } catch (err) {}
-    localStorage.removeItem('user');
-    localStorage.removeItem('uid');
-    updateAPI();
+    localStorage.removeItem('user')
+    localStorage.removeItem('uid')
+    updateAPI()
   }
-  return await getOAuthState();
+  return await getOAuthState()
 }
 
 export async function onDiscordOAuthClicked(client_id, options = {}) {
-  const state = await prepareOAuthState(options);
-  if (!state) return;
-  const redirect_uri = `${window.location.origin}/oauth/discord`;
-  const response_type = 'code';
-  const scope = 'identify+openid';
+  const state = await prepareOAuthState(options)
+  if (!state) return
+  const redirect_uri = `${window.location.origin}/oauth/discord`
+  const response_type = 'code'
+  const scope = 'identify+openid'
   redirectToOAuthUrl(
     `https://discord.com/oauth2/authorize?client_id=${client_id}&redirect_uri=${redirect_uri}&response_type=${response_type}&scope=${scope}&state=${state}`,
-  );
+  )
 }
 
 export async function onOIDCClicked(
@@ -287,34 +285,34 @@ export async function onOIDCClicked(
   openInNewTab = false,
   options = {},
 ) {
-  const state = await prepareOAuthState(options);
-  if (!state) return;
-  const url = new URL(auth_url);
-  url.searchParams.set('client_id', client_id);
-  url.searchParams.set('redirect_uri', `${window.location.origin}/oauth/oidc`);
-  url.searchParams.set('response_type', 'code');
-  url.searchParams.set('scope', 'openid profile email');
-  url.searchParams.set('state', state);
-  redirectToOAuthUrl(url, { openInNewTab });
+  const state = await prepareOAuthState(options)
+  if (!state) return
+  const url = new URL(auth_url)
+  url.searchParams.set('client_id', client_id)
+  url.searchParams.set('redirect_uri', `${window.location.origin}/oauth/oidc`)
+  url.searchParams.set('response_type', 'code')
+  url.searchParams.set('scope', 'openid profile email')
+  url.searchParams.set('state', state)
+  redirectToOAuthUrl(url, { openInNewTab })
 }
 
 export async function onGitHubOAuthClicked(github_client_id, options = {}) {
-  const state = await prepareOAuthState(options);
-  if (!state) return;
+  const state = await prepareOAuthState(options)
+  if (!state) return
   redirectToOAuthUrl(
     `https://github.com/login/oauth/authorize?client_id=${github_client_id}&state=${state}&scope=user:email`,
-  );
+  )
 }
 
 export async function onLinuxDOOAuthClicked(
   linuxdo_client_id,
   options = { shouldLogout: false },
 ) {
-  const state = await prepareOAuthState(options);
-  if (!state) return;
+  const state = await prepareOAuthState(options)
+  if (!state) return
   redirectToOAuthUrl(
     `https://connect.linux.do/oauth2/authorize?response_type=code&client_id=${linuxdo_client_id}&state=${state}`,
-  );
+  )
 }
 
 export async function onMofangOAuthClicked(mofangLoginUrl, options = {}) {
@@ -327,166 +325,166 @@ export async function onMofangOAuthClicked(mofangLoginUrl, options = {}) {
     persistUser = true,
     shouldLogout = true,
     messages = {},
-  } = options;
-  const loginFailedMessage = messages.loginFailed || '魔方财务登录失败';
+  } = options
+  const loginFailedMessage = messages.loginFailed || '魔方财务登录失败'
   const popupBlockedMessage =
-    messages.popupBlocked || '无法打开魔方财务登录窗口';
-  const timeoutMessage = messages.timeout || '魔方财务登录超时';
+    messages.popupBlocked || '无法打开魔方财务登录窗口'
+  const timeoutMessage = messages.timeout || '魔方财务登录超时'
 
-  let loginUrl;
+  let loginUrl
   try {
-    loginUrl = new URL(mofangLoginUrl);
+    loginUrl = new URL(mofangLoginUrl)
   } catch (error) {
-    showError(loginFailedMessage);
-    if (onError) onError(error);
-    if (onFinally) onFinally();
-    return;
+    showError(loginFailedMessage)
+    if (onError) onError(error)
+    if (onFinally) onFinally()
+    return
   }
 
-  loginUrl.searchParams.set('redirect_url', window.location.origin);
-  loginUrl.searchParams.set('origin', window.location.origin);
+  loginUrl.searchParams.set('redirect_url', window.location.origin)
+  loginUrl.searchParams.set('origin', window.location.origin)
 
   const popup = window.open(
     'about:blank',
     'mofang-oauth',
     'popup=yes,width=480,height=680,menubar=no,toolbar=no,location=no,status=no',
-  );
+  )
 
   if (!popup) {
-    showError(popupBlockedMessage);
-    if (onError) onError(new Error(popupBlockedMessage));
-    if (onFinally) onFinally();
-    return;
+    showError(popupBlockedMessage)
+    if (onError) onError(new Error(popupBlockedMessage))
+    if (onFinally) onFinally()
+    return
   }
 
   try {
-    window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY);
+    window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY)
   } catch (error) {}
 
   if (shouldLogout) {
     try {
-      await API.get('/api/user/logout', { skipErrorHandler: true });
+      await API.get('/api/user/logout', { skipErrorHandler: true })
     } catch (err) {}
-    localStorage.removeItem('user');
-    localStorage.removeItem('uid');
-    updateAPI();
+    localStorage.removeItem('user')
+    localStorage.removeItem('uid')
+    updateAPI()
   }
 
-  const allowedOrigins = new Set([loginUrl.origin, window.location.origin]);
-  let finished = false;
-  let timeoutId;
-  let closeCheckId;
+  const allowedOrigins = new Set([loginUrl.origin, window.location.origin])
+  let finished = false
+  let timeoutId
+  let closeCheckId
 
   const cleanup = () => {
-    finished = true;
-    if (timeoutId) clearTimeout(timeoutId);
-    if (closeCheckId) clearInterval(closeCheckId);
-      window.removeEventListener('message', handleMessage);
-      window.removeEventListener('storage', handleStorage);
-    if (onFinally) onFinally();
-  };
+    finished = true
+    if (timeoutId) clearTimeout(timeoutId)
+    if (closeCheckId) clearInterval(closeCheckId)
+    window.removeEventListener('message', handleMessage)
+    window.removeEventListener('storage', handleStorage)
+    if (onFinally) onFinally()
+  }
 
   const completeWithJWT = async (jwt) => {
     try {
-      const res = await API.post(sessionEndpoint, { jwt });
-      const { success, message, data } = res.data || {};
+      const res = await API.post(sessionEndpoint, { jwt })
+      const { success, message, data } = res.data || {}
       if (!success) {
-        showError(message || loginFailedMessage);
-        if (onError) onError(new Error(message || loginFailedMessage));
-        return;
+        showError(message || loginFailedMessage)
+        if (onError) onError(new Error(message || loginFailedMessage))
+        return
       }
 
       if (persistUser) {
         if (data?.id != null) {
-          localStorage.setItem('uid', String(data.id));
+          localStorage.setItem('uid', String(data.id))
         }
-        localStorage.setItem('user', JSON.stringify(data));
-        updateAPI();
+        localStorage.setItem('user', JSON.stringify(data))
+        updateAPI()
       }
-      if (onSuccess) onSuccess(data);
+      if (onSuccess) onSuccess(data)
       try {
-        popup.close();
+        popup.close()
       } catch (err) {}
     } catch (error) {
-      showError('魔方财务登录失败');
-      if (onError) onError(error);
+      showError('魔方财务登录失败')
+      if (onError) onError(error)
     } finally {
-      cleanup();
+      cleanup()
     }
-  };
+  }
 
   function handleMessage(event) {
-    if (finished || !allowedOrigins.has(event.origin)) return;
-    if (!event.data || event.data.type !== 'mofang-jwt') return;
+    if (finished || !allowedOrigins.has(event.origin)) return
+    if (!event.data || event.data.type !== 'mofang-jwt') return
 
-    const jwt = event.data.jwt;
+    const jwt = event.data.jwt
     if (typeof jwt !== 'string' || !jwt.trim()) {
-      showError(loginFailedMessage);
-      if (onError) onError(new Error('Invalid Mofang JWT message'));
-      cleanup();
-      return;
+      showError(loginFailedMessage)
+      if (onError) onError(new Error('Invalid Mofang JWT message'))
+      cleanup()
+      return
     }
 
-    completeWithJWT(jwt.trim());
+    completeWithJWT(jwt.trim())
   }
 
   function parseStoredMofangJwt(value) {
-    if (!value) return '';
+    if (!value) return ''
     try {
-      const payload = JSON.parse(value);
-      if (payload?.type !== 'mofang-jwt') return '';
-      if (typeof payload.jwt !== 'string' || !payload.jwt.trim()) return '';
+      const payload = JSON.parse(value)
+      if (payload?.type !== 'mofang-jwt') return ''
+      if (typeof payload.jwt !== 'string' || !payload.jwt.trim()) return ''
       if (
         typeof payload.timestamp === 'number' &&
         Date.now() - payload.timestamp > timeoutMs
       ) {
-        return '';
+        return ''
       }
-      return payload.jwt.trim();
+      return payload.jwt.trim()
     } catch (error) {
-      return '';
+      return ''
     }
   }
 
   function consumeStoredToken() {
-    if (finished) return;
+    if (finished) return
     const jwt = parseStoredMofangJwt(
       window.localStorage.getItem(MOFANG_CALLBACK_STORAGE_KEY),
-    );
-    if (!jwt) return;
+    )
+    if (!jwt) return
     try {
-      window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY);
+      window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY)
     } catch (error) {}
-    completeWithJWT(jwt);
+    completeWithJWT(jwt)
   }
 
   function handleStorage(event) {
-    if (event.key !== MOFANG_CALLBACK_STORAGE_KEY) return;
-    const jwt = parseStoredMofangJwt(event.newValue);
-    if (!jwt) return;
+    if (event.key !== MOFANG_CALLBACK_STORAGE_KEY) return
+    const jwt = parseStoredMofangJwt(event.newValue)
+    if (!jwt) return
     try {
-      window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY);
+      window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY)
     } catch (error) {}
-    completeWithJWT(jwt);
+    completeWithJWT(jwt)
   }
 
-  window.addEventListener('message', handleMessage);
-  window.addEventListener('storage', handleStorage);
+  window.addEventListener('message', handleMessage)
+  window.addEventListener('storage', handleStorage)
   timeoutId = setTimeout(() => {
-    if (finished) return;
-    showError(timeoutMessage);
-    if (onError) onError(new Error('Mofang login timed out'));
-    cleanup();
-  }, timeoutMs);
+    if (finished) return
+    showError(timeoutMessage)
+    if (onError) onError(new Error('Mofang login timed out'))
+    cleanup()
+  }, timeoutMs)
   closeCheckId = setInterval(() => {
-    if (finished) return;
-    consumeStoredToken();
+    if (finished) return
+    consumeStoredToken()
     if (popup.closed) {
-      cleanup();
+      cleanup()
     }
-  }, 1000);
+  }, 1000)
 
-  popup.location.href = loginUrl.toString();
+  popup.location.href = loginUrl.toString()
 }
 
 /**
@@ -500,72 +498,69 @@ export async function onMofangOAuthClicked(mofangLoginUrl, options = {}) {
  * @param {boolean} options.shouldLogout - Whether to logout first
  */
 export async function onCustomOAuthClicked(provider, options = {}) {
-  const state = await prepareOAuthState(options);
-  if (!state) return;
+  const state = await prepareOAuthState(options)
+  if (!state) return
 
   try {
-    const redirect_uri = `${window.location.origin}/oauth/${provider.slug}`;
+    const redirect_uri = `${window.location.origin}/oauth/${provider.slug}`
 
     // Check if authorization_endpoint is a full URL or relative path
-    let authUrl;
+    let authUrl
     if (
       provider.authorization_endpoint.startsWith('http://') ||
       provider.authorization_endpoint.startsWith('https://')
     ) {
-      authUrl = new URL(provider.authorization_endpoint);
+      authUrl = new URL(provider.authorization_endpoint)
     } else {
       // Relative path - this is a configuration error, show error message
       console.error(
         'Custom OAuth authorization_endpoint must be a full URL:',
         provider.authorization_endpoint,
-      );
+      )
       showError(
         'OAuth 配置错误：授权端点必须是完整的 URL（以 http:// 或 https:// 开头）',
-      );
-      return;
+      )
+      return
     }
 
-    authUrl.searchParams.set('client_id', provider.client_id);
-    authUrl.searchParams.set('redirect_uri', redirect_uri);
-    authUrl.searchParams.set('response_type', 'code');
-    authUrl.searchParams.set(
-      'scope',
-      provider.scopes || 'openid profile email',
-    );
-    authUrl.searchParams.set('state', state);
+    authUrl.searchParams.set('client_id', provider.client_id)
+    authUrl.searchParams.set('redirect_uri', redirect_uri)
+    authUrl.searchParams.set('response_type', 'code')
+    authUrl.searchParams.set('scope', provider.scopes || 'openid profile email')
+    authUrl.searchParams.set('state', state)
 
-    redirectToOAuthUrl(authUrl);
+    redirectToOAuthUrl(authUrl)
   } catch (error) {
-    console.error('Failed to initiate custom OAuth:', error);
-    showError('OAuth 登录失败：' + (error.message || '未知错误'));
+    console.error('Failed to initiate custom OAuth:', error)
+    showError('OAuth 登录失败：' + (error.message || '未知错误'))
   }
 }
 
-let channelModels = undefined;
+let channelModels = undefined
 export async function loadChannelModels() {
-  const res = await API.get('/api/models');
-  const { success, data } = res.data;
+  const res = await API.get('/api/models')
+  const { success, data } = res.data
   if (!success) {
-    return;
+    return
   }
-  channelModels = data;
-  localStorage.setItem('channel_models', JSON.stringify(data));
+  channelModels = data
+  localStorage.setItem('channel_models', JSON.stringify(data))
 }
 
 export function getChannelModels(type) {
   if (channelModels !== undefined && type in channelModels) {
     if (!channelModels[type]) {
-      return [];
+      return []
     }
-    return channelModels[type];
+    return channelModels[type]
   }
-  let models = localStorage.getItem('channel_models');
+  let models = localStorage.getItem('channel_models')
   if (!models) {
-    return [];
+    return []
   }
-  channelModels = JSON.parse(models);
+  channelModels = JSON.parse(models)
   if (type in channelModels) {
-    return channelModels[type];
+    return channelModels[type]
   }
-  return [];
+  return []
 }

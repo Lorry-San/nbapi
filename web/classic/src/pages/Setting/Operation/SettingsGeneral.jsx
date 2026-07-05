@@ -257,7 +257,7 @@ export default function GeneralSettings(props) {
                   field={'general_setting.docs_link'}
                   label={t('文档地址')}
                   initValue={''}
-                  placeholder={t('例如 https://docs.newapi.pro')}
+                  placeholder={t('例如 https://github.com/Lorry-San/nbapi')}
                   onChange={handleFieldChange('general_setting.docs_link')}
                   showClear
                 />

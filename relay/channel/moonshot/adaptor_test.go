@@ -3,11 +3,11 @@ package moonshot
 import (
 	"testing"
 
-	"github.com/QuantumNous/new-api/common"
-	channelconstant "github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/dto"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	relayconstant "github.com/QuantumNous/new-api/relay/constant"
+	"github.com/Lorry-San/nbapi/common"
+	channelconstant "github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/dto"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	relayconstant "github.com/Lorry-San/nbapi/relay/constant"
 	"github.com/stretchr/testify/require"
 )
 

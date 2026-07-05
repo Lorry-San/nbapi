@@ -27,7 +27,7 @@ import { getMarkdownContent, parseResponseContent } from './response-content'
 import { renderChildren, renderFootnotes } from './response-renderer'
 import type { ResponseProps } from './response-types'
 
-const markdown = getMarkdown('new-api-response')
+const markdown = getMarkdown('nbapi-response')
 const MAX_PARSED_MARKDOWN_CHARS = 20_000
 
 export const Response = memo((props: ResponseProps) => {

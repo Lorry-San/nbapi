@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/QuantumNous/new-api/setting/config"
+	"github.com/Lorry-San/nbapi/setting/config"
 )
 
 type HASetting struct {

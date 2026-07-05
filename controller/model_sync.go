@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/model"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/model"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -22,8 +22,8 @@ import (
 
 // 上游地址
 const (
-	upstreamModelsURL  = "https://basellm.github.io/llm-metadata/api/newapi/models.json"
-	upstreamVendorsURL = "https://basellm.github.io/llm-metadata/api/newapi/vendors.json"
+	upstreamModelsURL  = "https://basellm.github.io/llm-metadata/api/nbapi/models.json"
+	upstreamVendorsURL = "https://basellm.github.io/llm-metadata/api/nbapi/vendors.json"
 )
 
 func normalizeLocale(locale string) (string, bool) {
@@ -43,10 +43,10 @@ func getUpstreamBase() string {
 func getUpstreamURLs(locale string) (modelsURL, vendorsURL string) {
 	base := strings.TrimRight(getUpstreamBase(), "/")
 	if l, ok := normalizeLocale(locale); ok && l != "" {
-		return fmt.Sprintf("%s/api/i18n/%s/newapi/models.json", base, l),
-			fmt.Sprintf("%s/api/i18n/%s/newapi/vendors.json", base, l)
+		return fmt.Sprintf("%s/api/i18n/%s/nbapi/models.json", base, l),
+			fmt.Sprintf("%s/api/i18n/%s/nbapi/vendors.json", base, l)
 	}
-	return fmt.Sprintf("%s/api/newapi/models.json", base), fmt.Sprintf("%s/api/newapi/vendors.json", base)
+	return fmt.Sprintf("%s/api/nbapi/models.json", base), fmt.Sprintf("%s/api/nbapi/vendors.json", base)
 }
 
 type upstreamEnvelope[T any] struct {

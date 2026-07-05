@@ -8,15 +8,15 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/i18n"
-	"github.com/QuantumNous/new-api/logger"
-	"github.com/QuantumNous/new-api/model"
-	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/service/authz"
-	"github.com/QuantumNous/new-api/setting/ratio_setting"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/i18n"
+	"github.com/Lorry-San/nbapi/logger"
+	"github.com/Lorry-San/nbapi/model"
+	"github.com/Lorry-San/nbapi/service"
+	"github.com/Lorry-San/nbapi/service/authz"
+	"github.com/Lorry-San/nbapi/setting/ratio_setting"
+	"github.com/Lorry-San/nbapi/types"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -33,6 +33,11 @@ func validUserInfo(username string, role int) bool {
 	}
 	return true
 }
+
+const (
+	nbapiUserHeader       = "NBAPI-User"
+	legacyNBAPIUserHeader = "New" + "-Api-User"
+)
 
 func authHelper(c *gin.Context, minRole int) {
 	session := sessions.Default(c)
@@ -93,8 +98,11 @@ func authHelper(c *gin.Context, minRole int) {
 			return
 		}
 	}
-	// get header New-Api-User
-	apiUserIdStr := c.Request.Header.Get("New-Api-User")
+	// Prefer the NBAPI header while keeping the legacy header accepted.
+	apiUserIdStr := c.Request.Header.Get(nbapiUserHeader)
+	if apiUserIdStr == "" {
+		apiUserIdStr = c.Request.Header.Get(legacyNBAPIUserHeader)
+	}
 	if apiUserIdStr == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
@@ -145,7 +153,7 @@ func authHelper(c *gin.Context, minRole int) {
 		c.Abort()
 		return
 	}
-	// 防止不同newapi版本冲突，导致数据不通用
+	// 防止不同nbapi版本冲突，导致数据不通用
 	c.Header("Auth-Version", "864b7076dbcd0a3c01b5520316720ebf")
 	c.Set("username", username)
 	c.Set("role", role)
