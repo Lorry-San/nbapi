@@ -31,3 +31,35 @@ func TestValidateMultipartDirectNormalizesImageField(t *testing.T) {
 	require.Equal(t, []string{"https://example.com/first.png"}, storedReq.Images)
 	require.Equal(t, constant.TaskActionGenerate, info.Action)
 }
+
+func TestGetFullRequestURLUsesVersionedBasePathForResponses(t *testing.T) {
+	t.Parallel()
+
+	got := GetFullRequestURL("https://upstream.example/v3", "/v1/responses", constant.ChannelTypeOpenAI)
+
+	require.Equal(t, "https://upstream.example/v3/responses", got)
+}
+
+func TestGetFullRequestURLUsesVersionedBasePathWithTrailingSlash(t *testing.T) {
+	t.Parallel()
+
+	got := GetFullRequestURL("https://upstream.example/api/v3/", "/v1/chat/completions", constant.ChannelTypeOpenAI)
+
+	require.Equal(t, "https://upstream.example/api/v3/chat/completions", got)
+}
+
+func TestGetFullRequestURLKeepsDefaultVersionForNonVersionedBasePath(t *testing.T) {
+	t.Parallel()
+
+	got := GetFullRequestURL("https://upstream.example/api", "/v1/responses", constant.ChannelTypeOpenAI)
+
+	require.Equal(t, "https://upstream.example/api/v1/responses", got)
+}
+
+func TestGetFullRequestURLDoesNotTreatHostAsVersionPath(t *testing.T) {
+	t.Parallel()
+
+	got := GetFullRequestURL("https://v3.example.com", "/v1/responses", constant.ChannelTypeOpenAI)
+
+	require.Equal(t, "https://v3.example.com/v1/responses", got)
+}

@@ -18,11 +18,25 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { api } from '@/lib/api'
 
-import type { SystemInstanceListResponse } from './types'
+import type {
+  HAConfig,
+  HAOverviewResponse,
+  SystemInstanceListResponse,
+} from './types'
 
 export async function listSystemInstances() {
   const res = await api.get<SystemInstanceListResponse>(
-    '/api/system-info/instances'
+    '/api/system-info/instances',
   )
+  return res.data
+}
+
+export async function getHAOverview() {
+  const res = await api.get<HAOverviewResponse>('/api/system-info/ha')
+  return res.data
+}
+
+export async function updateHAConfig(config: HAConfig) {
+  const res = await api.put<HAOverviewResponse>('/api/system-info/ha', config)
   return res.data
 }

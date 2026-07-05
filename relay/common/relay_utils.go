@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -23,17 +24,62 @@ type HasImage interface {
 }
 
 func GetFullRequestURL(baseURL string, requestURL string, channelType int) string {
-	fullRequestURL := fmt.Sprintf("%s%s", baseURL, requestURL)
+	fullRequestURL := joinBaseURLAndRequestURL(baseURL, requestURL)
 
 	if strings.HasPrefix(baseURL, "https://gateway.ai.cloudflare.com") {
 		switch channelType {
 		case constant.ChannelTypeOpenAI:
-			fullRequestURL = fmt.Sprintf("%s%s", baseURL, strings.TrimPrefix(requestURL, "/v1"))
+			fullRequestURL = joinBaseURLAndRequestURL(baseURL, strings.TrimPrefix(requestURL, "/v1"))
 		case constant.ChannelTypeAzure:
-			fullRequestURL = fmt.Sprintf("%s%s", baseURL, strings.TrimPrefix(requestURL, "/openai/deployments"))
+			fullRequestURL = joinBaseURLAndRequestURL(baseURL, strings.TrimPrefix(requestURL, "/openai/deployments"))
 		}
 	}
 	return fullRequestURL
+}
+
+func joinBaseURLAndRequestURL(baseURL string, requestURL string) string {
+	baseURL = strings.TrimRight(baseURL, "/")
+	if requestURL == "" {
+		return baseURL
+	}
+	if baseURLHasVersionPath(baseURL) {
+		requestURL = trimDefaultAPIVersionPrefix(requestURL)
+	}
+	if !strings.HasPrefix(requestURL, "/") {
+		requestURL = "/" + requestURL
+	}
+	return fmt.Sprintf("%s%s", baseURL, requestURL)
+}
+
+func baseURLHasVersionPath(baseURL string) bool {
+	parsed, err := url.Parse(baseURL)
+	if err != nil || parsed.Path == "" || parsed.Path == "/" {
+		return false
+	}
+	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	version := parts[len(parts)-1]
+	if len(version) < 2 || version[0] != 'v' {
+		return false
+	}
+	for _, ch := range version[1:] {
+		if ch < '0' || ch > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func trimDefaultAPIVersionPrefix(requestURL string) string {
+	if requestURL == "/v1" || requestURL == "v1" {
+		return ""
+	}
+	if strings.HasPrefix(requestURL, "/v1/") {
+		return strings.TrimPrefix(requestURL, "/v1")
+	}
+	if strings.HasPrefix(requestURL, "v1/") {
+		return strings.TrimPrefix(requestURL, "v1")
+	}
+	return requestURL
 }
 
 func GetAPIVersion(c *gin.Context) string {

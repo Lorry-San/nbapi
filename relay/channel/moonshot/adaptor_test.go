@@ -4,8 +4,10 @@ import (
 	"testing"
 
 	"github.com/QuantumNous/new-api/common"
+	channelconstant "github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/dto"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
+	relayconstant "github.com/QuantumNous/new-api/relay/constant"
 	"github.com/stretchr/testify/require"
 )
 
@@ -65,4 +67,17 @@ func TestConvertOpenAIRequestOtherMoonshotModelKeepsTemperature(t *testing.T) {
 	require.True(t, ok)
 	require.NotNil(t, convertedRequest.Temperature)
 	require.Equal(t, 0.7, *convertedRequest.Temperature)
+}
+
+func TestGetRequestURLUsesVersionedBaseURL(t *testing.T) {
+	info := &relaycommon.RelayInfo{
+		ChannelBaseUrl: "https://api.moonshot.cn/v3",
+		ChannelType:    channelconstant.ChannelTypeMoonshot,
+		RelayMode:      relayconstant.RelayModeChatCompletions,
+	}
+
+	got, err := (&Adaptor{}).GetRequestURL(info)
+
+	require.NoError(t, err)
+	require.Equal(t, "https://api.moonshot.cn/v3/chat/completions", got)
 }

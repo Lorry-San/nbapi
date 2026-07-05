@@ -77,3 +77,77 @@ export type SystemInstanceListResponse = {
   message: string
   data?: SystemInstance[]
 }
+
+export type HAConfig = {
+  enabled: boolean
+  primary_node_name: string
+  standby_node_name: string
+  primary_health_url: string
+  standby_health_url: string
+  public_entry: string
+  origin_entry: string
+  primary_origin: string
+  standby_origin: string
+  dns_provider: 'cloudflare' | 'manual' | 'other' | string
+  dns_record_name: string
+  database_engine: 'postgresql' | 'mysql' | 'sqlite' | 'external' | string
+  replication_mode:
+    | 'external'
+    | 'postgres_streaming'
+    | 'mysql_replica'
+    | 'managed'
+    | 'manual'
+    | string
+  redis_mode: 'shared' | 'sentinel' | 'primary_standby' | 'disabled' | string
+  failover_strategy: 'manual' | 'assisted' | string
+  health_check_interval_seconds: number
+  failover_threshold: number
+  cutover_runbook: string
+  rollback_runbook: string
+  notes: string
+}
+
+export type HACurrentNode = {
+  name: string
+  source: string
+  is_master: boolean
+}
+
+export type HACheck = {
+  level: 'ok' | 'warn' | 'error'
+  key: string
+  message: string
+}
+
+export type HAHealthProbe = {
+  target: 'primary' | 'standby' | string
+  url: string
+  reachable: boolean
+  status_code?: number
+  success?: boolean
+  message?: string
+  data?: Record<string, unknown>
+}
+
+export type HASnippets = {
+  primary_env: string
+  standby_env: string
+  compose_env: string
+  cutover_checklist: string
+}
+
+export type HAOverview = {
+  config: HAConfig
+  current_node: HACurrentNode
+  instances: SystemInstance[]
+  probes: HAHealthProbe[]
+  checks: HACheck[]
+  summary: 'ok' | 'warn' | 'error' | 'disabled'
+  snippets: HASnippets
+}
+
+export type HAOverviewResponse = {
+  success: boolean
+  message: string
+  data?: HAOverview
+}

@@ -289,6 +289,8 @@ func SetApiRouter(router *gin.Engine) {
 		systemInfoRoute.Use(middleware.RootAuth())
 		{
 			systemInfoRoute.GET("/instances", controller.ListSystemInstances)
+			systemInfoRoute.GET("/ha", controller.GetHAOverview)
+			systemInfoRoute.PUT("/ha", controller.UpdateHAConfig)
 		}
 
 		dataRoute := apiRouter.Group("/data")
