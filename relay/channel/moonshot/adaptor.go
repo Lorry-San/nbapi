@@ -52,8 +52,10 @@ func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 		if info.RelayFormat == types.RelayFormatClaude {
 			return fmt.Sprintf("%s/v1/messages", specialPlan.ClaudeBaseURL), nil
 		}
-		if info.RelayFormat == types.RelayFormatOpenAI {
-			return relaycommon.GetFullRequestURL(specialPlan.OpenAIBaseURL, "/v1/chat/completions", info.ChannelType), nil
+		if info.RelayFormat == types.RelayFormatOpenAI ||
+			info.RelayFormat == types.RelayFormatOpenAIResponses ||
+			info.RelayFormat == types.RelayFormatOpenAIResponsesCompaction {
+			return relaycommon.GetFullRequestURL(specialPlan.OpenAIBaseURL, moonshotOpenAIRequestPath(info), info.ChannelType), nil
 		}
 	}
 
@@ -69,8 +71,34 @@ func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 			return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, "/v1/chat/completions", info.ChannelType), nil
 		} else if info.RelayMode == constant.RelayModeCompletions {
 			return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, "/v1/completions", info.ChannelType), nil
+		} else if info.RelayMode == constant.RelayModeResponses || info.RelayMode == constant.RelayModeResponsesCompact {
+			return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, info.RequestURLPath, info.ChannelType), nil
 		}
 		return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, "/v1/chat/completions", info.ChannelType), nil
+	}
+}
+
+func moonshotOpenAIRequestPath(info *relaycommon.RelayInfo) string {
+	if info == nil {
+		return "/v1/chat/completions"
+	}
+	switch info.RelayMode {
+	case constant.RelayModeResponses, constant.RelayModeResponsesCompact:
+		if info.RequestURLPath != "" {
+			return info.RequestURLPath
+		}
+		if info.RelayMode == constant.RelayModeResponsesCompact {
+			return "/v1/responses/compact"
+		}
+		return "/v1/responses"
+	case constant.RelayModeRerank:
+		return "/v1/rerank"
+	case constant.RelayModeEmbeddings:
+		return "/v1/embeddings"
+	case constant.RelayModeCompletions:
+		return "/v1/completions"
+	default:
+		return "/v1/chat/completions"
 	}
 }
 
@@ -99,8 +127,13 @@ func isTemperatureOneOnlyModel(model string) bool {
 }
 
 func (a *Adaptor) ConvertOpenAIResponsesRequest(c *gin.Context, info *relaycommon.RelayInfo, request dto.OpenAIResponsesRequest) (any, error) {
-	// TODO implement me
-	return nil, errors.New("not implemented")
+	if request.Model == "" && info != nil {
+		request.Model = info.UpstreamModelName
+	}
+	if request.Temperature != nil && isTemperatureOneOnlyModel(getUpstreamModelName(info, request.Model)) && *request.Temperature != 1.0 {
+		request.Temperature = common.GetPointer[float64](1.0)
+	}
+	return request, nil
 }
 
 func (a *Adaptor) DoRequest(c *gin.Context, info *relaycommon.RelayInfo, requestBody io.Reader) (any, error) {

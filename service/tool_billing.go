@@ -1,8 +1,6 @@
 package service
 
 import (
-	"math"
-
 	"github.com/Lorry-San/nbapi/common"
 	"github.com/Lorry-San/nbapi/setting/operation_setting"
 )
@@ -49,7 +47,7 @@ func ComputeToolCallQuota(usage ToolCallUsage, groupRatio float64) ToolCallResul
 			return
 		}
 		totalPrice := pricePer1K * float64(count) / 1000
-		quota := int(math.Round(totalPrice * common.QuotaPerUnit * groupRatio))
+		quota := common.QuotaFromFloat(totalPrice * common.QuotaPerUnit * groupRatio)
 		items = append(items, ToolCallItem{
 			Name:       toolName,
 			CallCount:  count,
@@ -57,7 +55,7 @@ func ComputeToolCallQuota(usage ToolCallUsage, groupRatio float64) ToolCallResul
 			TotalPrice: totalPrice,
 			Quota:      quota,
 		})
-		totalQuota += quota
+		totalQuota = common.AddQuotaSafe(totalQuota, quota)
 	}
 
 	if usage.WebSearchCalls > 0 && usage.WebSearchToolName != "" {
@@ -70,7 +68,7 @@ func ComputeToolCallQuota(usage ToolCallUsage, groupRatio float64) ToolCallResul
 
 	if usage.ImageGenerationCall {
 		price := operation_setting.GetGPTImage1PriceOnceCall(usage.ImageGenerationQuality, usage.ImageGenerationSize)
-		quota := int(math.Round(price * common.QuotaPerUnit * groupRatio))
+		quota := common.QuotaFromFloat(price * common.QuotaPerUnit * groupRatio)
 		items = append(items, ToolCallItem{
 			Name:       "image_generation",
 			CallCount:  1,
@@ -78,7 +76,7 @@ func ComputeToolCallQuota(usage ToolCallUsage, groupRatio float64) ToolCallResul
 			TotalPrice: price,
 			Quota:      quota,
 		})
-		totalQuota += quota
+		totalQuota = common.AddQuotaSafe(totalQuota, quota)
 	}
 
 	return ToolCallResult{

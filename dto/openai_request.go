@@ -136,9 +136,9 @@ func (r *GeneralOpenAIRequest) GetTokenCountMeta() *types.TokenCountMeta {
 	maxTokens := lo.FromPtrOr(r.MaxTokens, uint(0))
 	maxCompletionTokens := lo.FromPtrOr(r.MaxCompletionTokens, uint(0))
 	if maxCompletionTokens > maxTokens {
-		tokenCountMeta.MaxTokens = int(maxCompletionTokens)
+		tokenCountMeta.MaxTokens = common.BoundedRequestTokens(maxCompletionTokens)
 	} else {
-		tokenCountMeta.MaxTokens = int(maxTokens)
+		tokenCountMeta.MaxTokens = common.BoundedRequestTokens(maxTokens)
 	}
 
 	for _, message := range r.Messages {
@@ -935,7 +935,7 @@ func (r *OpenAIResponsesRequest) GetTokenCountMeta() *types.TokenCountMeta {
 	return &types.TokenCountMeta{
 		CombineText: strings.Join(texts, "\n"),
 		Files:       fileMeta,
-		MaxTokens:   int(lo.FromPtrOr(r.MaxOutputTokens, uint(0))),
+		MaxTokens:   common.BoundedRequestTokens(lo.FromPtrOr(r.MaxOutputTokens, uint(0))),
 	}
 }
 

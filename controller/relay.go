@@ -273,14 +273,14 @@ func fastTokenCountMetaForPricing(request dto.Request) *types.TokenCountMeta {
 		maxCompletionTokens := lo.FromPtrOr(r.MaxCompletionTokens, uint(0))
 		maxTokens := lo.FromPtrOr(r.MaxTokens, uint(0))
 		if maxCompletionTokens > maxTokens {
-			meta.MaxTokens = int(maxCompletionTokens)
+			meta.MaxTokens = common.BoundedRequestTokens(maxCompletionTokens)
 		} else {
-			meta.MaxTokens = int(maxTokens)
+			meta.MaxTokens = common.BoundedRequestTokens(maxTokens)
 		}
 	case *dto.OpenAIResponsesRequest:
-		meta.MaxTokens = int(lo.FromPtrOr(r.MaxOutputTokens, uint(0)))
+		meta.MaxTokens = common.BoundedRequestTokens(lo.FromPtrOr(r.MaxOutputTokens, uint(0)))
 	case *dto.ClaudeRequest:
-		meta.MaxTokens = int(lo.FromPtr(r.MaxTokens))
+		meta.MaxTokens = common.BoundedRequestTokens(lo.FromPtr(r.MaxTokens))
 	case *dto.ImageRequest:
 		// Pricing for image requests depends on ImagePriceRatio; safe to compute even when CountToken is disabled.
 		return r.GetTokenCountMeta()

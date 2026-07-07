@@ -3,6 +3,8 @@ package gemini
 import (
 	"strconv"
 	"strings"
+
+	"github.com/Lorry-San/nbapi/common"
 )
 
 // ParseVeoDurationSeconds extracts durationSeconds from metadata.
@@ -17,12 +19,12 @@ func ParseVeoDurationSeconds(metadata map[string]any) int {
 	}
 	switch n := v.(type) {
 	case float64:
-		if int(n) > 0 {
-			return int(n)
+		if n > 0 {
+			return clampVeoDuration(common.QuotaFromFloatTrunc(n))
 		}
 	case int:
 		if n > 0 {
-			return n
+			return clampVeoDuration(n)
 		}
 	}
 	return 8
@@ -55,12 +57,22 @@ func ResolveVeoDuration(metadata map[string]any, stdDuration int, stdSeconds str
 		}
 	}
 	if stdDuration > 0 {
-		return stdDuration
+		return clampVeoDuration(stdDuration)
 	}
 	if s, err := strconv.Atoi(stdSeconds); err == nil && s > 0 {
-		return s
+		return clampVeoDuration(s)
 	}
 	return 8
+}
+
+func clampVeoDuration(seconds int) int {
+	if seconds <= 0 {
+		return 8
+	}
+	if seconds > common.MaxRequestDuration {
+		return common.MaxRequestDuration
+	}
+	return seconds
 }
 
 // ResolveVeoResolution returns the effective resolution string (lowercase).

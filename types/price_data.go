@@ -1,6 +1,9 @@
 package types
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
 type GroupRatioInfo struct {
 	GroupRatio        float64
@@ -31,8 +34,11 @@ func (p *PriceData) AddOtherRatio(key string, ratio float64) {
 	if p.OtherRatios == nil {
 		p.OtherRatios = make(map[string]float64)
 	}
-	if ratio <= 0 {
+	if ratio <= 0 || math.IsNaN(ratio) || math.IsInf(ratio, 0) {
 		return
+	}
+	if ratio > math.MaxInt32 {
+		ratio = math.MaxInt32
 	}
 	p.OtherRatios[key] = ratio
 }

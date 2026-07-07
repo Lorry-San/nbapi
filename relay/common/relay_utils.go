@@ -179,9 +179,21 @@ func ValidateMultipartDirect(c *gin.Context, info *RelayInfo) *dto.TaskError {
 	prompt = req.Prompt
 	model = req.Model
 	size = req.Size
-	seconds, _ = strconv.Atoi(req.Seconds)
+	if strings.TrimSpace(req.Seconds) != "" {
+		parsedSeconds, err := strconv.Atoi(req.Seconds)
+		if err != nil {
+			return createTaskError(fmt.Errorf("seconds is invalid"), "invalid_seconds", http.StatusBadRequest, true)
+		}
+		seconds = parsedSeconds
+	}
 	if seconds == 0 {
 		seconds = req.Duration
+	}
+	if req.Duration > common.MaxRequestDuration || seconds > common.MaxRequestDuration {
+		return createTaskError(fmt.Errorf("duration must be less than or equal to %d seconds", common.MaxRequestDuration), "invalid_duration", http.StatusBadRequest, true)
+	}
+	if taskDurationMetadataExceedsLimit(req.Metadata) {
+		return createTaskError(fmt.Errorf("durationSeconds must be less than or equal to %d seconds", common.MaxRequestDuration), "invalid_duration", http.StatusBadRequest, true)
 	}
 	if req.InputReference != "" {
 		req.Images = []string{req.InputReference}
@@ -228,6 +240,29 @@ func ValidateMultipartDirect(c *gin.Context, info *RelayInfo) *dto.TaskError {
 	storeTaskRequest(c, info, action, req)
 
 	return nil
+}
+
+func taskDurationMetadataExceedsLimit(metadata map[string]interface{}) bool {
+	if metadata == nil {
+		return false
+	}
+	value, ok := metadata["durationSeconds"]
+	if !ok {
+		return false
+	}
+	switch v := value.(type) {
+	case float64:
+		return v > float64(common.MaxRequestDuration)
+	case int:
+		return v > common.MaxRequestDuration
+	case int64:
+		return v > int64(common.MaxRequestDuration)
+	case string:
+		seconds, err := strconv.Atoi(strings.TrimSpace(v))
+		return err != nil || seconds > common.MaxRequestDuration
+	default:
+		return false
+	}
 }
 
 func isKnownTaskField(field string) bool {

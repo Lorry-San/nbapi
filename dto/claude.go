@@ -244,7 +244,7 @@ type OutputConfigForEffort struct {
 func (c *ClaudeRequest) GetTokenCountMeta() *types.TokenCountMeta {
 	maxTokens := 0
 	if c.MaxTokens != nil {
-		maxTokens = int(*c.MaxTokens)
+		maxTokens = common.BoundedRequestTokens(*c.MaxTokens)
 	}
 	var tokenCountMeta = types.TokenCountMeta{
 		TokenType: types.TokenTypeTokenizer,

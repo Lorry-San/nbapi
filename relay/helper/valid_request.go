@@ -3,7 +3,6 @@ package helper
 import (
 	"errors"
 	"fmt"
-	"math"
 	"net/url"
 	"strconv"
 	"strings"
@@ -126,6 +125,9 @@ func GetAndValidateResponsesRequest(c *gin.Context) (*dto.OpenAIResponsesRequest
 	if request.Input == nil {
 		return nil, errors.New("input is required")
 	}
+	if lo.FromPtrOr(request.MaxOutputTokens, uint(0)) > uint(common.MaxRequestTokens) {
+		return nil, errors.New("max_output_tokens is invalid")
+	}
 	return request, nil
 }
 
@@ -155,7 +157,11 @@ func GetAndValidOpenAIImageRequest(c *gin.Context, relayMode int) (*dto.ImageReq
 			c.Request.PostForm = formData
 			imageRequest.Prompt = formData.Get("prompt")
 			imageRequest.Model = formData.Get("model")
-			imageRequest.N = common.GetPointer(uint(common.String2Int(formData.Get("n"))))
+			n, err := parseImageRequestCount(formData.Get("n"))
+			if err != nil {
+				return nil, err
+			}
+			imageRequest.N = n
 			imageRequest.Quality = formData.Get("quality")
 			imageRequest.Size = formData.Get("size")
 			if streamValue := strings.TrimSpace(formData.Get("stream")); streamValue != "" {
@@ -174,10 +180,6 @@ func GetAndValidOpenAIImageRequest(c *gin.Context, relayMode int) (*dto.ImageReq
 					imageRequest.Quality = "standard"
 				}
 			}
-			if imageRequest.N == nil || *imageRequest.N == 0 {
-				imageRequest.N = common.GetPointer(uint(1))
-			}
-
 			hasWatermark := formData.Has("watermark")
 			if hasWatermark {
 				watermark := formData.Get("watermark") == "true"
@@ -229,12 +231,38 @@ func GetAndValidOpenAIImageRequest(c *gin.Context, relayMode int) (*dto.ImageReq
 		//	return nil, errors.New("prompt is required")
 		//}
 
-		if imageRequest.N == nil || *imageRequest.N == 0 {
-			imageRequest.N = common.GetPointer(uint(1))
-		}
 	}
 
+	if err := normalizeImageRequestCount(imageRequest); err != nil {
+		return nil, err
+	}
 	return imageRequest, nil
+}
+
+func parseImageRequestCount(raw string) (*uint, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+	value, err := strconv.ParseUint(raw, 10, 64)
+	if err != nil {
+		return nil, errors.New("n is invalid")
+	}
+	if value > uint64(common.MaxRequestImageCount) {
+		return nil, fmt.Errorf("n must be less than or equal to %d", common.MaxRequestImageCount)
+	}
+	return common.GetPointer(uint(value)), nil
+}
+
+func normalizeImageRequestCount(request *dto.ImageRequest) error {
+	if request.N == nil || *request.N == 0 {
+		request.N = common.GetPointer(uint(1))
+		return nil
+	}
+	if *request.N > uint(common.MaxRequestImageCount) {
+		return fmt.Errorf("n must be less than or equal to %d", common.MaxRequestImageCount)
+	}
+	return nil
 }
 
 func GetAndValidateClaudeRequest(c *gin.Context) (textRequest *dto.ClaudeRequest, err error) {
@@ -248,6 +276,12 @@ func GetAndValidateClaudeRequest(c *gin.Context) (textRequest *dto.ClaudeRequest
 	}
 	if textRequest.Model == "" {
 		return nil, errors.New("field model is required")
+	}
+	if lo.FromPtrOr(textRequest.MaxTokens, uint(0)) > uint(common.MaxRequestTokens) {
+		return nil, errors.New("max_tokens is invalid")
+	}
+	if lo.FromPtrOr(textRequest.MaxTokensToSample, uint(0)) > uint(common.MaxRequestTokens) {
+		return nil, errors.New("max_tokens_to_sample is invalid")
 	}
 
 	//if textRequest.Stream {
@@ -271,8 +305,11 @@ func GetAndValidateTextRequest(c *gin.Context, relayMode int) (*dto.GeneralOpenA
 		textRequest.Model = c.Param("model")
 	}
 
-	if lo.FromPtrOr(textRequest.MaxTokens, uint(0)) > math.MaxInt32/2 {
+	if lo.FromPtrOr(textRequest.MaxTokens, uint(0)) > uint(common.MaxRequestTokens) {
 		return nil, errors.New("max_tokens is invalid")
+	}
+	if lo.FromPtrOr(textRequest.MaxCompletionTokens, uint(0)) > uint(common.MaxRequestTokens) {
+		return nil, errors.New("max_completion_tokens is invalid")
 	}
 	if textRequest.Model == "" {
 		return nil, errors.New("model is required")
@@ -323,6 +360,9 @@ func GetAndValidateGeminiRequest(c *gin.Context) (*dto.GeminiChatRequest, error)
 	}
 	if len(request.Contents) == 0 && len(request.Requests) == 0 {
 		return nil, errors.New("contents is required")
+	}
+	if request.GenerationConfig.MaxOutputTokens != nil && *request.GenerationConfig.MaxOutputTokens > uint(common.MaxRequestTokens) {
+		return nil, errors.New("max_output_tokens is invalid")
 	}
 
 	//if c.Query("alt") == "sse" {

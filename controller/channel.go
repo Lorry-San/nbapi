@@ -1220,7 +1220,7 @@ func FetchModels(c *gin.Context) {
 	}
 
 	client := &http.Client{}
-	url := fmt.Sprintf("%s/v1/models", baseURL)
+	url := buildChannelModelsURL(baseURL, req.Type)
 
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {

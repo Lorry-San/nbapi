@@ -69,3 +69,52 @@ func TestGetAndValidOpenAIImageRequestMultipartStream(t *testing.T) {
 		require.Contains(t, err.Error(), "invalid stream value")
 	})
 }
+
+func TestGetAndValidOpenAIImageRequestRejectsInvalidImageCount(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	newMultipartContext := func(t *testing.T, n string) *gin.Context {
+		var body bytes.Buffer
+		writer := multipart.NewWriter(&body)
+		require.NoError(t, writer.WriteField("model", "gpt-image-1"))
+		require.NoError(t, writer.WriteField("prompt", "edit this image"))
+		require.NoError(t, writer.WriteField("n", n))
+		require.NoError(t, writer.Close())
+
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+		c.Request = httptest.NewRequest(http.MethodPost, "/v1/images/edits", &body)
+		c.Request.Header.Set("Content-Type", writer.FormDataContentType())
+		return c
+	}
+
+	t.Run("negative multipart n", func(t *testing.T) {
+		_, err := GetAndValidOpenAIImageRequest(newMultipartContext(t, "-1"), relayconstant.RelayModeImagesEdits)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "n is invalid")
+	})
+
+	t.Run("too large json n", func(t *testing.T) {
+		body := bytes.NewBufferString(`{"model":"gpt-image-1","prompt":"draw","n":129}`)
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+		c.Request = httptest.NewRequest(http.MethodPost, "/v1/images/generations", body)
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		_, err := GetAndValidOpenAIImageRequest(c, relayconstant.RelayModeImagesGenerations)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "n must be less than or equal to 128")
+	})
+}
+
+func TestGetAndValidateResponsesRequestRejectsHugeMaxOutputTokens(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	body := bytes.NewBufferString(`{"model":"gpt-5","input":"hello","max_output_tokens":1073741824}`)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", body)
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	_, err := GetAndValidateResponsesRequest(c)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "max_output_tokens is invalid")
+}

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/constant"
 	"github.com/Lorry-San/nbapi/logger"
 
 	"github.com/Lorry-San/nbapi/dto"
@@ -230,7 +231,7 @@ func FetchUpstreamRatios(c *gin.Context) {
 			endpoint := chItem.Endpoint
 			var fullURL string
 			if isOpenRouter {
-				fullURL = chItem.BaseURL + "/v1/models"
+				fullURL = buildChannelModelsURL(chItem.BaseURL, constant.ChannelTypeOpenRouter)
 			} else if strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://") {
 				fullURL = endpoint
 			} else {
