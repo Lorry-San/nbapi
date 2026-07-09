@@ -8,12 +8,16 @@ import (
 
 	"github.com/Lorry-San/nbapi/common"
 	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/setting/model_setting"
 )
 
 const (
 	responsesInputTypeFunctionCall       = "function_call"
 	responsesInputTypeFunctionCallOutput = "function_call_output"
 	responsesInputTypeCustomToolCall     = "custom_tool_call"
+	responsesChatToolTypeFunction        = "function"
+	responsesChatToolTypePlugin          = "plugin"
+	responsesToolTypeNamespace           = "namespace"
 )
 
 func ResponsesRequestToChatCompletionsRequest(req *dto.OpenAIResponsesRequest) (*dto.GeneralOpenAIRequest, error) {
@@ -317,30 +321,135 @@ func responsesRequestToolsToChat(raw json.RawMessage) ([]dto.ToolCallRequest, er
 	}
 
 	out := make([]dto.ToolCallRequest, 0, len(tools))
+	mode := model_setting.GetResponsesToChatToolMode()
 	for _, tool := range tools {
-		toolType := strings.TrimSpace(common.Interface2String(tool["type"]))
-		if toolType == "function" {
-			out = append(out, dto.ToolCallRequest{
-				Type: "function",
-				Function: dto.FunctionRequest{
-					Name:        strings.TrimSpace(common.Interface2String(tool["name"])),
-					Description: common.Interface2String(tool["description"]),
-					Parameters:  tool["parameters"],
-				},
-			})
-			continue
+		converted, err := responsesRequestToolToChat(tool, mode)
+		if err != nil {
+			return nil, err
 		}
+		out = append(out, converted...)
+	}
+	return out, nil
+}
 
+func responsesRequestToolToChat(tool map[string]any, mode string) ([]dto.ToolCallRequest, error) {
+	toolType := strings.TrimSpace(common.Interface2String(tool["type"]))
+	switch toolType {
+	case responsesChatToolTypeFunction:
+		converted, ok := responsesRequestNamedToolToChatFunction(tool)
+		if !ok {
+			return nil, nil
+		}
+		return []dto.ToolCallRequest{converted}, nil
+	case responsesChatToolTypePlugin:
 		rawTool, err := common.Marshal(tool)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, dto.ToolCallRequest{
-			Type:   toolType,
-			Custom: rawTool,
-		})
+		return []dto.ToolCallRequest{{Type: toolType, Custom: rawTool}}, nil
+	case responsesToolTypeNamespace:
+		if mode == model_setting.ResponsesToChatToolModeLoose {
+			return responsesRequestNamespaceToolToChat(tool)
+		}
+		return nil, nil
+	default:
+		if mode == model_setting.ResponsesToChatToolModeLoose {
+			converted, ok := responsesRequestNamedToolToChatFunction(tool)
+			if ok {
+				return []dto.ToolCallRequest{converted}, nil
+			}
+		}
+		return nil, nil
+	}
+}
+
+func responsesRequestNamespaceToolToChat(tool map[string]any) ([]dto.ToolCallRequest, error) {
+	nested := responsesRequestNestedTools(tool)
+	if len(nested) == 0 {
+		converted, ok := responsesRequestNamedToolToChatFunction(tool)
+		if !ok {
+			return nil, nil
+		}
+		return []dto.ToolCallRequest{converted}, nil
+	}
+
+	out := make([]dto.ToolCallRequest, 0, len(nested))
+	for _, nestedTool := range nested {
+		if strings.TrimSpace(common.Interface2String(nestedTool["type"])) == "" {
+			nestedTool["type"] = responsesChatToolTypeFunction
+		}
+		converted, err := responsesRequestToolToChat(nestedTool, model_setting.ResponsesToChatToolModeLoose)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, converted...)
 	}
 	return out, nil
+}
+
+func responsesRequestNamedToolToChatFunction(tool map[string]any) (dto.ToolCallRequest, bool) {
+	name := responsesRequestToolName(tool)
+	if name == "" {
+		return dto.ToolCallRequest{}, false
+	}
+	return dto.ToolCallRequest{
+		Type: responsesChatToolTypeFunction,
+		Function: dto.FunctionRequest{
+			Name:        name,
+			Description: common.Interface2String(tool["description"]),
+			Parameters:  responsesRequestToolParameters(tool),
+		},
+	}, true
+}
+
+func responsesRequestNestedTools(tool map[string]any) []map[string]any {
+	for _, key := range []string{"tools", "functions"} {
+		value, ok := tool[key]
+		if !ok {
+			continue
+		}
+		switch typed := value.(type) {
+		case []map[string]any:
+			return typed
+		case []any:
+			out := make([]map[string]any, 0, len(typed))
+			for _, item := range typed {
+				if itemMap, ok := item.(map[string]any); ok {
+					out = append(out, itemMap)
+				}
+			}
+			if len(out) > 0 {
+				return out
+			}
+		}
+	}
+	return nil
+}
+
+func responsesRequestToolName(tool map[string]any) string {
+	for _, key := range []string{"name", "function_name"} {
+		if name := strings.TrimSpace(common.Interface2String(tool[key])); name != "" {
+			return name
+		}
+	}
+	if function, ok := tool["function"].(map[string]any); ok {
+		return strings.TrimSpace(common.Interface2String(function["name"]))
+	}
+	return ""
+}
+
+func responsesRequestToolParameters(tool map[string]any) any {
+	for _, key := range []string{"parameters", "input_schema", "schema"} {
+		if value, ok := tool[key]; ok {
+			return value
+		}
+	}
+	if function, ok := tool["function"].(map[string]any); ok {
+		if value, ok := function["parameters"]; ok {
+			return value
+		}
+	}
+	return nil
 }
 
 func responsesRequestToolChoiceToChat(raw json.RawMessage) (any, error) {
@@ -359,16 +468,34 @@ func responsesRequestToolChoiceToChat(raw json.RawMessage) (any, error) {
 	if err := common.Unmarshal(raw, &choice); err != nil {
 		return nil, fmt.Errorf("invalid tool_choice: %w", err)
 	}
-	if common.Interface2String(choice["type"]) == "function" {
-		name := strings.TrimSpace(common.Interface2String(choice["name"]))
+	choiceType := strings.TrimSpace(common.Interface2String(choice["type"]))
+	if choiceType == responsesChatToolTypeFunction {
+		name := responsesRequestToolName(choice)
 		if name != "" {
 			return map[string]any{
-				"type": "function",
+				"type": responsesChatToolTypeFunction,
 				"function": map[string]any{
 					"name": name,
 				},
 			}, nil
 		}
+	}
+	if choiceType == responsesChatToolTypePlugin {
+		return choice, nil
+	}
+	if model_setting.GetResponsesToChatToolMode() == model_setting.ResponsesToChatToolModeLoose {
+		if name := responsesRequestToolName(choice); name != "" {
+			return map[string]any{
+				"type": responsesChatToolTypeFunction,
+				"function": map[string]any{
+					"name": name,
+				},
+			}, nil
+		}
+		return nil, nil
+	}
+	if choiceType != "" {
+		return nil, nil
 	}
 	return choice, nil
 }

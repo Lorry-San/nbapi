@@ -5,6 +5,7 @@ import (
 
 	"github.com/Lorry-San/nbapi/common"
 	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/setting/model_setting"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -199,6 +200,100 @@ func TestResponsesRequestToChatCompletionsRequestToolsToolChoiceAndTextFormat(t 
 	assert.True(t, gjson.GetBytes(got.ResponseFormat.JsonSchema, "strict").Bool())
 }
 
+func TestResponsesRequestToChatCompletionsRequestLooseModeConvertsNamespaceTool(t *testing.T) {
+	setResponsesToChatToolModeForTest(t, model_setting.ResponsesToChatToolModeLoose)
+
+	got, err := ResponsesRequestToChatCompletionsRequest(&dto.OpenAIResponsesRequest{
+		Model: "kimi-k2.7",
+		Input: mustRawMessage(t, "hello"),
+		Tools: mustRawMessage(t, []map[string]any{
+			{
+				"type":        "namespace",
+				"name":        "shell_command",
+				"description": "Run shell command",
+				"parameters": map[string]any{
+					"type": "object",
+				},
+			},
+		}),
+		ToolChoice: mustRawMessage(t, map[string]any{
+			"type": "namespace",
+			"name": "shell_command",
+		}),
+	})
+	require.NoError(t, err)
+
+	require.Len(t, got.Tools, 1)
+	assert.Equal(t, "function", got.Tools[0].Type)
+	assert.Equal(t, "shell_command", got.Tools[0].Function.Name)
+	assert.Equal(t, "Run shell command", got.Tools[0].Function.Description)
+	assert.Equal(t, map[string]any{
+		"type": "function",
+		"function": map[string]any{
+			"name": "shell_command",
+		},
+	}, got.ToolChoice)
+}
+
+func TestResponsesRequestToChatCompletionsRequestLooseModeExpandsNamespaceTools(t *testing.T) {
+	setResponsesToChatToolModeForTest(t, model_setting.ResponsesToChatToolModeLoose)
+
+	got, err := ResponsesRequestToChatCompletionsRequest(&dto.OpenAIResponsesRequest{
+		Model: "kimi-k2.7",
+		Input: mustRawMessage(t, "hello"),
+		Tools: mustRawMessage(t, []map[string]any{
+			{
+				"type": "namespace",
+				"name": "functions",
+				"tools": []map[string]any{
+					{
+						"name":        "shell_command",
+						"description": "Run shell command",
+						"parameters": map[string]any{
+							"type": "object",
+						},
+					},
+				},
+			},
+		}),
+	})
+	require.NoError(t, err)
+
+	require.Len(t, got.Tools, 1)
+	assert.Equal(t, "function", got.Tools[0].Type)
+	assert.Equal(t, "shell_command", got.Tools[0].Function.Name)
+	assert.Equal(t, "Run shell command", got.Tools[0].Function.Description)
+}
+
+func TestResponsesRequestToChatCompletionsRequestStrictModeDropsUnsupportedTools(t *testing.T) {
+	setResponsesToChatToolModeForTest(t, model_setting.ResponsesToChatToolModeStrict)
+
+	got, err := ResponsesRequestToChatCompletionsRequest(&dto.OpenAIResponsesRequest{
+		Model: "kimi-k2.7",
+		Input: mustRawMessage(t, "hello"),
+		Tools: mustRawMessage(t, []map[string]any{
+			{
+				"type": "namespace",
+				"name": "shell_command",
+			},
+			{
+				"type": "function",
+				"name": "lookup",
+			},
+		}),
+		ToolChoice: mustRawMessage(t, map[string]any{
+			"type": "namespace",
+			"name": "shell_command",
+		}),
+	})
+	require.NoError(t, err)
+
+	require.Len(t, got.Tools, 1)
+	assert.Equal(t, "function", got.Tools[0].Type)
+	assert.Equal(t, "lookup", got.Tools[0].Function.Name)
+	assert.Nil(t, got.ToolChoice)
+}
+
 func TestResponsesRequestToChatCompletionsRequestCustomToolCallPreservesRawShape(t *testing.T) {
 	got, err := ResponsesRequestToChatCompletionsRequest(&dto.OpenAIResponsesRequest{
 		Model: "gpt-test",
@@ -267,4 +362,14 @@ func mustRawMessage(t *testing.T, value any) []byte {
 	raw, err := common.Marshal(value)
 	require.NoError(t, err)
 	return raw
+}
+
+func setResponsesToChatToolModeForTest(t *testing.T, mode string) {
+	t.Helper()
+	settings := model_setting.GetGlobalSettings()
+	original := settings.ResponsesToChatToolMode
+	t.Cleanup(func() {
+		settings.ResponsesToChatToolMode = original
+	})
+	settings.ResponsesToChatToolMode = mode
 }

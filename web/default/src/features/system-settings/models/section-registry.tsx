@@ -54,6 +54,8 @@ const MODELS_SECTIONS = [
               settings['global.chat_completions_to_responses_policy'],
               '{}'
             ),
+            responses_to_chat_tool_mode:
+              settings['global.responses_to_chat_tool_mode'] ?? 'loose',
           },
           general_setting: {
             ping_interval_enabled:

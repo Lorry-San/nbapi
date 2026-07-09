@@ -15,6 +15,11 @@ type ChatCompletionsToResponsesPolicy struct {
 	ModelPatterns []string `json:"model_patterns,omitempty"`
 }
 
+const (
+	ResponsesToChatToolModeLoose  = "loose"
+	ResponsesToChatToolModeStrict = "strict"
+)
+
 func (p ChatCompletionsToResponsesPolicy) IsChannelEnabled(channelID int, channelType int) bool {
 	if !p.Enabled {
 		return false
@@ -36,6 +41,7 @@ type GlobalSettings struct {
 	PassThroughRequestEnabled        bool                             `json:"pass_through_request_enabled"`
 	ThinkingModelBlacklist           []string                         `json:"thinking_model_blacklist"`
 	ChatCompletionsToResponsesPolicy ChatCompletionsToResponsesPolicy `json:"chat_completions_to_responses_policy"`
+	ResponsesToChatToolMode          string                           `json:"responses_to_chat_tool_mode"`
 }
 
 // 默认配置
@@ -49,6 +55,7 @@ var defaultOpenaiSettings = GlobalSettings{
 		Enabled:     false,
 		AllChannels: true,
 	},
+	ResponsesToChatToolMode: ResponsesToChatToolModeLoose,
 }
 
 // 全局实例
@@ -61,6 +68,15 @@ func init() {
 
 func GetGlobalSettings() *GlobalSettings {
 	return &globalSettings
+}
+
+func GetResponsesToChatToolMode() string {
+	switch strings.TrimSpace(globalSettings.ResponsesToChatToolMode) {
+	case ResponsesToChatToolModeStrict:
+		return ResponsesToChatToolModeStrict
+	default:
+		return ResponsesToChatToolModeLoose
+	}
 }
 
 // ShouldPreserveThinkingSuffix 判断模型是否配置为保留 thinking/-nothinking/-low/-high/-medium 后缀

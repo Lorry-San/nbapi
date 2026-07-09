@@ -36,6 +36,14 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
@@ -92,6 +100,7 @@ const schema = z.object({
     pass_through_request_enabled: z.boolean(),
     thinking_model_blacklist: jsonString,
     chat_completions_to_responses_policy: jsonString,
+    responses_to_chat_tool_mode: z.enum(['loose', 'strict']),
   }),
   general_setting: z.object({
     ping_interval_enabled: z.boolean(),
@@ -106,6 +115,7 @@ type FlatGlobalModelSettings = {
   'global.pass_through_request_enabled': boolean
   'global.thinking_model_blacklist': string
   'global.chat_completions_to_responses_policy': string
+  'global.responses_to_chat_tool_mode': 'loose' | 'strict'
   'general_setting.ping_interval_enabled': boolean
   'general_setting.ping_interval_seconds': number
 }
@@ -123,6 +133,8 @@ const flattenGlobalValues = (
     values.global.chat_completions_to_responses_policy,
     '{}'
   ),
+  'global.responses_to_chat_tool_mode':
+    values.global.responses_to_chat_tool_mode,
   'general_setting.ping_interval_enabled':
     values.general_setting.ping_interval_enabled,
   'general_setting.ping_interval_seconds':
@@ -349,6 +361,44 @@ export function GlobalSettingsCard({ defaultValues }: GlobalSettingsCardProps) {
               )}
             />
           </div>
+
+          <FormField
+            control={form.control}
+            name='global.responses_to_chat_tool_mode'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  {t('Responses -> ChatCompletions tool conversion')}
+                </FormLabel>
+                <FormControl>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger className='w-full sm:w-64'>
+                      <SelectValue placeholder={t('Select conversion mode')} />
+                    </SelectTrigger>
+                    <SelectContent alignItemWithTrigger={false}>
+                      <SelectGroup>
+                        <SelectItem value='loose'>
+                          {t('Loose compatibility')}
+                        </SelectItem>
+                        <SelectItem value='strict'>
+                          {t('Strict whitelist')}
+                        </SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormDescription>
+                  {t(
+                    'Loose mode converts named unsupported Responses tools such as namespace into chat function tools. Strict mode drops unsupported tool types.'
+                  )}
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           <Separator />
 
