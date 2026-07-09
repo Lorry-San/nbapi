@@ -133,7 +133,25 @@ func (a *Adaptor) ConvertOpenAIResponsesRequest(c *gin.Context, info *relaycommo
 	if request.Temperature != nil && isTemperatureOneOnlyModel(getUpstreamModelName(info, request.Model)) && *request.Temperature != 1.0 {
 		request.Temperature = common.GetPointer[float64](1.0)
 	}
-	return request, nil
+	if !shouldConvertMoonshotResponsesViaChat(info) {
+		return request, nil
+	}
+
+	chatReq, err := convertMoonshotResponsesRequestToChatCompletionsRequest(&request)
+	if err != nil {
+		return nil, err
+	}
+	if chatReq.MaxCompletionTokens != nil && chatReq.MaxTokens == nil {
+		chatReq.MaxTokens = chatReq.MaxCompletionTokens
+		chatReq.MaxCompletionTokens = nil
+	}
+	if info != nil {
+		info.RelayMode = constant.RelayModeChatCompletions
+		info.RequestURLPath = "/v1/chat/completions"
+		info.FinalRequestRelayFormat = types.RelayFormatOpenAI
+		info.AppendRequestConversion(types.RelayFormatOpenAI)
+	}
+	return chatReq, nil
 }
 
 func (a *Adaptor) DoRequest(c *gin.Context, info *relaycommon.RelayInfo, requestBody io.Reader) (any, error) {
@@ -149,6 +167,13 @@ func (a *Adaptor) ConvertEmbeddingRequest(c *gin.Context, info *relaycommon.Rela
 }
 
 func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (usage any, err *types.NBAPIError) {
+	if isMoonshotResponsesViaChatResponse(info) {
+		if info.IsStream {
+			return openai.OaiChatToResponsesStreamHandler(c, info, resp)
+		}
+		return openai.OaiChatToResponsesHandler(c, info, resp)
+	}
+
 	switch info.RelayFormat {
 	case types.RelayFormatClaude:
 		adaptor := claude.Adaptor{}
@@ -165,4 +190,19 @@ func (a *Adaptor) GetModelList() []string {
 
 func (a *Adaptor) GetChannelName() string {
 	return ChannelName
+}
+
+func shouldConvertMoonshotResponsesViaChat(info *relaycommon.RelayInfo) bool {
+	if info == nil {
+		return true
+	}
+	return info.RelayFormat == "" || info.RelayFormat == types.RelayFormatOpenAIResponses
+}
+
+func isMoonshotResponsesViaChatResponse(info *relaycommon.RelayInfo) bool {
+	if info == nil {
+		return false
+	}
+	return info.RelayFormat == types.RelayFormatOpenAIResponses &&
+		info.GetFinalRequestRelayFormat() == types.RelayFormatOpenAI
 }

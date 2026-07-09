@@ -71,10 +71,13 @@ func ResponsesHelper(c *gin.Context, info *relaycommon.RelayInfo) (nbapiError *t
 	}
 	adaptor.Init(info)
 	passThroughGlobal := model_setting.GetGlobalSettings().PassThroughRequestEnabled
+	moonshotResponsesViaChat := info.RelayMode == relayconstant.RelayModeResponses &&
+		info.ApiType == appconstant.APITypeMoonshot
 	if info.RelayMode == relayconstant.RelayModeResponses &&
 		info.ChannelSetting.ForceResponsesToChatCompletions &&
 		!passThroughGlobal &&
-		!info.ChannelSetting.PassThroughBodyEnabled {
+		!info.ChannelSetting.PassThroughBodyEnabled &&
+		!moonshotResponsesViaChat {
 		usage, nbapiError := responsesViaChatCompletions(c, info, adaptor, request)
 		if nbapiError != nil {
 			return nbapiError
@@ -89,7 +92,7 @@ func ResponsesHelper(c *gin.Context, info *relaycommon.RelayInfo) (nbapiError *t
 	}
 
 	var requestBody io.Reader
-	if passThroughGlobal || info.ChannelSetting.PassThroughBodyEnabled {
+	if (passThroughGlobal || info.ChannelSetting.PassThroughBodyEnabled) && !moonshotResponsesViaChat {
 		storage, err := common.GetBodyStorage(c)
 		if err != nil {
 			return types.NewError(err, types.ErrorCodeReadRequestBodyFailed, types.ErrOptionWithSkipRetry())
