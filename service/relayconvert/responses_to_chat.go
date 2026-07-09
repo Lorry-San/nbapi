@@ -928,6 +928,8 @@ func isResponsesToolOutputType(outputType string) bool {
 		outputType == responsesOutputTypeCustomToolCall ||
 		outputType == responsesOutputTypeNamespace
 }
+
+func responseStreamEventItemID(event *dto.ResponsesStreamResponse) string {
 	if event.Item != nil {
 		if itemID := strings.TrimSpace(event.Item.ID); itemID != "" {
 			return itemID
