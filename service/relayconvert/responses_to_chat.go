@@ -1,4 +1,4 @@
-package relayconvert
+﻿package relayconvert
 
 import (
 	"errors"
@@ -31,6 +31,7 @@ const (
 	responsesEventReasoningTextDone        = "response.reasoning_text.done"
 	responsesOutputTypeFunctionCall        = "function_call"
 	responsesOutputTypeCustomToolCall      = "custom_tool_call"
+	responsesOutputTypeNamespace           = "namespace"
 	responsesOutputTypeMessage             = "message"
 	responsesOutputTypeReasoning           = "reasoning"
 	responsesIncompleteReasonContentFilter = "content_filter"
@@ -923,13 +924,10 @@ func ensureIncompleteResponse(resp *dto.OpenAIResponsesResponse) *dto.OpenAIResp
 }
 
 func isResponsesToolOutputType(outputType string) bool {
-	return outputType == responsesOutputTypeFunctionCall || outputType == responsesOutputTypeCustomToolCall
+	return outputType == responsesOutputTypeFunctionCall ||
+		outputType == responsesOutputTypeCustomToolCall ||
+		outputType == responsesOutputTypeNamespace
 }
-
-func responseStreamEventItemID(event *dto.ResponsesStreamResponse) string {
-	if event == nil {
-		return ""
-	}
 	if event.Item != nil {
 		if itemID := strings.TrimSpace(event.Item.ID); itemID != "" {
 			return itemID
