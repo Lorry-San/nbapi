@@ -3,6 +3,8 @@ package types
 import (
 	"fmt"
 	"math"
+
+	"github.com/shopspring/decimal"
 )
 
 type GroupRatioInfo struct {
@@ -23,7 +25,7 @@ type PriceData struct {
 	ImageRatio           float64
 	AudioRatio           float64
 	AudioCompletionRatio float64
-	OtherRatios          map[string]float64
+	otherRatios          map[string]float64
 	UsePrice             bool
 	Quota                int // 按次计费的最终额度（MJ / Task）
 	QuotaToPreConsume    int // 按量计费的预消耗额度
@@ -31,16 +33,85 @@ type PriceData struct {
 }
 
 func (p *PriceData) AddOtherRatio(key string, ratio float64) {
-	if p.OtherRatios == nil {
-		p.OtherRatios = make(map[string]float64)
-	}
-	if ratio <= 0 || math.IsNaN(ratio) || math.IsInf(ratio, 0) {
+	if !isValidOtherRatio(ratio) {
 		return
 	}
 	if ratio > math.MaxInt32 {
 		ratio = math.MaxInt32
 	}
-	p.OtherRatios[key] = ratio
+	if p.otherRatios == nil {
+		p.otherRatios = make(map[string]float64)
+	}
+	p.otherRatios[key] = ratio
+}
+
+func (p *PriceData) ReplaceOtherRatios(ratios map[string]float64) bool {
+	p.otherRatios = nil
+	for key, ratio := range ratios {
+		p.AddOtherRatio(key, ratio)
+	}
+	return len(p.otherRatios) > 0
+}
+
+func (p *PriceData) HasOtherRatio(key string) bool {
+	_, ok := p.otherRatios[key]
+	return ok
+}
+
+func (p *PriceData) OtherRatios() map[string]float64 {
+	if len(p.otherRatios) == 0 {
+		return nil
+	}
+	ratios := make(map[string]float64, len(p.otherRatios))
+	for key, ratio := range p.otherRatios {
+		ratios[key] = ratio
+	}
+	return ratios
+}
+
+func (p *PriceData) OtherRatioMultiplier() float64 {
+	return p.ApplyOtherRatiosToFloat(1)
+}
+
+func (p *PriceData) ApplyOtherRatiosToFloat(value float64) float64 {
+	if value <= 0 || math.IsNaN(value) {
+		return 0
+	}
+	if math.IsInf(value, 1) || value > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	for _, ratio := range p.otherRatios {
+		if ratio == 1 {
+			continue
+		}
+		if value > math.MaxInt32/ratio {
+			return math.MaxInt32
+		}
+		value *= ratio
+	}
+	return value
+}
+
+func (p *PriceData) ApplyOtherRatiosToDecimal(value decimal.Decimal) decimal.Decimal {
+	for _, ratio := range p.otherRatios {
+		if ratio != 1 {
+			value = value.Mul(decimal.NewFromFloat(ratio))
+		}
+	}
+	return value
+}
+
+func (p *PriceData) RemoveOtherRatiosFromFloat(value float64) float64 {
+	for _, ratio := range p.otherRatios {
+		if ratio != 1 {
+			value /= ratio
+		}
+	}
+	return value
+}
+
+func isValidOtherRatio(ratio float64) bool {
+	return ratio > 0 && !math.IsNaN(ratio) && !math.IsInf(ratio, 0)
 }
 
 func (p *PriceData) ToSetting() string {

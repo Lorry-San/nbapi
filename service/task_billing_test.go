@@ -330,6 +330,28 @@ func TestRecalculate_PositiveDelta(t *testing.T) {
 	assert.Equal(t, actualQuota-preConsumed, log.Quota)
 }
 
+func TestRecalculateTaskQuotaPersistsSettledQuota(t *testing.T) {
+	truncate(t)
+	ctx := context.Background()
+	const (
+		userID      = 31
+		channelID   = 32
+		preConsumed = 1000
+		actualQuota = 1800
+	)
+
+	seedUser(t, userID, 10000)
+	seedChannel(t, channelID)
+	task := makeTask(userID, channelID, preConsumed, 0, BillingSourceWallet, 0)
+	require.NoError(t, model.DB.Create(task).Error)
+
+	RecalculateTaskQuota(ctx, task, actualQuota, "persistence test")
+
+	var stored model.Task
+	require.NoError(t, model.DB.Select("quota").First(&stored, task.ID).Error)
+	require.Equal(t, actualQuota, stored.Quota)
+}
+
 func TestRecalculate_NegativeDelta(t *testing.T) {
 	truncate(t)
 	ctx := context.Background()

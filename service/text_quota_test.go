@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Lorry-San/nbapi/common"
 	"github.com/Lorry-San/nbapi/constant"
 	"github.com/Lorry-San/nbapi/dto"
 	"github.com/Lorry-San/nbapi/pkg/billingexpr"
@@ -12,8 +13,19 @@ import (
 	"github.com/Lorry-San/nbapi/types"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 )
+
+// TestTextQuotaSaturation guards against quota overflow becoming a credit.
+func TestTextQuotaSaturation(t *testing.T) {
+	// 2000 quota per call * n=18446744073686646784 overflows int64.
+	overflowing := decimal.NewFromInt(2000).Mul(decimal.NewFromFloat(1.8446744073686647e19))
+	require.Equal(t, common.MaxSafeQuota, common.QuotaFromDecimalRound(overflowing))
+
+	require.Zero(t, common.QuotaFromDecimalRound(overflowing.Neg()))
+	require.Equal(t, 42, common.QuotaFromDecimalRound(decimal.NewFromFloat(41.7)))
+}
 
 func TestCalculateTextQuotaSummaryUnifiedForClaudeSemantic(t *testing.T) {
 	gin.SetMode(gin.TestMode)

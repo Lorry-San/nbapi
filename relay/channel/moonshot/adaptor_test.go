@@ -72,9 +72,11 @@ func TestConvertOpenAIRequestOtherMoonshotModelKeepsTemperature(t *testing.T) {
 
 func TestGetRequestURLUsesVersionedBaseURL(t *testing.T) {
 	info := &relaycommon.RelayInfo{
-		ChannelBaseUrl: "https://api.moonshot.cn/v3",
-		ChannelType:    channelconstant.ChannelTypeMoonshot,
-		RelayMode:      relayconstant.RelayModeChatCompletions,
+		ChannelMeta: &relaycommon.ChannelMeta{
+			ChannelBaseUrl: "https://api.moonshot.cn/v3",
+			ChannelType:    channelconstant.ChannelTypeMoonshot,
+		},
+		RelayMode: relayconstant.RelayModeChatCompletions,
 	}
 
 	got, err := (&Adaptor{}).GetRequestURL(info)
@@ -85,8 +87,10 @@ func TestGetRequestURLUsesVersionedBaseURL(t *testing.T) {
 
 func TestGetRequestURLUsesVersionedBaseURLForResponses(t *testing.T) {
 	info := &relaycommon.RelayInfo{
-		ChannelBaseUrl: "https://api.moonshot.cn/v3",
-		ChannelType:    channelconstant.ChannelTypeMoonshot,
+		ChannelMeta: &relaycommon.ChannelMeta{
+			ChannelBaseUrl: "https://api.moonshot.cn/v3",
+			ChannelType:    channelconstant.ChannelTypeMoonshot,
+		},
 		RelayFormat:    types.RelayFormatOpenAIResponses,
 		RelayMode:      relayconstant.RelayModeResponses,
 		RequestURLPath: "/v1/responses",
@@ -100,8 +104,10 @@ func TestGetRequestURLUsesVersionedBaseURLForResponses(t *testing.T) {
 
 func TestGetRequestURLUsesVersionedBaseURLForChatToResponsesConversion(t *testing.T) {
 	info := &relaycommon.RelayInfo{
-		ChannelBaseUrl: "https://api.moonshot.cn/v3",
-		ChannelType:    channelconstant.ChannelTypeMoonshot,
+		ChannelMeta: &relaycommon.ChannelMeta{
+			ChannelBaseUrl: "https://api.moonshot.cn/v3",
+			ChannelType:    channelconstant.ChannelTypeMoonshot,
+		},
 		RelayFormat:    types.RelayFormatOpenAI,
 		RelayMode:      relayconstant.RelayModeResponses,
 		RequestURLPath: "/v1/responses",
@@ -115,8 +121,10 @@ func TestGetRequestURLUsesVersionedBaseURLForChatToResponsesConversion(t *testin
 
 func TestGetRequestURLUsesVersionedSpecialPlanForResponses(t *testing.T) {
 	info := &relaycommon.RelayInfo{
-		ChannelBaseUrl: "doubao-coding-plan",
-		ChannelType:    channelconstant.ChannelTypeMoonshot,
+		ChannelMeta: &relaycommon.ChannelMeta{
+			ChannelBaseUrl: "doubao-coding-plan",
+			ChannelType:    channelconstant.ChannelTypeMoonshot,
+		},
 		RelayFormat:    types.RelayFormatOpenAIResponses,
 		RelayMode:      relayconstant.RelayModeResponses,
 		RequestURLPath: "/v1/responses",

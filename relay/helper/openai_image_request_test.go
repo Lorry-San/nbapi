@@ -2,6 +2,7 @@ package helper
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -10,14 +11,12 @@ import (
 	"testing"
 
 	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/dto"
 	relayconstant "github.com/Lorry-San/nbapi/relay/constant"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
 
-// TestGetAndValidOpenAIImageRequestMultipartStream verifies multipart image
-// edit parsing: the stream field is parsed and validated, and the request body
-// stays replayable for the upstream request.
 func TestGetAndValidOpenAIImageRequestMultipartStream(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -101,8 +100,44 @@ func TestGetAndValidOpenAIImageRequestRejectsInvalidImageCount(t *testing.T) {
 
 		_, err := GetAndValidOpenAIImageRequest(c, relayconstant.RelayModeImagesGenerations)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "n must be less than or equal to 128")
+		require.Contains(t, err.Error(), "128")
 	})
+}
+
+func TestGetAndValidOpenAIImageRequestCountBounds(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	newJSONContext := func(body string) *gin.Context {
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+		c.Request = httptest.NewRequest(http.MethodPost, "/v1/images/generations", bytes.NewBufferString(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+		return c
+	}
+
+	tests := []struct {
+		name    string
+		body    string
+		wantErr bool
+		wantN   uint
+	}{
+		{name: "overflowed uint64 n is rejected", body: `{"model":"gpt-image-1","prompt":"a cat","n":18446744073686646784}`, wantErr: true},
+		{name: "n above max is rejected", body: fmt.Sprintf(`{"model":"gpt-image-1","prompt":"a cat","n":%d}`, dto.MaxImageN+1), wantErr: true},
+		{name: "n at max is accepted", body: fmt.Sprintf(`{"model":"gpt-image-1","prompt":"a cat","n":%d}`, dto.MaxImageN), wantN: dto.MaxImageN},
+		{name: "absent n defaults to 1", body: `{"model":"gpt-image-1","prompt":"a cat"}`, wantN: 1},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, err := GetAndValidOpenAIImageRequest(newJSONContext(tt.body), relayconstant.RelayModeImagesGenerations)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, req.N)
+			require.Equal(t, tt.wantN, *req.N)
+		})
+	}
 }
 
 func TestGetAndValidateResponsesRequestRejectsHugeMaxOutputTokens(t *testing.T) {
