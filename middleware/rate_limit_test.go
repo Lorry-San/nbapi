@@ -73,6 +73,33 @@ func TestRedisIPRateLimiterThresholdTTLAndNamespace(t *testing.T) {
 	assert.True(t, redisServer.Exists(legacyKey), "the v2 counter must not touch an old list key")
 }
 
+func TestGlobalAPIRateLimitSkipsHAHealth(t *testing.T) {
+	originalEnabled := common.GlobalApiRateLimitEnable
+	originalRedisEnabled := common.RedisEnabled
+	originalRDB := common.RDB
+	t.Cleanup(func() {
+		common.GlobalApiRateLimitEnable = originalEnabled
+		common.RedisEnabled = originalRedisEnabled
+		common.RDB = originalRDB
+	})
+
+	common.GlobalApiRateLimitEnable = true
+	common.RedisEnabled = true
+	common.RDB = nil
+
+	router := gin.New()
+	router.Use(GlobalAPIRateLimit())
+	router.GET("/api/ha/health", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+	router.GET("/api/status", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+
+	assert.Equal(t, http.StatusNoContent, performRateLimitRequest(router, "/api/ha/health", "192.0.2.70:12345").Code)
+	assert.Equal(t, http.StatusInternalServerError, performRateLimitRequest(router, "/api/status", "192.0.2.70:12345").Code)
+}
+
 func TestRedisUserRateLimiterUsesSharedFixedWindow(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	redisServer, _ := useRateLimitMiniRedis(t)

@@ -77,6 +77,10 @@ func StartSystemInstanceReporter() {
 }
 
 func ReportCurrentSystemInstance() error {
+	if !common.IsMasterNode {
+		return nil
+	}
+
 	identity := common.GetNodeIdentity()
 	hostname, hostnameErr := os.Hostname()
 	if strings.TrimSpace(identity.Name) == "" {

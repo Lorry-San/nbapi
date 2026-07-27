@@ -3,6 +3,15 @@
 本文件记录 NBAPI 正式版本的重要变化。更细的发布说明见
 [`.github/release-notes`](.github/release-notes)。
 
+## 1.5.1 - 2026-07-27
+
+### HA 稳定性
+
+- 让 `/api/ha/health` 绕过全局 API 限流，避免只读 Redis replica 因执行写入型限流脚本而返回 500。
+- 恢复 standby 健康探针应有的只读状态响应，不再被限流中间件的内部错误覆盖。
+- slave 节点不再向只读 PostgreSQL standby 写入系统实例心跳。
+- 增加只读 HA 健康路径和 slave 系统实例上报的回归测试。
+
 ## 1.5.0 - 2026-07-27
 
 ### 上游同步

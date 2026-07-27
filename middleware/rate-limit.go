@@ -166,7 +166,16 @@ func GlobalWebRateLimit() func(c *gin.Context) {
 
 func GlobalAPIRateLimit() func(c *gin.Context) {
 	if common.GlobalApiRateLimitEnable {
-		return rateLimitFactory(common.GlobalApiRateLimitNum, common.GlobalApiRateLimitDuration, "GA")
+		limiter := rateLimitFactory(common.GlobalApiRateLimitNum, common.GlobalApiRateLimitDuration, "GA")
+		return func(c *gin.Context) {
+			// HA probes must remain read-only so standby nodes can report their
+			// database role while Redis is operating as a replica.
+			if c.Request.URL.Path == "/api/ha/health" {
+				c.Next()
+				return
+			}
+			limiter(c)
+		}
 	}
 	return defNext
 }
