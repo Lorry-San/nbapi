@@ -179,7 +179,7 @@ export async function telegramLogin(
 export async function mofangLogin(jwt: string): Promise<ApiResponse> {
   const res = await api.post(
     '/api/oauth/mofang/session',
-    { jwt },
+    { jwt, aff: getAffiliateCode() },
     {
       skipAuthRefresh: true,
       skipBusinessError: true,

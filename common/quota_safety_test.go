@@ -8,18 +8,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestQuotaFromFloatRejectsNonFiniteAndNegative(t *testing.T) {
+func TestQuotaFromFloatRoundRejectsNonFiniteAndNegative(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, 0, QuotaFromFloat(math.NaN()))
-	require.Equal(t, 0, QuotaFromFloat(math.Inf(1)))
-	require.Equal(t, 0, QuotaFromFloat(-1))
+	require.Equal(t, 0, QuotaFromFloatRound(math.NaN()))
+	require.Equal(t, 0, QuotaFromFloatRound(math.Inf(1)))
+	require.Equal(t, 0, QuotaFromFloatRound(-1))
 }
 
-func TestQuotaFromFloatSaturatesToSafeQuota(t *testing.T) {
+func TestQuotaFromFloatRoundSaturatesToSafeQuota(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, MaxSafeQuota, QuotaFromFloat(float64(MaxSafeQuota)*10))
+	require.Equal(t, MaxSafeQuota, QuotaFromFloatRound(float64(MaxSafeQuota)*10))
 }
 
 func TestQuotaFromDecimalRoundSaturatesToSafeQuota(t *testing.T) {

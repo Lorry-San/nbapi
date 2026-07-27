@@ -7,15 +7,11 @@ import (
 )
 
 const (
-	MaxSafeQuota          = math.MaxInt32
+	MaxSafeQuota          = MaxQuota
 	MaxRequestImageCount = 128
 	MaxRequestDuration   = 3600
 	MaxRequestTokens     = math.MaxInt32 / 2
 )
-
-func QuotaFromFloat(value float64) int {
-	return QuotaFromFloatRound(value)
-}
 
 func QuotaFromFloatRound(value float64) int {
 	if !isFinitePositiveFloat(value) {
@@ -38,7 +34,7 @@ func QuotaFromFloatTrunc(value float64) int {
 	return int(value)
 }
 
-func QuotaFromDecimal(value decimal.Decimal) int {
+func QuotaFromDecimalRound(value decimal.Decimal) int {
 	if value.LessThanOrEqual(decimal.Zero) {
 		return 0
 	}
@@ -46,11 +42,7 @@ func QuotaFromDecimal(value decimal.Decimal) int {
 	if value.GreaterThan(maxQuota) {
 		return MaxSafeQuota
 	}
-	return int(value.IntPart())
-}
-
-func QuotaFromDecimalRound(value decimal.Decimal) int {
-	return QuotaFromDecimal(value.Round(0))
+	return QuotaFromDecimal(value)
 }
 
 func QuotaFromInt64(value int64) int {
