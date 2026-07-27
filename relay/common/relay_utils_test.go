@@ -56,6 +56,38 @@ func TestSanitizeURLForLogKeepsURLWithoutSensitiveQuery(t *testing.T) {
 	assert.Equal(t, rawURL, got)
 }
 
+func TestGetFullRequestURLUsesVersionedBasePathForResponses(t *testing.T) {
+	t.Parallel()
+
+	got := GetFullRequestURL("https://upstream.example/v3", "/v1/responses", constant.ChannelTypeOpenAI)
+
+	require.Equal(t, "https://upstream.example/v3/responses", got)
+}
+
+func TestGetFullRequestURLUsesVersionedBasePathWithTrailingSlash(t *testing.T) {
+	t.Parallel()
+
+	got := GetFullRequestURL("https://upstream.example/api/v3/", "/v1/chat/completions", constant.ChannelTypeOpenAI)
+
+	require.Equal(t, "https://upstream.example/api/v3/chat/completions", got)
+}
+
+func TestGetFullRequestURLKeepsDefaultVersionForNonVersionedBasePath(t *testing.T) {
+	t.Parallel()
+
+	got := GetFullRequestURL("https://upstream.example/api", "/v1/responses", constant.ChannelTypeOpenAI)
+
+	require.Equal(t, "https://upstream.example/api/v1/responses", got)
+}
+
+func TestGetFullRequestURLDoesNotTreatHostAsVersionPath(t *testing.T) {
+	t.Parallel()
+
+	got := GetFullRequestURL("https://v3.example.com", "/v1/responses", constant.ChannelTypeOpenAI)
+
+	require.Equal(t, "https://v3.example.com/v1/responses", got)
+}
+
 func TestValidateMultipartDirectNormalizesImageField(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	body := strings.NewReader(`{"model":"wan2.7-i2v","prompt":"animate","image":" https://example.com/first.png "}`)
