@@ -18,7 +18,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func AlphaSearchHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types.NBAPIError) {
+func AlphaSearchHelper(c *gin.Context, info *relaycommon.RelayInfo) (nbapiError *types.NBAPIError) {
 	info.InitChannelMeta(c)
 
 	switch info.ChannelType {
@@ -54,7 +54,7 @@ func AlphaSearchHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError
 	if len(info.ParamOverride) > 0 {
 		jsonData, err = relaycommon.ApplyParamOverrideWithRelayInfo(jsonData, info)
 		if err != nil {
-			return newAPIErrorFromParamOverride(err)
+			return nbapiErrorFromParamOverride(err)
 		}
 	}
 
@@ -85,9 +85,9 @@ func AlphaSearchHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError
 	defer httpResp.Body.Close()
 
 	if httpResp.StatusCode < 200 || httpResp.StatusCode >= 300 {
-		newAPIError = service.RelayErrorHandler(c.Request.Context(), httpResp, false)
-		service.ResetStatusCode(newAPIError, statusCodeMappingStr)
-		return newAPIError
+		nbapiError = service.RelayErrorHandler(c.Request.Context(), httpResp, false)
+		service.ResetStatusCode(nbapiError, statusCodeMappingStr)
+		return nbapiError
 	}
 
 	if contentType := httpResp.Header.Get("Content-Type"); contentType != "" {
