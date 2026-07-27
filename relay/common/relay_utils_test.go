@@ -3,13 +3,58 @@ package common
 import (
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
 	"github.com/Lorry-San/nbapi/constant"
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestSanitizeURLForLogMasksSensitiveQueryValues(t *testing.T) {
+	rawURL := "https://example.test/v1beta/models/gemini:streamGenerateContent?alt=sse&key=sk-secret&access_token=ya29-secret&api-version=2024-02-01"
+
+	got := SanitizeURLForLog(rawURL)
+
+	assert.NotContains(t, got, "sk-secret")
+	assert.NotContains(t, got, "ya29-secret")
+	parsedURL, err := url.Parse(got)
+	require.NoError(t, err)
+	query := parsedURL.Query()
+	assert.Equal(t, "***masked***", query.Get("key"))
+	assert.Equal(t, "***masked***", query.Get("access_token"))
+	assert.Equal(t, "sse", query.Get("alt"))
+	assert.Equal(t, "2024-02-01", query.Get("api-version"))
+}
+
+func TestSanitizeURLForLogMasksAWSAndSecretLikeQueryKeys(t *testing.T) {
+	rawURL := "https://example.test/path?X-Amz-Credential=credential&X-Amz-Signature=signature&session_token=session&client_secret=secret&model=gpt-test"
+
+	got := SanitizeURLForLog(rawURL)
+
+	assert.NotContains(t, got, "X-Amz-Credential=credential")
+	assert.NotContains(t, got, "X-Amz-Signature=signature")
+	assert.NotContains(t, got, "session_token=session")
+	assert.NotContains(t, got, "client_secret=secret")
+	parsedURL, err := url.Parse(got)
+	require.NoError(t, err)
+	query := parsedURL.Query()
+	assert.Equal(t, "***masked***", query.Get("X-Amz-Credential"))
+	assert.Equal(t, "***masked***", query.Get("X-Amz-Signature"))
+	assert.Equal(t, "***masked***", query.Get("session_token"))
+	assert.Equal(t, "***masked***", query.Get("client_secret"))
+	assert.Equal(t, "gpt-test", query.Get("model"))
+}
+
+func TestSanitizeURLForLogKeepsURLWithoutSensitiveQuery(t *testing.T) {
+	rawURL := "https://example.test/v1/chat/completions?api-version=2024-02-01&alt=sse"
+
+	got := SanitizeURLForLog(rawURL)
+
+	assert.Equal(t, rawURL, got)
+}
 
 func TestValidateMultipartDirectNormalizesImageField(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -30,39 +75,9 @@ func TestValidateMultipartDirectNormalizesImageField(t *testing.T) {
 	require.Equal(t, constant.TaskActionGenerate, info.Action)
 }
 
-func TestGetFullRequestURLUsesVersionedBasePathForResponses(t *testing.T) {
-	t.Parallel()
-
-	got := GetFullRequestURL("https://upstream.example/v3", "/v1/responses", constant.ChannelTypeOpenAI)
-
-	require.Equal(t, "https://upstream.example/v3/responses", got)
-}
-
-func TestGetFullRequestURLUsesVersionedBasePathWithTrailingSlash(t *testing.T) {
-	t.Parallel()
-
-	got := GetFullRequestURL("https://upstream.example/api/v3/", "/v1/chat/completions", constant.ChannelTypeOpenAI)
-
-	require.Equal(t, "https://upstream.example/api/v3/chat/completions", got)
-}
-
-func TestGetFullRequestURLKeepsDefaultVersionForNonVersionedBasePath(t *testing.T) {
-	t.Parallel()
-
-	got := GetFullRequestURL("https://upstream.example/api", "/v1/responses", constant.ChannelTypeOpenAI)
-
-	require.Equal(t, "https://upstream.example/api/v1/responses", got)
-}
-
-func TestGetFullRequestURLDoesNotTreatHostAsVersionPath(t *testing.T) {
-	t.Parallel()
-
-	got := GetFullRequestURL("https://v3.example.com", "/v1/responses", constant.ChannelTypeOpenAI)
-
-	require.Equal(t, "https://v3.example.com/v1/responses", got)
-}
-
-// TestTaskDurationBounds ensures a request-controlled billing multiplier stays bounded.
+// TestTaskDurationBounds guards the billing invariant that user-supplied
+// video duration (a quota multiplier via OtherRatio "seconds") is bounded, so
+// it can never overflow quota calculation into a negative charge.
 func TestTaskDurationBounds(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -79,10 +94,25 @@ func TestTaskDurationBounds(t *testing.T) {
 		body    string
 		wantErr bool
 	}{
-		{name: "huge duration is rejected", body: `{"model":"sora-2","prompt":"a cat","duration":9999999999}`, wantErr: true},
-		{name: "huge seconds string is rejected", body: `{"model":"sora-2","prompt":"a cat","seconds":"9999999999"}`, wantErr: true},
-		{name: "negative duration is rejected", body: `{"model":"sora-2","prompt":"a cat","duration":-8}`, wantErr: true},
-		{name: "normal duration is accepted", body: `{"model":"sora-2","prompt":"a cat","seconds":"8"}`},
+		{
+			name:    "huge duration is rejected",
+			body:    `{"model":"sora-2","prompt":"a cat","duration":9999999999}`,
+			wantErr: true,
+		},
+		{
+			name:    "huge seconds string is rejected",
+			body:    `{"model":"sora-2","prompt":"a cat","seconds":"9999999999"}`,
+			wantErr: true,
+		},
+		{
+			name:    "negative duration is rejected",
+			body:    `{"model":"sora-2","prompt":"a cat","duration":-8}`,
+			wantErr: true,
+		},
+		{
+			name: "normal duration is accepted",
+			body: `{"model":"sora-2","prompt":"a cat","seconds":"8"}`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -91,7 +121,7 @@ func TestTaskDurationBounds(t *testing.T) {
 			taskErr := ValidateMultipartDirect(context, info)
 			if tt.wantErr {
 				require.NotNil(t, taskErr)
-				require.Contains(t, []string{"invalid_duration", "invalid_seconds"}, taskErr.Code)
+				require.Equal(t, "invalid_seconds", taskErr.Code)
 			} else {
 				require.Nil(t, taskErr)
 			}

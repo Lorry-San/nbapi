@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/Lorry-San/nbapi/logger"
 	relaycommon "github.com/Lorry-San/nbapi/relay/common"
@@ -17,8 +18,21 @@ const (
 // PreConsumeBilling 根据用户计费偏好创建 BillingSession 并执行预扣费。
 // 会话存储在 relayInfo.Billing 上，供后续 Settle / Refund 使用。
 func PreConsumeBilling(c *gin.Context, preConsumedQuota int, relayInfo *relaycommon.RelayInfo) *types.NBAPIError {
+	if relayInfo != nil && relayInfo.QuotaClamp != nil {
+		return types.NewErrorWithStatusCode(
+			relayInfo.QuotaClamp,
+			types.ErrorCodeModelPriceError,
+			http.StatusBadRequest,
+			types.ErrOptionWithSkipRetry(),
+		)
+	}
 	if preConsumedQuota < 0 {
-		return types.NewError(fmt.Errorf("pre-consumed quota cannot be negative: %d", preConsumedQuota), types.ErrorCodeInvalidRequest, types.ErrOptionWithSkipRetry())
+		return types.NewErrorWithStatusCode(
+			fmt.Errorf("pre-consume quota cannot be negative: %d", preConsumedQuota),
+			types.ErrorCodeModelPriceError,
+			http.StatusBadRequest,
+			types.ErrOptionWithSkipRetry(),
+		)
 	}
 	session, apiErr := NewBillingSession(c, relayInfo, preConsumedQuota)
 	if apiErr != nil {

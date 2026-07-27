@@ -61,10 +61,6 @@
           "to": "bin/nbapi"
         },
         {
-          "from": "../web/dist",
-          "to": "web/dist"
-        },
-        {
           "from": "../LICENSE",
           "to": "licenses/LICENSE"
         },

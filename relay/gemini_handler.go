@@ -10,10 +10,10 @@ import (
 	"github.com/Lorry-San/nbapi/constant"
 	"github.com/Lorry-San/nbapi/dto"
 	"github.com/Lorry-San/nbapi/logger"
-	"github.com/Lorry-San/nbapi/relay/channel/gemini"
 	relaycommon "github.com/Lorry-San/nbapi/relay/common"
 	"github.com/Lorry-San/nbapi/relay/helper"
 	"github.com/Lorry-San/nbapi/service"
+	"github.com/Lorry-San/nbapi/service/relayconvert"
 	"github.com/Lorry-San/nbapi/setting/model_setting"
 	"github.com/Lorry-San/nbapi/types"
 
@@ -84,7 +84,7 @@ func GeminiHelper(c *gin.Context, info *relaycommon.RelayInfo) (nbapiError *type
 			}
 		}
 		if request.GenerationConfig.ThinkingConfig == nil {
-			gemini.ThinkingAdaptor(request, info)
+			relayconvert.ApplyGeminiThinkingConfig(request, info)
 		}
 	}
 

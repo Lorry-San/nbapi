@@ -69,87 +69,89 @@ func TestGetAndValidOpenAIImageRequestMultipartStream(t *testing.T) {
 	})
 }
 
-func TestGetAndValidOpenAIImageRequestRejectsInvalidImageCount(t *testing.T) {
+// TestGetAndValidOpenAIImageRequestNBounds guards the billing invariant that
+// the image generation count can never reach quota calculation with a value
+// large enough to overflow int64 into a negative charge.
+func TestGetAndValidOpenAIImageRequestNBounds(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	newMultipartContext := func(t *testing.T, n string) *gin.Context {
-		var body bytes.Buffer
-		writer := multipart.NewWriter(&body)
-		require.NoError(t, writer.WriteField("model", "gpt-image-1"))
-		require.NoError(t, writer.WriteField("prompt", "edit this image"))
-		require.NoError(t, writer.WriteField("n", n))
-		require.NoError(t, writer.Close())
-
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-		c.Request = httptest.NewRequest(http.MethodPost, "/v1/images/edits", &body)
-		c.Request.Header.Set("Content-Type", writer.FormDataContentType())
-		return c
-	}
-
-	t.Run("negative multipart n", func(t *testing.T) {
-		_, err := GetAndValidOpenAIImageRequest(newMultipartContext(t, "-1"), relayconstant.RelayModeImagesEdits)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "n is invalid")
-	})
-
-	t.Run("too large json n", func(t *testing.T) {
-		body := bytes.NewBufferString(`{"model":"gpt-image-1","prompt":"draw","n":129}`)
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-		c.Request = httptest.NewRequest(http.MethodPost, "/v1/images/generations", body)
-		c.Request.Header.Set("Content-Type", "application/json")
-
-		_, err := GetAndValidOpenAIImageRequest(c, relayconstant.RelayModeImagesGenerations)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "128")
-	})
-}
-
-func TestGetAndValidOpenAIImageRequestCountBounds(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	newJSONContext := func(body string) *gin.Context {
+	newJSONContext := func(t *testing.T, body string) *gin.Context {
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 		c.Request = httptest.NewRequest(http.MethodPost, "/v1/images/generations", bytes.NewBufferString(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 		return c
 	}
 
+	boundErr := fmt.Sprintf("n must be an integer between 1 and %d", dto.MaxImageN)
+
 	tests := []struct {
 		name    string
 		body    string
-		wantErr bool
+		wantErr string
 		wantN   uint
 	}{
-		{name: "overflowed uint64 n is rejected", body: `{"model":"gpt-image-1","prompt":"a cat","n":18446744073686646784}`, wantErr: true},
-		{name: "n above max is rejected", body: fmt.Sprintf(`{"model":"gpt-image-1","prompt":"a cat","n":%d}`, dto.MaxImageN+1), wantErr: true},
-		{name: "n at max is accepted", body: fmt.Sprintf(`{"model":"gpt-image-1","prompt":"a cat","n":%d}`, dto.MaxImageN), wantN: dto.MaxImageN},
-		{name: "absent n defaults to 1", body: `{"model":"gpt-image-1","prompt":"a cat"}`, wantN: 1},
+		{
+			name:    "overflowed uint64 n is rejected",
+			body:    `{"model":"gpt-image-1","prompt":"a cat","n":18446744073686646784}`,
+			wantErr: boundErr,
+		},
+		{
+			name:    "n above max is rejected",
+			body:    fmt.Sprintf(`{"model":"gpt-image-1","prompt":"a cat","n":%d}`, dto.MaxImageN+1),
+			wantErr: boundErr,
+		},
+		{
+			name:  "n at max is accepted",
+			body:  fmt.Sprintf(`{"model":"gpt-image-1","prompt":"a cat","n":%d}`, dto.MaxImageN),
+			wantN: dto.MaxImageN,
+		},
+		{
+			name:  "explicit n is accepted",
+			body:  `{"model":"gpt-image-1","prompt":"a cat","n":3}`,
+			wantN: 3,
+		},
+		{
+			name:  "zero n defaults to 1",
+			body:  `{"model":"gpt-image-1","prompt":"a cat","n":0}`,
+			wantN: 1,
+		},
+		{
+			name:  "absent n defaults to 1",
+			body:  `{"model":"gpt-image-1","prompt":"a cat"}`,
+			wantN: 1,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req, err := GetAndValidOpenAIImageRequest(newJSONContext(tt.body), relayconstant.RelayModeImagesGenerations)
-			if tt.wantErr {
+			c := newJSONContext(t, tt.body)
+			req, err := GetAndValidOpenAIImageRequest(c, relayconstant.RelayModeImagesGenerations)
+			if tt.wantErr != "" {
 				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
 				return
 			}
 			require.NoError(t, err)
 			require.NotNil(t, req.N)
 			require.Equal(t, tt.wantN, *req.N)
+			require.Equal(t, float64(tt.wantN), req.GetTokenCountMeta().BillingRatios["n"])
 		})
 	}
-}
 
-func TestGetAndValidateResponsesRequestRejectsHugeMaxOutputTokens(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+	t.Run("negative multipart n is rejected", func(t *testing.T) {
+		var body bytes.Buffer
+		writer := multipart.NewWriter(&body)
+		require.NoError(t, writer.WriteField("model", "gpt-image-1"))
+		require.NoError(t, writer.WriteField("prompt", "edit this image"))
+		require.NoError(t, writer.WriteField("n", "-22904832"))
+		require.NoError(t, writer.Close())
 
-	body := bytes.NewBufferString(`{"model":"gpt-5","input":"hello","max_output_tokens":1073741824}`)
-	c, _ := gin.CreateTestContext(httptest.NewRecorder())
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", body)
-	c.Request.Header.Set("Content-Type", "application/json")
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+		c.Request = httptest.NewRequest(http.MethodPost, "/v1/images/edits", &body)
+		c.Request.Header.Set("Content-Type", writer.FormDataContentType())
 
-	_, err := GetAndValidateResponsesRequest(c)
-
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "max_output_tokens is invalid")
+		_, err := GetAndValidOpenAIImageRequest(c, relayconstant.RelayModeImagesEdits)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), boundErr)
+	})
 }

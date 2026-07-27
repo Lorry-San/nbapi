@@ -6,13 +6,9 @@ echo "Building NBAPI Electron App..."
 
 echo "Step 1: Building frontend..."
 cd ../web
-VERSION=$(git describe --tags --always 2>/dev/null || echo dev)
 bun install --frozen-lockfile
-cd default
-DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$VERSION bun run build
-cd ../classic
-VITE_REACT_APP_VERSION=$VERSION bun run build
-cd ../../electron
+DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$(git describe --tags --always) bun run build
+cd ../electron
 
 echo "Step 2: Building Go backend..."
 cd ..

@@ -1,20 +1,19 @@
 package billingexpr
 
-import "math"
+import "github.com/Lorry-San/nbapi/common"
 
 // QuotaRound converts a float64 quota value to int using half-away-from-zero
-// rounding. Every tiered billing path (pre-consume, settlement, breakdown
-// validation, log fields) MUST use this function to avoid +-1 discrepancies.
+// rounding with int32 saturation. Every tiered billing path (pre-consume,
+// settlement, breakdown validation, log fields) MUST use this function to
+// avoid +-1 discrepancies.
+//
+// It delegates to common.QuotaRound so all quota rounding/conversion shares
+// one saturation + logging policy (see common/quota_math.go).
 func QuotaRound(f float64) int {
-	rounded := math.Round(f)
-	if math.IsNaN(rounded) {
-		return 0
-	}
-	if rounded >= math.MaxInt32 {
-		return math.MaxInt32
-	}
-	if rounded <= math.MinInt32 {
-		return math.MinInt32
-	}
-	return int(rounded)
+	return common.QuotaRound(f)
+}
+
+// QuotaRoundStrict rejects an unrepresentable pre-consume estimate.
+func QuotaRoundStrict(f float64) (int, error) {
+	return common.QuotaRoundStrict(f)
 }

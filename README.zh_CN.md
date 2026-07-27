@@ -1,6 +1,6 @@
 <div align="center">
 
-![nbapi](/web/default/public/logo.png)
+![nbapi](/web/public/logo.png)
 
 # NBAPI
 
@@ -22,10 +22,7 @@
     <img src="https://img.shields.io/github/v/release/Lorry-San/nbapi?color=brightgreen&include_prereleases" alt="release">
   </a><!--
   --><a href="https://github.com/users/Lorry-San/packages/container/package/nbapi">
-    <img src="https://img.shields.io/badge/docker-ghcr.io-blue" alt="docker">
-  </a><!--
-  --><a href="https://goreportcard.com/report/github.com/Lorry-San/nbapi">
-    <img src="https://goreportcard.com/badge/github.com/Lorry-San/nbapi" alt="GoReportCard">
+    <img src="https://img.shields.io/badge/docker-GHCR-blue" alt="docker">
   </a>
 </p>
 
@@ -37,9 +34,7 @@
   <a href="https://hellogithub.com/repository/Lorry-San/nbapi" target="_blank">
     <img src="https://api.hellogithub.com/v1/widgets/recommend.svg?rid=539ac4217e69431684ad4a0bab768811&claim_uid=tbFPfKIDHpc4TzR" alt="Featured｜HelloGitHub" style="width: 250px; height: 54px;" width="250" height="54" />
   </a><!--
-  --><a href="https://www.producthunt.com/products/nbapi/launches/nbapi?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-nbapi" target="_blank" rel="noopener noreferrer">
-    <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1047693&theme=light&t=1769577875005" alt="NBAPI - All-in-one AI asset management gateway. | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" />
-  </a>
+  -->
 </p>
 
 <p align="center">
@@ -114,11 +109,17 @@
 git clone https://github.com/Lorry-San/nbapi.git
 cd nbapi
 
-# 编辑 docker-compose.yml 配置
-nano docker-compose.yml
+# 生成四个相互独立的生产环境密钥
+cat > .env <<EOF
+POSTGRES_PASSWORD=$(cat /proc/sys/kernel/random/uuid)
+REDIS_PASSWORD=$(cat /proc/sys/kernel/random/uuid)
+SESSION_SECRET=$(cat /proc/sys/kernel/random/uuid)
+CRYPTO_SECRET=$(cat /proc/sys/kernel/random/uuid)
+EOF
+chmod 600 .env
 
-# 启动服务
-docker-compose up -d
+# 拉取 GHCR 的 latest 镜像并启动服务
+docker compose up -d --pull always
 ```
 
 <details>
@@ -304,16 +305,38 @@ docker run --name nbapi -d --restart always \
 | **本地数据库** | SQLite（Docker 需挂载 `/data` 目录）|
 | **远程数据库** | MySQL ≥ 5.7.8 或 PostgreSQL ≥ 9.6 |
 | **容器引擎** | Docker / Docker Compose |
+| **系统架构** | 仅支持 64 位系统（amd64 / arm64），不支持 32 位系统 |
 
 ### ⚙️ 环境变量配置
+
+#### 生产环境 `.env`
+
+生产 Compose 必须提供四个相互独立的密钥。请妥善备份并保密该文件，首次部署后不要重新生成这些值。
+
+| 变量 | 用途 |
+|---|---|
+| `POSTGRES_PASSWORD` | PostgreSQL 账户密码 |
+| `REDIS_PASSWORD` | Redis 认证密码 |
+| `SESSION_SECRET` | 会话签名密钥；所有应用节点必须保持一致 |
+| `CRYPTO_SECRET` | 数据加密密钥；所有应用节点必须保持一致 |
+
+> 升级已有 PostgreSQL 数据卷时，仅修改 `.env` 中的 `POSTGRES_PASSWORD` 不会改变数据库里已保存的用户密码。请沿用旧密码，或先在 PostgreSQL 内修改密码，再更新 `.env`。
 
 <details>
 <summary>常用环境变量配置</summary>
 
 | 变量名 | 说明                                                           | 默认值 |
 |--------|--------------------------------------------------------------|--------|
-| `SESSION_SECRET` | 会话密钥（多机部署必须）                                                 | - |
-| `CRYPTO_SECRET` | 加密密钥（Redis 必须）                                               | - |
+| `SESSION_SECRET` | 鉴权签名密钥；所有节点必须保持一致                                           | - |
+| `SESSION_COOKIE_SECURE` | `false`/未配置时关闭 refresh/logout OriginGuard 以兼容本地 HTTP 开发代理；`true` 时启用 Secure Cookie 和严格 Origin 校验 | `false` |
+| `SESSION_COOKIE_TRUSTED_URL` | Secure 模式必填：允许调用 refresh/logout 的精确 HTTPS Origin，多个用英文逗号分隔；不是 relay CORS 白名单 | - |
+| `TRUSTED_PROXIES` | 未配置/留空时信任回环、RFC1918 和 IPv6 ULA 并输出启动告警；`none` 不信任任何代理；显式代理 IP/CIDR 列表完全替代默认值 | `127.0.0.0/8, ::1, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fc00::/7` |
+| `USER_SESSION_ACTIVE_LIMIT` | 单用户最大活跃登录 Session 数 | `50` |
+| `USER_SESSION_ISSUANCE_LIMIT` | 单用户在签发窗口内可创建的 Session 总数，包含已撤销 Session | `100` |
+| `USER_SESSION_ISSUANCE_WINDOW_SECONDS` | Session 签发计数窗口（秒）；高于 revoked 保留期时自动钳制 | `86400` |
+| `USER_SESSION_REVOKED_RETENTION_DAYS` | revoked Session 用于审计和签发计数的保留天数 | `7` |
+| `USER_SESSION_HOURLY_ALERT_THRESHOLD` | 全局每小时 Session 签发告警阈值；只告警，不拒绝登录 | `5000` |
+| `CRYPTO_SECRET` | 缓存键 HMAC 密钥；共享 Redis 的节点必须使用相同有效值 | 默认跟随 `SESSION_SECRET` |
 | `SQL_DSN` | 数据库连接字符串                                                     | - |
 | `REDIS_CONN_STRING` | Redis 连接字符串                                                  | - |
 | `STREAMING_TIMEOUT` | 流式超时时间（秒）                                                    | `300` |
@@ -343,11 +366,17 @@ docker run --name nbapi -d --restart always \
 git clone https://github.com/Lorry-San/nbapi.git
 cd nbapi
 
-# 编辑配置
-nano docker-compose.yml
+# 生成四个相互独立的生产环境密钥
+cat > .env <<EOF
+POSTGRES_PASSWORD=$(cat /proc/sys/kernel/random/uuid)
+REDIS_PASSWORD=$(cat /proc/sys/kernel/random/uuid)
+SESSION_SECRET=$(cat /proc/sys/kernel/random/uuid)
+CRYPTO_SECRET=$(cat /proc/sys/kernel/random/uuid)
+EOF
+chmod 600 .env
 
-# 启动服务
-docker-compose up -d
+# 拉取 GHCR 的 latest 镜像并启动服务
+docker compose up -d --pull always
 ```
 
 </details>
@@ -394,8 +423,20 @@ docker run --name nbapi -d --restart always \
 ### ⚠️ 多机部署注意事项
 
 > [!WARNING]
-> - **必须设置** `SESSION_SECRET` - 否则登录状态不一致
-> - **公用 Redis 必须设置** `CRYPTO_SECRET` - 否则数据无法解密
+> - 所有节点必须使用同一个主数据库，并设置相同的 `SESSION_SECRET`；否则 Access Token、Refresh 会话和临时鉴权流程无法一致校验。
+> - 连接同一个 Redis 的节点还必须设置相同的 `CRYPTO_SECRET`，否则节点生成的缓存键摘要不一致，无法正确共享缓存。
+
+登录 Session 和单用户活跃数/签发数限制均以数据库为权威。Redis 中的 Session 仅为短期缓存，TTL 跟随 `SYNC_FREQUENCY`（默认 60 秒），且不会超过 Session 的剩余寿命。
+
+| Redis 拓扑 | Session 状态传播 | 限流语义 |
+| --- | --- | --- |
+| 所有节点共享 Redis | 撤销和版本发布通常即时传播 | Redis 限流额度在节点间共享 |
+| 每个节点使用独立 Redis | 最迟在有效 `SYNC_FREQUENCY` 内回源数据库收敛；版本轮换后，新 Token 在持有旧缓存的节点上可能短暂返回 401 | 每个节点独立计数，集群总额度最坏约为单节点阈值乘以节点数 |
+| 不使用 Redis | 每次 Session 校验直接读取数据库 | 各节点使用独立的内存限流额度 |
+
+缩短 `SYNC_FREQUENCY` 可减小独立 Redis 的陈旧窗口，但每个活跃 SID 在每个节点上会按该 TTL 增加一次数据库主键点查。上述保证只让 Session 鉴权在不同拓扑下保持有界陈旧；限流和其他 Redis 控制面缓存仍受拓扑影响。
+
+Token、Origin 校验和 PAT 契约见[用户鉴权与登录会话](./docs/authentication.md)。
 
 ### 🔄 渠道重试与缓存
 

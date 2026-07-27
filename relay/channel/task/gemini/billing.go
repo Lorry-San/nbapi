@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Lorry-San/nbapi/common"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
 )
 
 // ParseVeoDurationSeconds extracts durationSeconds from metadata.
@@ -54,15 +54,15 @@ func ResolveVeoDuration(metadata map[string]any, stdDuration int, stdSeconds str
 	if metadata != nil {
 		if _, exists := metadata["durationSeconds"]; exists {
 			if d := ParseVeoDurationSeconds(metadata); d > 0 {
-				return clampVeoDuration(d)
+				return min(d, relaycommon.MaxTaskDurationSeconds)
 			}
 		}
 	}
 	if stdDuration > 0 {
-		return clampVeoDuration(stdDuration)
+		return min(stdDuration, relaycommon.MaxTaskDurationSeconds)
 	}
 	if s, err := strconv.Atoi(stdSeconds); err == nil && s > 0 {
-		return clampVeoDuration(s)
+		return min(s, relaycommon.MaxTaskDurationSeconds)
 	}
 	return 8
 }

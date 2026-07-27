@@ -36,9 +36,6 @@ func (p *PriceData) AddOtherRatio(key string, ratio float64) {
 	if !isValidOtherRatio(ratio) {
 		return
 	}
-	if ratio > math.MaxInt32 {
-		ratio = math.MaxInt32
-	}
 	if p.otherRatios == nil {
 		p.otherRatios = make(map[string]float64)
 	}
@@ -54,8 +51,8 @@ func (p *PriceData) ReplaceOtherRatios(ratios map[string]float64) bool {
 }
 
 func (p *PriceData) HasOtherRatio(key string) bool {
-	_, ok := p.otherRatios[key]
-	return ok
+	ratio, ok := p.otherRatios[key]
+	return ok && isValidOtherRatio(ratio)
 }
 
 func (p *PriceData) OtherRatios() map[string]float64 {
@@ -64,37 +61,33 @@ func (p *PriceData) OtherRatios() map[string]float64 {
 	}
 	ratios := make(map[string]float64, len(p.otherRatios))
 	for key, ratio := range p.otherRatios {
-		ratios[key] = ratio
+		if isValidOtherRatio(ratio) {
+			ratios[key] = ratio
+		}
+	}
+	if len(ratios) == 0 {
+		return nil
 	}
 	return ratios
 }
 
 func (p *PriceData) OtherRatioMultiplier() float64 {
-	return p.ApplyOtherRatiosToFloat(1)
+	multiplier := 1.0
+	for _, ratio := range p.otherRatios {
+		if isValidOtherRatio(ratio) && ratio != 1.0 {
+			multiplier *= ratio
+		}
+	}
+	return multiplier
 }
 
 func (p *PriceData) ApplyOtherRatiosToFloat(value float64) float64 {
-	if value <= 0 || math.IsNaN(value) {
-		return 0
-	}
-	if math.IsInf(value, 1) || value > math.MaxInt32 {
-		return math.MaxInt32
-	}
-	for _, ratio := range p.otherRatios {
-		if ratio == 1 {
-			continue
-		}
-		if value > math.MaxInt32/ratio {
-			return math.MaxInt32
-		}
-		value *= ratio
-	}
-	return value
+	return value * p.OtherRatioMultiplier()
 }
 
 func (p *PriceData) ApplyOtherRatiosToDecimal(value decimal.Decimal) decimal.Decimal {
 	for _, ratio := range p.otherRatios {
-		if ratio != 1 {
+		if isValidOtherRatio(ratio) && ratio != 1.0 {
 			value = value.Mul(decimal.NewFromFloat(ratio))
 		}
 	}
@@ -103,7 +96,7 @@ func (p *PriceData) ApplyOtherRatiosToDecimal(value decimal.Decimal) decimal.Dec
 
 func (p *PriceData) RemoveOtherRatiosFromFloat(value float64) float64 {
 	for _, ratio := range p.otherRatios {
-		if ratio != 1 {
+		if isValidOtherRatio(ratio) && ratio != 1.0 {
 			value /= ratio
 		}
 	}
@@ -111,7 +104,9 @@ func (p *PriceData) RemoveOtherRatiosFromFloat(value float64) float64 {
 }
 
 func isValidOtherRatio(ratio float64) bool {
-	return ratio > 0 && !math.IsNaN(ratio) && !math.IsInf(ratio, 0)
+	// NaN/Inf would poison every downstream quota multiplication
+	// (int(NaN * quota) wraps to a negative charge).
+	return ratio > 0 && !math.IsInf(ratio, 1)
 }
 
 func (p *PriceData) ToSetting() string {

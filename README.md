@@ -1,6 +1,6 @@
 <div align="center">
 
-![nbapi](/web/default/public/logo.png)
+![nbapi](/web/public/logo.png)
 
 # NBAPI
 
@@ -22,10 +22,7 @@
     <img src="https://img.shields.io/github/v/release/Lorry-San/nbapi?color=brightgreen&include_prereleases" alt="release">
   </a><!--
   --><a href="https://github.com/users/Lorry-San/packages/container/package/nbapi">
-    <img src="https://img.shields.io/badge/docker-ghcr.io-blue" alt="docker">
-  </a><!--
-  --><a href="https://goreportcard.com/report/github.com/Lorry-San/nbapi">
-    <img src="https://goreportcard.com/badge/github.com/Lorry-San/nbapi" alt="GoReportCard">
+    <img src="https://img.shields.io/badge/docker-GHCR-blue" alt="docker">
   </a>
 </p>
 
@@ -37,9 +34,7 @@
   <a href="https://hellogithub.com/repository/Lorry-San/nbapi" target="_blank">
     <img src="https://api.hellogithub.com/v1/widgets/recommend.svg?rid=539ac4217e69431684ad4a0bab768811&claim_uid=tbFPfKIDHpc4TzR" alt="Featured｜HelloGitHub" style="width: 250px; height: 54px;" width="250" height="54" />
   </a><!--
-  --><a href="https://www.producthunt.com/products/nbapi/launches/nbapi?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-nbapi" target="_blank" rel="noopener noreferrer">
-    <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1047693&theme=light&t=1769577875005" alt="NBAPI - All-in-one AI asset management gateway. | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" />
-  </a>
+  -->
 </p>
 
 <p align="center">
@@ -114,11 +109,17 @@
 git clone https://github.com/Lorry-San/nbapi.git
 cd nbapi
 
-# Edit docker-compose.yml configuration
-nano docker-compose.yml
+# Generate four independent production secrets
+cat > .env <<EOF
+POSTGRES_PASSWORD=$(cat /proc/sys/kernel/random/uuid)
+REDIS_PASSWORD=$(cat /proc/sys/kernel/random/uuid)
+SESSION_SECRET=$(cat /proc/sys/kernel/random/uuid)
+CRYPTO_SECRET=$(cat /proc/sys/kernel/random/uuid)
+EOF
+chmod 600 .env
 
-# Start the service
-docker-compose up -d
+# Pull the current GHCR latest image and start the service
+docker compose up -d --pull always
 ```
 
 <details>
@@ -304,16 +305,38 @@ docker run --name nbapi -d --restart always \
 | **Local database** | SQLite (Docker must mount `/data` directory)|
 | **Remote database** | MySQL ≥ 5.7.8 or PostgreSQL ≥ 9.6 |
 | **Container engine** | Docker / Docker Compose |
+| **System architecture** | 64-bit only (amd64 / arm64); 32-bit systems are not supported |
 
 ### ⚙️ Environment Variable Configuration
+
+#### Production `.env`
+
+The production Compose file requires four independent secrets. Keep this file private and backed up; do not regenerate these values after the first deployment.
+
+| Variable | Purpose |
+|---|---|
+| `POSTGRES_PASSWORD` | PostgreSQL account password |
+| `REDIS_PASSWORD` | Redis authentication password |
+| `SESSION_SECRET` | Session signing secret; all application nodes must share it |
+| `CRYPTO_SECRET` | Data encryption secret; all application nodes must share it |
+
+> When upgrading an existing PostgreSQL volume, changing `POSTGRES_PASSWORD` in `.env` does not change the database user's stored password. Keep the existing password or change it inside PostgreSQL before updating `.env`.
 
 <details>
 <summary>Common environment variable configuration</summary>
 
 | Variable Name | Description | Default Value |
 |--------|------|--------|
-| `SESSION_SECRET` | Session secret (required for multi-machine deployment) | - |
-| `CRYPTO_SECRET` | Encryption secret (required for Redis) | - |
+| `SESSION_SECRET` | Authentication signing secret; must be identical on every node | - |
+| `SESSION_COOKIE_SECURE` | `false`/unset disables the refresh/logout OriginGuard for local HTTP dev proxies; `true` enables the Secure cookie and strict Origin checks | `false` |
+| `SESSION_COOKIE_TRUSTED_URL` | Required with Secure mode: comma-separated exact HTTPS Origins allowed to call refresh/logout; not a relay CORS allowlist | - |
+| `TRUSTED_PROXIES` | Unset/blank trusts loopback, RFC 1918 and IPv6 ULA with a startup warning; `none` trusts no proxies; an explicit proxy IP/CIDR list replaces the defaults | `127.0.0.0/8, ::1, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fc00::/7` |
+| `USER_SESSION_ACTIVE_LIMIT` | Maximum active login Sessions per user | `50` |
+| `USER_SESSION_ISSUANCE_LIMIT` | Maximum Sessions created per user within the issuance window, including revoked Sessions | `100` |
+| `USER_SESSION_ISSUANCE_WINDOW_SECONDS` | Per-user Session issuance window; clamped to the revoked retention period when configured higher | `86400` |
+| `USER_SESSION_REVOKED_RETENTION_DAYS` | Days to retain revoked Session rows for audit and issuance accounting | `7` |
+| `USER_SESSION_HOURLY_ALERT_THRESHOLD` | Global Sessions created per hour that triggers an alert only; it never blocks login | `5000` |
+| `CRYPTO_SECRET` | HMAC secret for cache keys; nodes sharing Redis must use the same effective value | Defaults to `SESSION_SECRET` |
 | `SQL_DSN` | Database connection string | - |
 | `REDIS_CONN_STRING` | Redis connection string | - |
 | `RELAY_IDLE_CONN_TIMEOUT` | Idle keep-alive timeout for relay HTTP clients, seconds. Defaults to Go standard library behavior; set `0` to disable | `90` |
@@ -344,11 +367,17 @@ docker run --name nbapi -d --restart always \
 git clone https://github.com/Lorry-San/nbapi.git
 cd nbapi
 
-# Edit configuration
-nano docker-compose.yml
+# Generate four independent production secrets
+cat > .env <<EOF
+POSTGRES_PASSWORD=$(cat /proc/sys/kernel/random/uuid)
+REDIS_PASSWORD=$(cat /proc/sys/kernel/random/uuid)
+SESSION_SECRET=$(cat /proc/sys/kernel/random/uuid)
+CRYPTO_SECRET=$(cat /proc/sys/kernel/random/uuid)
+EOF
+chmod 600 .env
 
-# Start service
-docker-compose up -d
+# Pull the current GHCR latest image and start the service
+docker compose up -d --pull always
 ```
 
 </details>
@@ -395,8 +424,20 @@ docker run --name nbapi -d --restart always \
 ### ⚠️ Multi-machine Deployment Considerations
 
 > [!WARNING]
-> - **Must set** `SESSION_SECRET` - Otherwise login status inconsistent
-> - **Shared Redis must set** `CRYPTO_SECRET` - Otherwise data cannot be decrypted
+> - All nodes must use the same primary database and the same `SESSION_SECRET`; otherwise Access Tokens, refresh sessions, and temporary authentication flows cannot be verified consistently.
+> - Nodes connected to the same Redis must also use the same `CRYPTO_SECRET`, or their cache-key digests will differ and shared entries cannot be reused consistently.
+
+The database is authoritative for login Sessions and for the per-user active/issuance limits. Redis Session entries are short-lived caches whose TTL follows `SYNC_FREQUENCY` (60 seconds by default) and never exceeds the Session's remaining lifetime.
+
+| Redis topology | Session propagation | Rate limiting |
+| --- | --- | --- |
+| Shared Redis | Revocations and version publications normally propagate immediately | Redis limits are shared across nodes |
+| Independent Redis per node | Nodes converge from the database within the effective `SYNC_FREQUENCY`; a newly rotated token may receive a temporary 401 on a node with stale cache | Each node has its own allowance, so aggregate capacity can reach roughly the configured limit multiplied by the node count |
+| No Redis | Every Session validation reads the database | In-memory limits are independent per node |
+
+A shorter `SYNC_FREQUENCY` reduces the independent-Redis staleness window but causes one additional primary-key Session lookup per active SID, per node, per TTL. These guarantees make Session authentication bounded-stale across the supported topologies; rate limits and other Redis-backed control-plane caches remain topology-dependent.
+
+See [User authentication and login sessions](./docs/authentication.md) for the token, Origin-check and PAT contracts.
 
 ### 🔄 Channel Retry and Cache
 

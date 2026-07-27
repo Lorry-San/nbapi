@@ -37,49 +37,65 @@ func GetFullRequestURL(baseURL string, requestURL string, channelType int) strin
 	return fullRequestURL
 }
 
-func joinBaseURLAndRequestURL(baseURL string, requestURL string) string {
-	baseURL = strings.TrimRight(baseURL, "/")
-	if requestURL == "" {
-		return baseURL
+func SanitizeURLForLog(rawURL string) string {
+	if rawURL == "" {
+		return rawURL
 	}
-	if baseURLHasVersionPath(baseURL) {
-		requestURL = trimDefaultAPIVersionPrefix(requestURL)
-	}
-	if !strings.HasPrefix(requestURL, "/") {
-		requestURL = "/" + requestURL
-	}
-	return fmt.Sprintf("%s%s", baseURL, requestURL)
-}
 
-func baseURLHasVersionPath(baseURL string) bool {
-	parsed, err := url.Parse(baseURL)
-	if err != nil || parsed.Path == "" || parsed.Path == "/" {
-		return false
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
 	}
-	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
-	version := parts[len(parts)-1]
-	if len(version) < 2 || version[0] != 'v' {
-		return false
+
+	query := parsedURL.Query()
+	if len(query) == 0 {
+		return rawURL
 	}
-	for _, ch := range version[1:] {
-		if ch < '0' || ch > '9' {
-			return false
+
+	changed := false
+	for key := range query {
+		if isSensitiveURLQueryKey(key) {
+			query.Set(key, "***masked***")
+			changed = true
 		}
 	}
-	return true
+	if !changed {
+		return rawURL
+	}
+
+	parsedURL.RawQuery = query.Encode()
+	return parsedURL.String()
 }
 
-func trimDefaultAPIVersionPrefix(requestURL string) string {
-	if requestURL == "/v1" || requestURL == "v1" {
-		return ""
+func isSensitiveURLQueryKey(key string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(key))
+	switch normalized {
+	case "key",
+		"api_key",
+		"api-key",
+		"apikey",
+		"x-api-key",
+		"access_token",
+		"refresh_token",
+		"id_token",
+		"token",
+		"authorization",
+		"auth",
+		"client_secret",
+		"secret",
+		"password",
+		"passwd",
+		"signature",
+		"sig",
+		"awsaccesskeyid",
+		"x-amz-credential",
+		"x-amz-security-token",
+		"x-amz-signature":
+		return true
 	}
-	if strings.HasPrefix(requestURL, "/v1/") {
-		return strings.TrimPrefix(requestURL, "/v1")
-	}
-	if strings.HasPrefix(requestURL, "v1/") {
-		return strings.TrimPrefix(requestURL, "v1")
-	}
-	return requestURL
+	return strings.Contains(normalized, "token") ||
+		strings.Contains(normalized, "secret") ||
+		strings.Contains(normalized, "signature")
 }
 
 func GetAPIVersion(c *gin.Context) string {

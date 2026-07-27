@@ -727,9 +727,10 @@ func convertOpenRouterToRatioData(reader io.Reader) (map[string]any, error) {
 		Data []struct {
 			ID      string `json:"id"`
 			Pricing struct {
-				Prompt         string `json:"prompt"`
-				Completion     string `json:"completion"`
-				InputCacheRead string `json:"input_cache_read"`
+				Prompt          string `json:"prompt"`
+				Completion      string `json:"completion"`
+				InputCacheRead  string `json:"input_cache_read"`
+				InputCacheWrite string `json:"input_cache_write"`
 			} `json:"pricing"`
 		} `json:"data"`
 	}
@@ -741,6 +742,7 @@ func convertOpenRouterToRatioData(reader io.Reader) (map[string]any, error) {
 	modelRatioMap := make(map[string]any)
 	completionRatioMap := make(map[string]any)
 	cacheRatioMap := make(map[string]any)
+	createCacheRatioMap := make(map[string]any)
 
 	for _, m := range orResp.Data {
 		promptPrice, promptErr := strconv.ParseFloat(m.Pricing.Prompt, 64)
@@ -791,6 +793,14 @@ func convertOpenRouterToRatioData(reader io.Reader) (map[string]any, error) {
 				cacheRatioMap[m.ID] = cacheRatio
 			}
 		}
+
+		// OpenRouter reports cache-write pricing relative to the normal input price.
+		if m.Pricing.InputCacheWrite != "" {
+			if cachePrice, err := strconv.ParseFloat(m.Pricing.InputCacheWrite, 64); err == nil && cachePrice >= 0 {
+				createCacheRatio := cachePrice / promptPrice
+				createCacheRatioMap[m.ID] = roundRatioValue(createCacheRatio)
+			}
+		}
 	}
 
 	converted := make(map[string]any)
@@ -802,6 +812,9 @@ func convertOpenRouterToRatioData(reader io.Reader) (map[string]any, error) {
 	}
 	if len(cacheRatioMap) > 0 {
 		converted["cache_ratio"] = cacheRatioMap
+	}
+	if len(createCacheRatioMap) > 0 {
+		converted["create_cache_ratio"] = createCacheRatioMap
 	}
 
 	return converted, nil
