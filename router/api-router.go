@@ -46,6 +46,8 @@ func SetApiRouter(router *gin.Engine) {
 		// OAuth routes - specific routes must come before :provider wildcard
 		apiRouter.POST("/oauth/state", middleware.CriticalRateLimit(), middleware.DisableCache(), middleware.TryUserAuth(), anonymousRequestBodyLimit, controller.GenerateOAuthCode)
 		apiRouter.POST("/oauth/email/bind", middleware.UserAuth(), middleware.CriticalRateLimit(), controller.EmailBind)
+		apiRouter.POST("/oauth/mofang/session", middleware.CriticalRateLimit(), middleware.DisableCache(), anonymousRequestBodyLimit, controller.MofangOAuthSession)
+		apiRouter.POST("/oauth/mofang/bind", middleware.UserAuth(), middleware.CriticalRateLimit(), middleware.DisableCache(), controller.MofangOAuthBind)
 		// Non-standard OAuth (WeChat, Telegram) - keep original routes
 		apiRouter.GET("/oauth/wechat", middleware.CriticalRateLimit(), middleware.DisableCache(), controller.WeChatAuth)
 		apiRouter.POST("/oauth/wechat/bind", middleware.UserAuth(), middleware.CriticalRateLimit(), controller.WeChatBind)
@@ -290,6 +292,8 @@ func SetApiRouter(router *gin.Engine) {
 		systemInfoRoute.Use(middleware.RootAuth())
 		{
 			systemInfoRoute.GET("/instances", controller.ListSystemInstances)
+			systemInfoRoute.GET("/ha", controller.GetHAOverview)
+			systemInfoRoute.PUT("/ha", controller.UpdateHAConfig)
 			systemInfoRoute.DELETE("/stale-instances", controller.DeleteStaleSystemInstances)
 			systemInfoRoute.DELETE("/instances/:node_name", controller.DeleteStaleSystemInstance)
 		}

@@ -106,10 +106,8 @@ func MofangOAuthBind(c *gin.Context) {
 		return
 	}
 
-	session := sessions.Default(c)
-	sessionUserId := session.Get("id")
-	userId, ok := sessionUserId.(int)
-	if !ok || userId == 0 {
+	userId := c.GetInt("id")
+	if userId == 0 {
 		common.ApiErrorI18n(c, i18n.MsgAuthNotLoggedIn)
 		return
 	}

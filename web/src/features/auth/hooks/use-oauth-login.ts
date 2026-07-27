@@ -22,13 +22,14 @@ import { toast } from 'sonner'
 
 import { clearAuthentication, isAuthBundle } from '@/lib/api'
 
-import { createOAuthFlow, logout, telegramLogin } from '../api'
+import { createOAuthFlow, logout, mofangLogin, telegramLogin } from '../api'
 import {
   buildGitHubOAuthUrl,
   buildDiscordOAuthUrl,
   buildOIDCOAuthUrl,
   buildLinuxDOOAuthUrl,
 } from '../lib/oauth'
+import { MOFANG_CALLBACK_STORAGE_KEY } from '../lib/mofang-callback'
 import { pickTelegramAuthorization } from '../lib/telegram-login'
 import type { SystemStatus, CustomOAuthProviderInfo } from '../types'
 import { useAuthRedirect } from './use-auth-redirect'
@@ -182,6 +183,132 @@ export function useOAuthLogin(
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleMofangLogin = async () => {
+    if (!status?.mofang_login_url) return
+
+    let loginUrl: URL
+    try {
+      loginUrl = new URL(status.mofang_login_url)
+    } catch {
+      toast.error(t('Mofang login failed'))
+      return
+    }
+    loginUrl.searchParams.set('redirect_url', window.location.origin)
+    loginUrl.searchParams.set('origin', window.location.origin)
+
+    const popup = window.open(
+      'about:blank',
+      'mofang-oauth',
+      'popup=yes,width=480,height=680,menubar=no,toolbar=no,location=no,status=no'
+    )
+    if (!popup) {
+      toast.error(t('Failed to open Mofang login window'))
+      return
+    }
+
+    const timeoutMs = 120000
+    setIsLoading(true)
+    try {
+      window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY)
+    } catch {
+      // Storage may be unavailable in hardened browser contexts.
+    }
+
+    try {
+      await resetSession()
+    } catch {
+      popup.close()
+      setIsLoading(false)
+      toast.error(t('Mofang login failed'))
+      return
+    }
+
+    const allowedOrigins = new Set([loginUrl.origin, window.location.origin])
+    let finished = false
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+    let closeCheckId: ReturnType<typeof setInterval> | undefined
+
+    const cleanup = () => {
+      finished = true
+      if (timeoutId) clearTimeout(timeoutId)
+      if (closeCheckId) clearInterval(closeCheckId)
+      window.removeEventListener('message', handleMessage)
+      window.removeEventListener('storage', handleStorage)
+      setIsLoading(false)
+    }
+
+    const completeWithJWT = async (jwt: string) => {
+      try {
+        const response = await mofangLogin(jwt)
+        if (!response.success || !isAuthBundle(response.data)) {
+          toast.error(response.message || t('Mofang login failed'))
+          return
+        }
+        popup.close()
+        await handleLoginSuccess(response.data, redirectTo)
+        toast.success(t('Signed in successfully!'))
+      } catch {
+        toast.error(t('Mofang login failed'))
+      } finally {
+        cleanup()
+      }
+    }
+
+    function handleMessage(event: MessageEvent<MofangJwtMessage>) {
+      if (finished || !allowedOrigins.has(event.origin)) return
+      if (!event.data || event.data.type !== 'mofang-jwt') return
+      const jwt = event.data.jwt
+      if (typeof jwt !== 'string' || !jwt.trim()) {
+        toast.error(t('Mofang login failed'))
+        cleanup()
+        return
+      }
+      void completeWithJWT(jwt.trim())
+    }
+
+    function consumeStoredToken() {
+      if (finished) return
+      const jwt = parseStoredMofangJwt(
+        window.localStorage.getItem(MOFANG_CALLBACK_STORAGE_KEY),
+        timeoutMs
+      )
+      if (!jwt) return
+      try {
+        window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY)
+      } catch {
+        // Storage may be unavailable in hardened browser contexts.
+      }
+      void completeWithJWT(jwt)
+    }
+
+    function handleStorage(event: StorageEvent) {
+      if (event.key !== MOFANG_CALLBACK_STORAGE_KEY) return
+      const jwt = parseStoredMofangJwt(event.newValue, timeoutMs)
+      if (!jwt) return
+      try {
+        window.localStorage.removeItem(MOFANG_CALLBACK_STORAGE_KEY)
+      } catch {
+        // Storage may be unavailable in hardened browser contexts.
+      }
+      void completeWithJWT(jwt)
+    }
+
+    window.addEventListener('message', handleMessage)
+    window.addEventListener('storage', handleStorage)
+    timeoutId = setTimeout(() => {
+      if (finished) return
+      toast.error(t('Mofang login timed out'))
+      cleanup()
+    }, timeoutMs)
+    closeCheckId = setInterval(() => {
+      if (finished) return
+      consumeStoredToken()
+      if (popup.closed) cleanup()
+    }, 1000)
+
+    popup.location.href = loginUrl.toString()
   }
 
   const handleTelegramLogin = async () => {

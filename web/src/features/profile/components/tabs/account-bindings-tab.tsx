@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Mail, Shield, Send, Link2, Unlink } from 'lucide-react'
+import { Building2, Mail, Shield, Send, Link2, Unlink } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SiGithub, SiWechat, SiLinux } from 'react-icons/si'
@@ -82,6 +82,28 @@ interface OAuthBindingCallback {
   errorDescription?: string
 }
 
+function parseStoredMofangJwt(value: string | null, maxAgeMs: number): string {
+  if (!value) return ''
+  try {
+    const payload = JSON.parse(value) as {
+      type?: string
+      jwt?: unknown
+      timestamp?: unknown
+    }
+    if (payload.type !== 'mofang-jwt') return ''
+    if (typeof payload.jwt !== 'string' || !payload.jwt.trim()) return ''
+    if (
+      typeof payload.timestamp === 'number' &&
+      Date.now() - payload.timestamp > maxAgeMs
+    ) {
+      return ''
+    }
+    return payload.jwt.trim()
+  } catch {
+    return ''
+  }
+}
+
 export function AccountBindingsTab({
   profile,
   onUpdate,
@@ -94,6 +116,7 @@ export function AccountBindingsTab({
     null
   )
   const [unbinding, setUnbinding] = useState(false)
+  const [mofangBinding, setMofangBinding] = useState(false)
   const pendingOAuthBinding = useRef<PendingOAuthBinding | null>(null)
 
   const clearPendingOAuthBinding = useCallback(
@@ -584,7 +607,10 @@ export function AccountBindingsTab({
                 size='sm'
                 className='h-7 shrink-0 px-2.5 text-xs'
                 onClick={binding.onBind}
-                disabled={binding.isBound && binding.id !== 'email'}
+                disabled={
+                  (binding.isBound && binding.id !== 'email') ||
+                  (binding.id === 'mofang' && mofangBinding)
+                }
               >
                 {actionLabel}
               </Button>

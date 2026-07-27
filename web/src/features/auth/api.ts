@@ -176,6 +176,19 @@ export async function telegramLogin(
   return res.data
 }
 
+export async function mofangLogin(jwt: string): Promise<ApiResponse> {
+  const res = await api.post(
+    '/api/oauth/mofang/session',
+    { jwt },
+    {
+      skipAuthRefresh: true,
+      skipBusinessError: true,
+      skipErrorHandler: true,
+    }
+  )
+  return res.data
+}
+
 // ----------------------------------------------------------------------------
 // Registration
 // ----------------------------------------------------------------------------
