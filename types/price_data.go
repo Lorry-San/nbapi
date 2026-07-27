@@ -36,6 +36,9 @@ func (p *PriceData) AddOtherRatio(key string, ratio float64) {
 	if !isValidOtherRatio(ratio) {
 		return
 	}
+	if ratio > math.MaxInt32 {
+		ratio = math.MaxInt32
+	}
 	if p.otherRatios == nil {
 		p.otherRatios = make(map[string]float64)
 	}
@@ -72,17 +75,26 @@ func (p *PriceData) OtherRatios() map[string]float64 {
 }
 
 func (p *PriceData) OtherRatioMultiplier() float64 {
-	multiplier := 1.0
-	for _, ratio := range p.otherRatios {
-		if isValidOtherRatio(ratio) && ratio != 1.0 {
-			multiplier *= ratio
-		}
-	}
-	return multiplier
+	return p.ApplyOtherRatiosToFloat(1)
 }
 
 func (p *PriceData) ApplyOtherRatiosToFloat(value float64) float64 {
-	return value * p.OtherRatioMultiplier()
+	if value <= 0 || math.IsNaN(value) {
+		return 0
+	}
+	if math.IsInf(value, 1) || value > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	for _, ratio := range p.otherRatios {
+		if !isValidOtherRatio(ratio) || ratio == 1.0 {
+			continue
+		}
+		if value > math.MaxInt32/ratio {
+			return math.MaxInt32
+		}
+		value *= ratio
+	}
+	return value
 }
 
 func (p *PriceData) ApplyOtherRatiosToDecimal(value decimal.Decimal) decimal.Decimal {
@@ -106,7 +118,7 @@ func (p *PriceData) RemoveOtherRatiosFromFloat(value float64) float64 {
 func isValidOtherRatio(ratio float64) bool {
 	// NaN/Inf would poison every downstream quota multiplication
 	// (int(NaN * quota) wraps to a negative charge).
-	return ratio > 0 && !math.IsInf(ratio, 1)
+	return ratio > 0 && !math.IsNaN(ratio) && !math.IsInf(ratio, 0)
 }
 
 func (p *PriceData) ToSetting() string {

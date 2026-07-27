@@ -122,24 +122,28 @@ func TestTaskDurationBounds(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		body    string
-		wantErr bool
+		name           string
+		body           string
+		wantDirectCode string
+		wantBasicCode  string
 	}{
 		{
-			name:    "huge duration is rejected",
-			body:    `{"model":"sora-2","prompt":"a cat","duration":9999999999}`,
-			wantErr: true,
+			name:           "huge duration is rejected",
+			body:           `{"model":"sora-2","prompt":"a cat","duration":9999999999}`,
+			wantDirectCode: "invalid_duration",
+			wantBasicCode:  "invalid_seconds",
 		},
 		{
-			name:    "huge seconds string is rejected",
-			body:    `{"model":"sora-2","prompt":"a cat","seconds":"9999999999"}`,
-			wantErr: true,
+			name:           "huge seconds string is rejected",
+			body:           `{"model":"sora-2","prompt":"a cat","seconds":"9999999999"}`,
+			wantDirectCode: "invalid_duration",
+			wantBasicCode:  "invalid_seconds",
 		},
 		{
-			name:    "negative duration is rejected",
-			body:    `{"model":"sora-2","prompt":"a cat","duration":-8}`,
-			wantErr: true,
+			name:           "negative duration is rejected",
+			body:           `{"model":"sora-2","prompt":"a cat","duration":-8}`,
+			wantDirectCode: "invalid_seconds",
+			wantBasicCode:  "invalid_seconds",
 		},
 		{
 			name: "normal duration is accepted",
@@ -151,9 +155,9 @@ func TestTaskDurationBounds(t *testing.T) {
 		t.Run(tt.name+" (multipart direct)", func(t *testing.T) {
 			context, info := newContext(t, tt.body)
 			taskErr := ValidateMultipartDirect(context, info)
-			if tt.wantErr {
+			if tt.wantDirectCode != "" {
 				require.NotNil(t, taskErr)
-				require.Equal(t, "invalid_seconds", taskErr.Code)
+				require.Equal(t, tt.wantDirectCode, taskErr.Code)
 			} else {
 				require.Nil(t, taskErr)
 			}
@@ -161,9 +165,9 @@ func TestTaskDurationBounds(t *testing.T) {
 		t.Run(tt.name+" (basic task request)", func(t *testing.T) {
 			context, info := newContext(t, tt.body)
 			taskErr := ValidateBasicTaskRequest(context, info, constant.TaskActionGenerate)
-			if tt.wantErr {
+			if tt.wantBasicCode != "" {
 				require.NotNil(t, taskErr)
-				require.Equal(t, "invalid_seconds", taskErr.Code)
+				require.Equal(t, tt.wantBasicCode, taskErr.Code)
 			} else {
 				require.Nil(t, taskErr)
 			}
