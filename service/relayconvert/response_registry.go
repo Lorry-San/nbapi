@@ -68,10 +68,13 @@ type responseConverterRoute struct {
 }
 
 type ResponseStreamOptions struct {
-	ID           string
-	Model        string
-	Created      int64
-	IncludeUsage bool
+	ID                    string
+	Model                 string
+	Created               int64
+	IncludeUsage          bool
+	ApplyReasoningOptions bool
+	ThinkingToContent     bool
+	PreserveReasoning     bool
 }
 
 type ResponseStreamState struct {
@@ -786,7 +789,7 @@ func usageFromClaudeResponse(resp *dto.ClaudeResponse) *dto.Usage {
 	return nil
 }
 
-func convertOAIChatResponseToOAIResponses(_ *gin.Context, _ *relaycommon.RelayInfo, response any) (any, *dto.Usage, error) {
+func convertOAIChatResponseToOAIResponses(_ *gin.Context, info *relaycommon.RelayInfo, response any) (any, *dto.Usage, error) {
 	chatResponse, err := asOAIChatResponse(response)
 	if err != nil {
 		return nil, nil, err
@@ -794,6 +797,11 @@ func convertOAIChatResponseToOAIResponses(_ *gin.Context, _ *relaycommon.RelayIn
 	id := strings.TrimSpace(chatResponse.Id)
 	if id == "" {
 		id = fmt.Sprintf("resp_%s", common.GetUUID())
+	}
+	if info != nil {
+		return ChatCompletionsResponseToResponsesResponseWithOptions(chatResponse, id, ChatCompletionsToResponsesOptions{
+			ThinkingToContent: info.ChannelSetting.ThinkingToContent,
+		})
 	}
 	return ChatCompletionsResponseToResponsesResponse(chatResponse, id)
 }
@@ -815,7 +823,15 @@ func newOAIChatToOAIResponsesStreamState(options ResponseStreamOptions) any {
 	if id == "" {
 		id = fmt.Sprintf("resp_%s", common.GetUUID())
 	}
-	state := NewChatToResponsesStreamState(id, strings.TrimSpace(options.Model))
+	var state *ChatToResponsesStreamState
+	if options.ApplyReasoningOptions {
+		state = NewChatToResponsesStreamStateWithOptions(id, strings.TrimSpace(options.Model), ChatCompletionsToResponsesOptions{
+			ThinkingToContent: options.ThinkingToContent,
+			PreserveReasoning: options.PreserveReasoning,
+		})
+	} else {
+		state = NewChatToResponsesStreamState(id, strings.TrimSpace(options.Model))
+	}
 	if options.Created != 0 {
 		state.Created = options.Created
 	}

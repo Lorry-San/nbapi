@@ -70,8 +70,10 @@ func OaiChatToResponsesStreamHandler(c *gin.Context, info *relaycommon.RelayInfo
 
 	responseID := helper.GetResponseID(c)
 	state, err := relayconvert.NewResponseStreamState(types.RelayFormatOpenAI, types.RelayFormatOpenAIResponses, relayconvert.ResponseStreamOptions{
-		ID:    responseID,
-		Model: info.UpstreamModelName,
+		ID:                    responseID,
+		Model:                 info.UpstreamModelName,
+		ApplyReasoningOptions: true,
+		ThinkingToContent:     info.ChannelSetting.ThinkingToContent,
 	})
 	if err != nil {
 		return nil, types.NewOpenAIError(err, types.ErrorCodeBadResponse, http.StatusInternalServerError)

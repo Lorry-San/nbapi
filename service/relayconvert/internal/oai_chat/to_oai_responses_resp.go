@@ -31,7 +31,18 @@ const (
 	responsesIncompleteReasonMaxTokens     = "max_output_tokens"
 )
 
+type ChatCompletionsToResponsesOptions struct {
+	ThinkingToContent bool
+	PreserveReasoning bool
+}
+
 func ChatCompletionsResponseToResponsesResponse(resp *dto.OpenAITextResponse, id string) (*dto.OpenAIResponsesResponse, *dto.Usage, error) {
+	return ChatCompletionsResponseToResponsesResponseWithOptions(resp, id, ChatCompletionsToResponsesOptions{
+		PreserveReasoning: true,
+	})
+}
+
+func ChatCompletionsResponseToResponsesResponseWithOptions(resp *dto.OpenAITextResponse, id string, options ChatCompletionsToResponsesOptions) (*dto.OpenAIResponsesResponse, *dto.Usage, error) {
 	if resp == nil {
 		return nil, nil, errors.New("response is nil")
 	}
@@ -57,7 +68,12 @@ func ChatCompletionsResponseToResponsesResponse(resp *dto.OpenAITextResponse, id
 		out.IncompleteDetails = details
 	}
 
-	if text := choice.Message.StringContent(); text != "" {
+	text := choice.Message.StringContent()
+	reasoning := choice.Message.GetReasoningContent()
+	if options.ThinkingToContent {
+		text = joinVisibleReasoningAndContent(reasoning, text)
+	}
+	if text != "" {
 		out.Output = append(out.Output, dto.ResponsesOutput{
 			Type:   responsesOutputTypeMessage,
 			ID:     fmt.Sprintf("%s_msg_0", id),
@@ -72,7 +88,7 @@ func ChatCompletionsResponseToResponsesResponse(resp *dto.OpenAITextResponse, id
 			},
 		})
 	}
-	if reasoning := choice.Message.GetReasoningContent(); reasoning != "" {
+	if reasoning != "" && options.PreserveReasoning && !options.ThinkingToContent {
 		out.Output = append(out.Output, dto.ResponsesOutput{
 			Type:   responsesOutputTypeReasoning,
 			ID:     fmt.Sprintf("%s_reasoning_0", id),
@@ -95,6 +111,17 @@ func ChatCompletionsResponseToResponsesResponse(resp *dto.OpenAITextResponse, id
 	}
 
 	return out, usage, nil
+}
+
+func joinVisibleReasoningAndContent(reasoning string, content string) string {
+	if reasoning == "" {
+		return content
+	}
+	visibleReasoning := "<think>\n" + reasoning + "\n</think>"
+	if content == "" {
+		return visibleReasoning
+	}
+	return visibleReasoning + "\n" + content
 }
 
 func ResponsesStatusFromChatFinishReason(finishReason string) (string, *dto.IncompleteDetails) {

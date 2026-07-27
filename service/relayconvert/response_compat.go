@@ -13,6 +13,7 @@ type ClaudeResponseInfo = claudemessages.ClaudeResponseInfo
 
 type ChatToResponsesStreamEvent = oaichat.ChatToResponsesStreamEvent
 type ChatToResponsesStreamState = oaichat.ChatToResponsesStreamState
+type ChatCompletionsToResponsesOptions = oaichat.ChatCompletionsToResponsesOptions
 type ResponsesToChatStreamState = oairesponses.ResponsesToChatStreamState
 type ResponsesBufferedAccumulator = oairesponses.ResponsesBufferedAccumulator
 
@@ -84,6 +85,10 @@ func ChatCompletionsResponseToResponsesResponse(resp *dto.OpenAITextResponse, id
 	return oaichat.ChatCompletionsResponseToResponsesResponse(resp, id)
 }
 
+func ChatCompletionsResponseToResponsesResponseWithOptions(resp *dto.OpenAITextResponse, id string, options ChatCompletionsToResponsesOptions) (*dto.OpenAIResponsesResponse, *dto.Usage, error) {
+	return oaichat.ChatCompletionsResponseToResponsesResponseWithOptions(resp, id, options)
+}
+
 func ResponsesStatusFromChatFinishReason(finishReason string) (string, *dto.IncompleteDetails) {
 	return oaichat.ResponsesStatusFromChatFinishReason(finishReason)
 }
@@ -94,6 +99,10 @@ func UsageFromChatUsage(src *dto.Usage) *dto.Usage {
 
 func NewChatToResponsesStreamState(id string, model string) *ChatToResponsesStreamState {
 	return oaichat.NewChatToResponsesStreamState(id, model)
+}
+
+func NewChatToResponsesStreamStateWithOptions(id string, model string, options ChatCompletionsToResponsesOptions) *ChatToResponsesStreamState {
+	return oaichat.NewChatToResponsesStreamStateWithOptions(id, model, options)
 }
 
 func ChatCompletionsStreamChunkToResponsesEvents(chunk *dto.ChatCompletionsStreamResponse, state *ChatToResponsesStreamState) ([]ChatToResponsesStreamEvent, error) {

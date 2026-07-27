@@ -83,9 +83,11 @@ func GeminiResponsesStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, r
 	responseID := helper.GetResponseID(c)
 	created := common.GetTimestamp()
 	state, err := relayconvert.NewResponseStreamState(types.RelayFormatOpenAI, types.RelayFormatOpenAIResponses, relayconvert.ResponseStreamOptions{
-		ID:      responseID,
-		Model:   info.UpstreamModelName,
-		Created: created,
+		ID:                    responseID,
+		Model:                 info.UpstreamModelName,
+		Created:               created,
+		ApplyReasoningOptions: true,
+		ThinkingToContent:     info.ChannelSetting.ThinkingToContent,
 	})
 	if err != nil {
 		return nil, types.NewOpenAIError(err, types.ErrorCodeBadResponse, http.StatusInternalServerError)
