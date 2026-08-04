@@ -6,13 +6,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/model"
-	"github.com/QuantumNous/new-api/setting"
-	"github.com/QuantumNous/new-api/setting/console_setting"
-	"github.com/QuantumNous/new-api/setting/operation_setting"
-	"github.com/QuantumNous/new-api/setting/ratio_setting"
-	"github.com/QuantumNous/new-api/setting/system_setting"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/i18n"
+	"github.com/Lorry-San/nbapi/model"
+	"github.com/Lorry-San/nbapi/setting"
+	"github.com/Lorry-San/nbapi/setting/console_setting"
+	"github.com/Lorry-San/nbapi/setting/operation_setting"
+	"github.com/Lorry-San/nbapi/setting/ratio_setting"
+	"github.com/Lorry-San/nbapi/setting/system_setting"
 
 	"github.com/gin-gonic/gin"
 )
@@ -79,6 +80,9 @@ func GetOptions(c *gin.Context) {
 	optionValues := make(map[string]string)
 	common.OptionMapRWMutex.Lock()
 	for k, v := range common.OptionMap {
+		if k == "theme.frontend" {
+			continue
+		}
 		value := common.Interface2String(v)
 		isSensitiveKey := strings.HasSuffix(k, "Token") ||
 			strings.HasSuffix(k, "Secret") ||
@@ -136,9 +140,17 @@ func UpdateOption(c *gin.Context) {
 	default:
 		option.Value = fmt.Sprintf("%v", option.Value)
 	}
-	if isPaymentComplianceOptionKey(option.Key) {
-		common.ApiErrorMsg(c, "合规确认字段不允许通过通用设置接口修改")
-		return
+	switch option.Key {
+	case "QuotaForInviter", "QuotaForInvitee":
+		if isPositiveOptionValue(option.Value.(string)) && !operation_setting.IsPaymentComplianceConfirmed() {
+			common.ApiErrorI18n(c, i18n.MsgPaymentComplianceRequired)
+			return
+		}
+	default:
+		if isPaymentComplianceOptionKey(option.Key) {
+			common.ApiErrorMsg(c, "合规确认字段不允许通过通用设置接口修改")
+			return
+		}
 	}
 	switch option.Key {
 	case "GitHubOAuthEnabled":
@@ -215,15 +227,24 @@ func UpdateOption(c *gin.Context) {
 			return
 		}
 	case "theme.frontend":
-		if option.Value != "default" && option.Value != "classic" {
+		if option.Value != "default" {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "无效的主题值，可选值：default（新版前端）、classic（经典前端）",
+				"message": "Classic 前端已移除，主题只能设置为 default",
 			})
 			return
 		}
 	case "GroupRatio":
 		err = ratio_setting.CheckGroupRatio(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+	case operation_setting.ToolPriceOptionKey:
+		err = operation_setting.ValidateToolPricesJSON(option.Value.(string))
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
@@ -336,6 +357,10 @@ func UpdateOption(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	// 出于安全考虑只记录被修改的配置项名称，不记录配置值（可能含密钥等敏感信息）。
+	recordManageAudit(c, "option.update", map[string]interface{}{
+		"key": option.Key,
+	})
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",

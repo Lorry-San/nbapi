@@ -6,20 +6,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/dto"
-	"github.com/QuantumNous/new-api/model"
-	"github.com/QuantumNous/new-api/relay"
-	"github.com/QuantumNous/new-api/relay/channel/ai360"
-	"github.com/QuantumNous/new-api/relay/channel/lingyiwanwu"
-	"github.com/QuantumNous/new-api/relay/channel/minimax"
-	"github.com/QuantumNous/new-api/relay/channel/moonshot"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	"github.com/QuantumNous/new-api/relay/helper"
-	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/setting/operation_setting"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/model"
+	"github.com/Lorry-San/nbapi/relay"
+	"github.com/Lorry-San/nbapi/relay/channel/ai360"
+	"github.com/Lorry-San/nbapi/relay/channel/lingyiwanwu"
+	"github.com/Lorry-San/nbapi/relay/channel/minimax"
+	"github.com/Lorry-San/nbapi/relay/channel/moonshot"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	"github.com/Lorry-San/nbapi/relay/helper"
+	"github.com/Lorry-San/nbapi/service"
+	"github.com/Lorry-San/nbapi/setting/operation_setting"
+	"github.com/Lorry-San/nbapi/types"
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 )
@@ -245,19 +245,7 @@ func ListModels(c *gin.Context, modelType int) {
 			userModelNames = append(userModelNames, allowModel)
 		}
 	} else {
-		var models []string
-		if groups.tokenGroup == "auto" {
-			for _, autoGroup := range ownerGroups {
-				groupModels := model.GetGroupEnabledModels(autoGroup)
-				for _, g := range groupModels {
-					if !common.StringsContains(models, g) {
-						models = append(models, g)
-					}
-				}
-			}
-		} else {
-			models = model.GetGroupEnabledModels(ownerGroups[0])
-		}
+		models := service.GetGroupsEnabledModels(ownerGroups)
 		for _, modelName := range models {
 			if !acceptUnsetRatioModel {
 				if !helper.HasModelBillingConfig(modelName) {

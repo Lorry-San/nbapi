@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/logger"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/logger"
+	"github.com/Lorry-San/nbapi/types"
 
 	"github.com/gin-gonic/gin"
 )
@@ -44,9 +44,9 @@ func (r *GeminiChatRequest) UnmarshalJSON(data []byte) error {
 }
 
 type ToolConfig struct {
-	FunctionCallingConfig *FunctionCallingConfig `json:"functionCallingConfig,omitempty"`
-	RetrievalConfig       *RetrievalConfig       `json:"retrievalConfig,omitempty"`
-	IncludeServerSideToolInvocations *bool       `json:"includeServerSideToolInvocations,omitempty"`
+	FunctionCallingConfig            *FunctionCallingConfig `json:"functionCallingConfig,omitempty"`
+	RetrievalConfig                  *RetrievalConfig       `json:"retrievalConfig,omitempty"`
+	IncludeServerSideToolInvocations *bool                  `json:"includeServerSideToolInvocations,omitempty"`
 }
 
 type FunctionCallingConfig struct {
@@ -71,7 +71,7 @@ func (r *GeminiChatRequest) GetTokenCountMeta() *types.TokenCountMeta {
 	var maxTokens int
 
 	if r.GenerationConfig.MaxOutputTokens != nil && *r.GenerationConfig.MaxOutputTokens > 0 {
-		maxTokens = int(*r.GenerationConfig.MaxOutputTokens)
+		maxTokens = common.BoundedRequestTokens(*r.GenerationConfig.MaxOutputTokens)
 	}
 
 	var inputTexts []string
@@ -438,10 +438,15 @@ func (c *GeminiChatGenerationConfig) UnmarshalJSON(data []byte) error {
 type MediaResolution string
 
 type GeminiChatCandidate struct {
-	Content       GeminiChatContent        `json:"content"`
-	FinishReason  *string                  `json:"finishReason"`
-	Index         int64                    `json:"index"`
-	SafetyRatings []GeminiChatSafetyRating `json:"safetyRatings"`
+	Content           GeminiChatContent        `json:"content"`
+	FinishReason      *string                  `json:"finishReason"`
+	Index             int64                    `json:"index"`
+	SafetyRatings     []GeminiChatSafetyRating `json:"safetyRatings"`
+	GroundingMetadata *GeminiGroundingMetadata `json:"groundingMetadata,omitempty"`
+}
+
+type GeminiGroundingMetadata struct {
+	WebSearchQueries []string `json:"webSearchQueries,omitempty"`
 }
 
 type GeminiChatSafetyRating struct {
@@ -455,9 +460,46 @@ type GeminiChatPromptFeedback struct {
 }
 
 type GeminiChatResponse struct {
-	Candidates     []GeminiChatCandidate     `json:"candidates"`
-	PromptFeedback *GeminiChatPromptFeedback `json:"promptFeedback,omitempty"`
-	UsageMetadata  GeminiUsageMetadata       `json:"usageMetadata"`
+	Candidates       []GeminiChatCandidate     `json:"candidates"`
+	PromptFeedback   *GeminiChatPromptFeedback `json:"promptFeedback,omitempty"`
+	UsageMetadata    GeminiUsageMetadata       `json:"usageMetadata"`
+	HasUsageMetadata bool                      `json:"-"`
+}
+
+// UnmarshalJSON records whether Gemini returned usageMetadata while preserving
+// the historical wire shape that always marshals the usageMetadata field.
+//
+// IMPORTANT: aux shadows GeminiChatResponse. Any field added to
+// GeminiChatResponse must also be added to aux (and copied below), otherwise it
+// is silently dropped during unmarshal.
+func (r *GeminiChatResponse) UnmarshalJSON(data []byte) error {
+	var aux struct {
+		Candidates     []GeminiChatCandidate     `json:"candidates"`
+		PromptFeedback *GeminiChatPromptFeedback `json:"promptFeedback,omitempty"`
+		UsageMetadata  *GeminiUsageMetadata      `json:"usageMetadata"`
+	}
+	if err := common.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	r.Candidates = aux.Candidates
+	r.PromptFeedback = aux.PromptFeedback
+	r.HasUsageMetadata = aux.UsageMetadata != nil
+	if aux.UsageMetadata != nil {
+		r.UsageMetadata = *aux.UsageMetadata
+	} else {
+		r.UsageMetadata = GeminiUsageMetadata{}
+	}
+	return nil
+}
+
+func (r *GeminiChatResponse) GetUsageMetadata() *GeminiUsageMetadata {
+	if r == nil {
+		return nil
+	}
+	if r.HasUsageMetadata || HasGeminiUsageMetadataTokens(&r.UsageMetadata) {
+		return &r.UsageMetadata
+	}
+	return nil
 }
 
 type GeminiUsageMetadata struct {
@@ -470,6 +512,7 @@ type GeminiUsageMetadata struct {
 	PromptTokensDetails        []GeminiPromptTokensDetails `json:"promptTokensDetails"`
 	ToolUsePromptTokensDetails []GeminiPromptTokensDetails `json:"toolUsePromptTokensDetails"`
 	CandidatesTokensDetails    []GeminiPromptTokensDetails `json:"candidatesTokensDetails"`
+	BillingUsage               *BillingUsage               `json:"billing_usage,omitempty"`
 }
 
 type GeminiPromptTokensDetails struct {

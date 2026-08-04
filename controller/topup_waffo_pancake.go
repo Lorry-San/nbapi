@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/logger"
-	"github.com/QuantumNous/new-api/model"
-	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/setting"
-	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/logger"
+	"github.com/Lorry-San/nbapi/model"
+	"github.com/Lorry-San/nbapi/service"
+	"github.com/Lorry-San/nbapi/setting"
+	"github.com/Lorry-San/nbapi/setting/operation_setting"
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 	"github.com/thanhpk/randstr"
@@ -102,11 +102,6 @@ func getWaffoPancakeBuyerEmail(user *model.User) string {
 // The admin config endpoints below accept typed-but-not-yet-saved creds in
 // the body and fall back to persisted creds when the body is blank (see
 // resolveWaffoPancakeAdminCreds). Only SaveWaffoPancake writes to OptionMap.
-
-type waffoPancakeCredsRequest struct {
-	MerchantID string `json:"merchant_id"`
-	PrivateKey string `json:"private_key"`
-}
 
 type saveWaffoPancakeRequest struct {
 	MerchantID string `json:"merchant_id"`
@@ -221,15 +216,11 @@ func CreateWaffoPancakePair(c *gin.Context) {
 // Doubles as a credential probe (a successful 200 proves the resolved creds
 // authenticate). See resolveWaffoPancakeAdminCreds for credential resolution.
 func ListWaffoPancakeCatalog(c *gin.Context) {
-	var req waffoPancakeCredsRequest
-	// An empty body means "use persisted creds"; only fail on malformed JSON.
-	if c.Request.ContentLength > 0 {
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "参数错误"})
-			return
-		}
-	}
-	merchantID, privateKey := resolveWaffoPancakeAdminCreds(req.MerchantID, req.PrivateKey)
+	// Missing query creds mean "use persisted creds".
+	merchantID, privateKey := resolveWaffoPancakeAdminCreds(
+		strings.TrimSpace(c.Query("merchant_id")),
+		strings.TrimSpace(c.Query("private_key")),
+	)
 	if merchantID == "" || privateKey == "" {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "Waffo Pancake 凭证未配置"})
 		return
@@ -306,7 +297,7 @@ func CreateWaffoPancakeSubscriptionProduct(c *gin.Context) {
 
 // ListWaffoPancakeSubscriptionProductOptions returns the OnetimeProducts
 // in the saved Pancake store, for the subscription-plan dropdown. The name
-// reflects new-api's plan concept; under the hood it's still OnetimeProducts.
+// reflects nbapi's plan concept; under the hood it's still OnetimeProducts.
 func ListWaffoPancakeSubscriptionProductOptions(c *gin.Context) {
 	merchantID, privateKey := resolveWaffoPancakeAdminCreds("", "")
 	storeID := strings.TrimSpace(setting.WaffoPancakeStoreID)

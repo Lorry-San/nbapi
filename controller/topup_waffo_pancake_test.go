@@ -3,9 +3,9 @@ package controller
 import (
 	"testing"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/setting"
-	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/setting"
+	"github.com/Lorry-San/nbapi/setting/operation_setting"
 	"github.com/stretchr/testify/require"
 )
 

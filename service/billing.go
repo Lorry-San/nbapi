@@ -2,10 +2,11 @@ package service
 
 import (
 	"fmt"
+	"net/http"
 
-	"github.com/QuantumNous/new-api/logger"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/logger"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	"github.com/Lorry-San/nbapi/types"
 	"github.com/gin-gonic/gin"
 )
 
@@ -16,7 +17,23 @@ const (
 
 // PreConsumeBilling 根据用户计费偏好创建 BillingSession 并执行预扣费。
 // 会话存储在 relayInfo.Billing 上，供后续 Settle / Refund 使用。
-func PreConsumeBilling(c *gin.Context, preConsumedQuota int, relayInfo *relaycommon.RelayInfo) *types.NewAPIError {
+func PreConsumeBilling(c *gin.Context, preConsumedQuota int, relayInfo *relaycommon.RelayInfo) *types.NBAPIError {
+	if relayInfo != nil && relayInfo.QuotaClamp != nil {
+		return types.NewErrorWithStatusCode(
+			relayInfo.QuotaClamp,
+			types.ErrorCodeModelPriceError,
+			http.StatusBadRequest,
+			types.ErrOptionWithSkipRetry(),
+		)
+	}
+	if preConsumedQuota < 0 {
+		return types.NewErrorWithStatusCode(
+			fmt.Errorf("pre-consume quota cannot be negative: %d", preConsumedQuota),
+			types.ErrorCodeModelPriceError,
+			http.StatusBadRequest,
+			types.ErrOptionWithSkipRetry(),
+		)
+	}
 	session, apiErr := NewBillingSession(c, relayInfo, preConsumedQuota)
 	if apiErr != nil {
 		return apiErr
@@ -32,6 +49,12 @@ func PreConsumeBilling(c *gin.Context, preConsumedQuota int, relayInfo *relaycom
 // SettleBilling 执行计费结算。如果 RelayInfo 上有 BillingSession 则通过 session 结算，
 // 否则回退到旧的 PostConsumeQuota 路径（兼容按次计费等场景）。
 func SettleBilling(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, actualQuota int) error {
+	if relayInfo == nil {
+		return fmt.Errorf("relayInfo is nil")
+	}
+	if actualQuota < 0 {
+		return fmt.Errorf("actual quota cannot be negative: %d", actualQuota)
+	}
 	if relayInfo.Billing != nil {
 		preConsumed := relayInfo.Billing.GetPreConsumedQuota()
 		delta := actualQuota - preConsumed

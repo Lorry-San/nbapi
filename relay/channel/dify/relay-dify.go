@@ -11,13 +11,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/dto"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	"github.com/QuantumNous/new-api/relay/helper"
-	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/dto"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	"github.com/Lorry-San/nbapi/relay/helper"
+	"github.com/Lorry-San/nbapi/service"
+	"github.com/Lorry-San/nbapi/types"
 	"github.com/samber/lo"
 
 	"github.com/gin-gonic/gin"
@@ -159,9 +159,14 @@ func requestOpenAI2Dify(c *gin.Context, info *relaycommon.RelayInfo, request dto
 					media := mediaContent.GetImageMedia()
 					var file *DifyFile
 					if media.IsRemoteImage() {
-						file.Type = media.MimeType
-						file.TransferMode = "remote_url"
-						file.URL = media.Url
+						// 修复 #2083: 远程图片分支此前未初始化 file，
+						// 导致 file.Type = ... 触发 nil pointer dereference
+						// 而 panic（500: "invalid memory address or nil pointer dereference"）。
+						file = &DifyFile{
+							Type:         media.MimeType,
+							TransferMode: "remote_url",
+							URL:          media.Url,
+						}
 					} else {
 						file = uploadDifyFile(c, info, difyReq.User, mediaContent)
 					}
@@ -218,7 +223,7 @@ func streamResponseDify2OpenAI(difyResponse DifyChunkChatCompletionResponse) *dt
 	return &response
 }
 
-func difyStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NewAPIError) {
+func difyStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NBAPIError) {
 	var responseText string
 	usage := &dto.Usage{}
 	var nodeToken int
@@ -258,7 +263,7 @@ func difyStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.R
 	return usage, nil
 }
 
-func difyHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NewAPIError) {
+func difyHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NBAPIError) {
 	var difyResponse DifyChatCompletionResponse
 	responseBody, err := io.ReadAll(resp.Body)
 

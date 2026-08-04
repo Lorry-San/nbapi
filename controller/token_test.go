@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/model"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/model"
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"gorm.io/driver/mysql"
@@ -48,21 +48,21 @@ type sqliteColumnInfo struct {
 }
 
 type legacyToken struct {
-	Id                 int            `gorm:"primaryKey"`
-	UserId             int            `gorm:"index"`
-	Key                string         `gorm:"column:key;type:char(48);uniqueIndex"`
-	Status             int            `gorm:"default:1"`
-	Name               string         `gorm:"index"`
-	CreatedTime        int64          `gorm:"bigint"`
-	AccessedTime       int64          `gorm:"bigint"`
-	ExpiredTime        int64          `gorm:"bigint;default:-1"`
-	RemainQuota        int            `gorm:"default:0"`
+	Id                 int    `gorm:"primaryKey"`
+	UserId             int    `gorm:"index"`
+	Key                string `gorm:"column:key;type:char(48);uniqueIndex"`
+	Status             int    `gorm:"default:1"`
+	Name               string `gorm:"index"`
+	CreatedTime        int64  `gorm:"bigint"`
+	AccessedTime       int64  `gorm:"bigint"`
+	ExpiredTime        int64  `gorm:"bigint;default:-1"`
+	RemainQuota        int    `gorm:"default:0"`
 	UnlimitedQuota     bool
 	ModelLimitsEnabled bool
-	ModelLimits        string         `gorm:"type:text"`
-	AllowIps           *string        `gorm:"default:''"`
-	UsedQuota          int            `gorm:"default:0"`
-	Group              string         `gorm:"column:group;default:''"`
+	ModelLimits        string  `gorm:"type:text"`
+	AllowIps           *string `gorm:"default:''"`
+	UsedQuota          int     `gorm:"default:0"`
+	Group              string  `gorm:"column:group;default:''"`
 	CrossGroupRetry    bool
 	DeletedAt          gorm.DeletedAt `gorm:"index"`
 }
@@ -75,9 +75,7 @@ func openTokenControllerTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
 	gin.SetMode(gin.TestMode)
-	common.UsingSQLite = true
-	common.UsingMySQL = false
-	common.UsingPostgreSQL = false
+	common.SetDatabaseTypes(common.DatabaseTypeSQLite, common.DatabaseTypeSQLite)
 	common.RedisEnabled = false
 
 	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", strings.ReplaceAll(t.Name(), "/", "_"))
@@ -119,22 +117,23 @@ func openTokenControllerExternalDB(t *testing.T, dialect string, dsn string) (*g
 
 	gin.SetMode(gin.TestMode)
 	common.RedisEnabled = false
-	common.UsingSQLite = false
-	common.UsingMySQL = dialect == "mysql"
-	common.UsingPostgreSQL = dialect == "postgres"
 
 	var (
-		db  *gorm.DB
-		err error
+		db     *gorm.DB
+		dbType common.DatabaseType
+		err    error
 	)
 	switch dialect {
 	case "mysql":
+		dbType = common.DatabaseTypeMySQL
 		db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	case "postgres":
+		dbType = common.DatabaseTypePostgreSQL
 		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	default:
 		t.Fatalf("unsupported dialect %q", dialect)
 	}
+	common.SetDatabaseTypes(dbType, dbType)
 	if err != nil {
 		t.Fatalf("failed to open %s db: %v", dialect, err)
 	}

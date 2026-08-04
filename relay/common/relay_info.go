@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/dto"
-	"github.com/QuantumNous/new-api/pkg/billingexpr"
-	relayconstant "github.com/QuantumNous/new-api/relay/constant"
-	"github.com/QuantumNous/new-api/setting/model_setting"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/pkg/billingexpr"
+	relayconstant "github.com/Lorry-San/nbapi/relay/constant"
+	"github.com/Lorry-San/nbapi/setting/model_setting"
+	"github.com/Lorry-San/nbapi/types"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -149,7 +149,7 @@ type RelayInfo struct {
 	IsClaudeBetaQuery                     bool // /v1/messages?beta=true
 	IsChannelTest                         bool // channel test request
 	RetryIndex                            int
-	LastError                             *types.NewAPIError
+	LastError                             *types.NBAPIError
 	RuntimeHeadersOverride                map[string]interface{}
 	UseRuntimeHeadersOverride             bool
 	ParamOverrideAudit                    []string
@@ -162,6 +162,11 @@ type RelayInfo struct {
 	UpstreamRequestBodySize int64
 
 	PriceData types.PriceData
+
+	// QuotaClamp is set (non-nil) when a quota conversion saturated at the
+	// int32 bound (or NaN fallback) while computing this request's charge.
+	// It is surfaced onto the consume/task log's admin_info for auditing.
+	QuotaClamp *common.QuotaClamp
 
 	// TieredBillingSnapshot is a frozen snapshot of tiered billing rules
 	// captured at pre-consume time. Non-nil only when billing mode is "tiered_expr".
@@ -321,24 +326,27 @@ func (info *RelayInfo) ToString() string {
 
 // 定义支持流式选项的通道类型
 var streamSupportedChannels = map[int]bool{
-	constant.ChannelTypeOpenAI:      true,
-	constant.ChannelTypeAnthropic:   true,
-	constant.ChannelTypeAws:         true,
-	constant.ChannelTypeGemini:      true,
-	constant.ChannelCloudflare:      true,
-	constant.ChannelTypeAzure:       true,
-	constant.ChannelTypeVolcEngine:  true,
-	constant.ChannelTypeOllama:      true,
-	constant.ChannelTypeXai:         true,
-	constant.ChannelTypeDeepSeek:    true,
-	constant.ChannelTypeBaiduV2:     true,
-	constant.ChannelTypeZhipu_v4:    true,
-	constant.ChannelTypeAli:         true,
-	constant.ChannelTypeSubmodel:    true,
-	constant.ChannelTypeCodex:       true,
-	constant.ChannelTypeMoonshot:    true,
-	constant.ChannelTypeMiniMax:     true,
-	constant.ChannelTypeSiliconFlow: true,
+	constant.ChannelTypeOpenAI:         true,
+	constant.ChannelTypeAnthropic:      true,
+	constant.ChannelTypeAws:            true,
+	constant.ChannelTypeGemini:         true,
+	constant.ChannelCloudflare:         true,
+	constant.ChannelTypeAzure:          true,
+	constant.ChannelTypeVolcEngine:     true,
+	constant.ChannelTypeOllama:         true,
+	constant.ChannelTypeXai:            true,
+	constant.ChannelTypeDeepSeek:       true,
+	constant.ChannelTypeBaiduV2:        true,
+	constant.ChannelTypeZhipu_v4:       true,
+	constant.ChannelTypeAli:            true,
+	constant.ChannelTypeSubmodel:       true,
+	constant.ChannelTypeCodex:          true,
+	constant.ChannelTypeMoonshot:       true,
+	constant.ChannelTypeMiniMax:        true,
+	constant.ChannelTypeSiliconFlow:    true,
+	constant.ChannelTypeAdvancedCustom: true,
+	constant.ChannelTypeSub2API:        true,
+	constant.ChannelTypeTencent:        true,
 }
 
 func GenRelayInfoWs(c *gin.Context, ws *websocket.Conn) *RelayInfo {
@@ -461,7 +469,7 @@ func genBaseRelayInfo(c *gin.Context, request dto.Request) *RelayInfo {
 
 	reqId := common.GetContextKeyString(c, common.RequestIdKey)
 	if reqId == "" {
-		reqId = common.GetTimeString() + common.GetRandomString(8)
+		reqId = common.NewRequestId()
 	}
 	info := &RelayInfo{
 		Request: request,
@@ -572,6 +580,11 @@ func GenRelayInfo(c *gin.Context, relayFormat types.RelayFormat, request dto.Req
 			return GenRelayInfoResponsesCompaction(c, request), nil
 		}
 		return nil, errors.New("request is not a OpenAIResponsesCompactionRequest")
+	case types.RelayFormatOpenAIAlphaSearch:
+		if request, ok := request.(*dto.AlphaSearchRequest); ok {
+			return GenRelayInfoAlphaSearch(c, request), nil
+		}
+		return nil, errors.New("request is not a AlphaSearchRequest")
 	case types.RelayFormatTask:
 		info = genBaseRelayInfo(c, nil)
 		info.TaskRelayInfo = &TaskRelayInfo{}
@@ -643,6 +656,23 @@ func GenRelayInfoResponsesCompaction(c *gin.Context, request *dto.OpenAIResponse
 		info.RelayMode = relayconstant.RelayModeResponsesCompact
 	}
 	info.RelayFormat = types.RelayFormatOpenAIResponsesCompaction
+	return info
+}
+
+func GenRelayInfoAlphaSearch(c *gin.Context, request *dto.AlphaSearchRequest) *RelayInfo {
+	info := genBaseRelayInfo(c, request)
+	if info.RelayMode == relayconstant.RelayModeUnknown {
+		info.RelayMode = relayconstant.RelayModeAlphaSearch
+	}
+	info.RelayFormat = types.RelayFormatOpenAIAlphaSearch
+	info.ResponsesUsageInfo = &ResponsesUsageInfo{
+		BuiltInTools: map[string]*BuildInToolInfo{
+			dto.BuildInToolWebSearchPreview: {
+				ToolName:  dto.BuildInToolWebSearchPreview,
+				CallCount: 0,
+			},
+		},
+	}
 	return info
 }
 

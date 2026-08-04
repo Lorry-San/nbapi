@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/QuantumNous/new-api/common"
+	"github.com/Lorry-San/nbapi/common"
 )
 
 const maxOpsMonitorLogs = 200000
@@ -362,7 +362,7 @@ func chooseOpsBucketSeconds(rangeSeconds int64) int64 {
 }
 
 func getOpsChannelNames(ids map[int]struct{}) map[int]string {
-	names := map[int]string{0: "未分配"}
+	names := map[int]string{0: "未分�?}
 	if len(ids) == 0 {
 		return names
 	}

@@ -1,6 +1,6 @@
 package common
 
-import "github.com/QuantumNous/new-api/constant"
+import "github.com/Lorry-San/nbapi/constant"
 
 // EndpointInfo 描述单个端点的默认请求信息
 // path: 上游路径
@@ -20,6 +20,7 @@ var defaultEndpointInfoMap = map[constant.EndpointType]EndpointInfo{
 	constant.EndpointTypeOpenAI:                {Path: "/v1/chat/completions", Method: "POST"},
 	constant.EndpointTypeOpenAIResponse:        {Path: "/v1/responses", Method: "POST"},
 	constant.EndpointTypeOpenAIResponseCompact: {Path: "/v1/responses/compact", Method: "POST"},
+	constant.EndpointTypeOpenAIAlphaSearch:     {Path: "/v1/alpha/search", Method: "POST"},
 	constant.EndpointTypeAnthropic:             {Path: "/v1/messages", Method: "POST"},
 	constant.EndpointTypeGemini:                {Path: "/v1beta/models/{model}:generateContent", Method: "POST"},
 	constant.EndpointTypeJinaRerank:            {Path: "/v1/rerank", Method: "POST"},

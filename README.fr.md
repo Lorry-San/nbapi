@@ -1,8 +1,8 @@
 <div align="center">
 
-![new-api](/web/default/public/logo.png)
+![nbapi](/web/public/logo.png)
 
-# New API
+# NBAPI
 
 🍥 **Passerelle de modèles étendus de nouvelle génération et système de gestion d'actifs d'IA**
 
@@ -15,31 +15,26 @@
 </p>
 
 <p align="center">
-  <a href="https://raw.githubusercontent.com/Calcium-Ion/new-api/main/LICENSE">
-    <img src="https://img.shields.io/github/license/Calcium-Ion/new-api?color=brightgreen" alt="licence">
+  <a href="https://raw.githubusercontent.com/Lorry-San/nbapi/main/LICENSE">
+    <img src="https://img.shields.io/github/license/Lorry-San/nbapi?color=brightgreen" alt="licence">
   </a><!--
-  --><a href="https://github.com/Calcium-Ion/new-api/releases/latest">
-    <img src="https://img.shields.io/github/v/release/Calcium-Ion/new-api?color=brightgreen&include_prereleases" alt="version">
+  --><a href="https://github.com/Lorry-San/nbapi/releases/latest">
+    <img src="https://img.shields.io/github/v/release/Lorry-San/nbapi?color=brightgreen&include_prereleases" alt="version">
   </a><!--
-  --><a href="https://hub.docker.com/r/CalciumIon/new-api">
-    <img src="https://img.shields.io/badge/docker-dockerHub-blue" alt="docker">
-  </a><!--
-  --><a href="https://goreportcard.com/report/github.com/Calcium-Ion/new-api">
-    <img src="https://goreportcard.com/badge/github.com/Calcium-Ion/new-api" alt="GoReportCard">
+  --><a href="https://github.com/users/Lorry-San/packages/container/package/nbapi">
+    <img src="https://img.shields.io/badge/docker-GHCR-blue" alt="docker">
   </a>
 </p>
 
 <p align="center">
   <a href="https://trendshift.io/repositories/20180" target="_blank">
-    <img src="https://trendshift.io/api/badge/repositories/20180" alt="QuantumNous%2Fnew-api | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/>
+    <img src="https://trendshift.io/api/badge/repositories/20180" alt="Lorry-San%2Fnbapi | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/>
   </a>
   <br>
-  <a href="https://hellogithub.com/repository/QuantumNous/new-api" target="_blank">
+  <a href="https://hellogithub.com/repository/Lorry-San/nbapi" target="_blank">
     <img src="https://api.hellogithub.com/v1/widgets/recommend.svg?rid=539ac4217e69431684ad4a0bab768811&claim_uid=tbFPfKIDHpc4TzR" alt="Featured｜HelloGitHub" style="width: 250px; height: 54px;" width="250" height="54" />
   </a><!--
-  --><a href="https://www.producthunt.com/products/new-api/launches/new-api?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-new-api" target="_blank" rel="noopener noreferrer">
-    <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1047693&theme=light&t=1769577875005" alt="New API - All-in-one AI asset management gateway. | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" />
-  </a>
+  -->
 </p>
 
 <p align="center">
@@ -78,7 +73,7 @@
   --><a href="https://bda.pku.edu.cn/" target="_blank">
     <img src="./docs/images/pku.png" alt="Université de Pékin" height="80" />
   </a><!--
-  --><a href="https://www.compshare.cn/?ytag=GPU_yy_gh_newapi" target="_blank">
+  --><a href="https://www.compshare.cn/?ytag=GPU_yy_gh_nbapi" target="_blank">
     <img src="./docs/images/ucloud.png" alt="UCloud" height="80" />
   </a><!--
   --><a href="https://www.aliyun.com/" target="_blank">
@@ -94,13 +89,13 @@
 ## 🙏 Remerciements spéciaux
 
 <p align="center">
-  <a href="https://www.jetbrains.com/?from=new-api" target="_blank">
+  <a href="https://www.jetbrains.com/?from=nbapi" target="_blank">
     <img src="https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.png" alt="JetBrains Logo" width="120" />
   </a>
 </p>
 
 <p align="center">
-  <strong>Merci à <a href="https://www.jetbrains.com/?from=new-api">JetBrains</a> pour avoir fourni une licence de développement open-source gratuite pour ce projet</strong>
+  <strong>Merci à <a href="https://www.jetbrains.com/?from=nbapi">JetBrains</a> pour avoir fourni une licence de développement open-source gratuite pour ce projet</strong>
 </p>
 
 ---
@@ -111,14 +106,20 @@
 
 ```bash
 # Cloner le projet
-git clone https://github.com/QuantumNous/new-api.git
-cd new-api
+git clone https://github.com/Lorry-San/nbapi.git
+cd nbapi
 
-# Modifier la configuration docker-compose.yml
-nano docker-compose.yml
+# Generer quatre secrets de production independants
+cat > .env <<EOF
+POSTGRES_PASSWORD=$(cat /proc/sys/kernel/random/uuid)
+REDIS_PASSWORD=$(cat /proc/sys/kernel/random/uuid)
+SESSION_SECRET=$(cat /proc/sys/kernel/random/uuid)
+CRYPTO_SECRET=$(cat /proc/sys/kernel/random/uuid)
+EOF
+chmod 600 .env
 
-# Démarrer le service
-docker-compose up -d
+# Recuperer l'image latest de GHCR et demarrer le service
+docker compose up -d --pull always
 ```
 
 <details>
@@ -126,22 +127,22 @@ docker-compose up -d
 
 ```bash
 # Tirer la dernière image
-docker pull calciumion/new-api:latest
+docker pull ghcr.io/lorry-san/nbapi:latest
 
 # Utilisation de SQLite (par défaut)
-docker run --name new-api -d --restart always \
+docker run --name nbapi -d --restart always \
   -p 3000:3000 \
   -e TZ=Asia/Shanghai \
   -v ./data:/data \
-  calciumion/new-api:latest
+  ghcr.io/lorry-san/nbapi:latest
 
 # Utilisation de MySQL
-docker run --name new-api -d --restart always \
+docker run --name nbapi -d --restart always \
   -p 3000:3000 \
   -e SQL_DSN="root:123456@tcp(localhost:3306)/oneapi" \
   -e TZ=Asia/Shanghai \
   -v ./data:/data \
-  calciumion/new-api:latest
+  ghcr.io/lorry-san/nbapi:latest
 ```
 
 > **💡 Astuce:** `-v ./data:/data` sauvegardera les données dans le dossier `data` du répertoire actuel, vous pouvez également le changer en chemin absolu comme `-v /your/custom/path:/data`
@@ -155,7 +156,7 @@ docker run --name new-api -d --restart always \
 > [!WARNING]
 > Lorsque vous exploitez ce projet en tant que service public d'IA générative ou service de revente d'API, les utilisateurs doivent d'abord remplir toutes les obligations requises en matière d'enregistrement, de licence, de sécurité du contenu, de vérification d'identité, de conservation des journaux, de fiscalité, de paiement et d'autorisation en amont.
 
-📖 Pour plus de méthodes de déploiement, veuillez vous référer à [Guide de déploiement](https://docs.newapi.pro/en/docs/installation)
+📖 Pour plus de méthodes de déploiement, veuillez vous référer à [Guide de déploiement](https://github.com/Lorry-San/nbapi/en/docs/installation)
 
 ---
 
@@ -163,7 +164,7 @@ docker run --name new-api -d --restart always \
 
 <div align="center">
 
-### 📖 [Documentation officielle](https://docs.newapi.pro/en/docs) | [![Demander à DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/QuantumNous/new-api)
+### 📖 [Documentation officielle](https://github.com/Lorry-San/nbapi/en/docs) | [![Demander à DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Lorry-San/nbapi)
 
 </div>
 
@@ -171,17 +172,17 @@ docker run --name new-api -d --restart always \
 
 | Catégorie | Lien |
 |------|------|
-| 🚀 Guide de déploiement | [Documentation d'installation](https://docs.newapi.pro/en/docs/installation) |
-| ⚙️ Configuration de l'environnement | [Variables d'environnement](https://docs.newapi.pro/en/docs/installation/config-maintenance/environment-variables) |
-| 📡 Documentation de l'API | [Documentation de l'API](https://docs.newapi.pro/en/docs/api) |
-| ❓ FAQ | [FAQ](https://docs.newapi.pro/en/docs/support/faq) |
-| 💬 Interaction avec la communauté | [Canaux de communication](https://docs.newapi.pro/en/docs/support/community-interaction) |
+| 🚀 Guide de déploiement | [Documentation d'installation](https://github.com/Lorry-San/nbapi/en/docs/installation) |
+| ⚙️ Configuration de l'environnement | [Variables d'environnement](https://github.com/Lorry-San/nbapi/en/docs/installation/config-maintenance/environment-variables) |
+| 📡 Documentation de l'API | [Documentation de l'API](https://github.com/Lorry-San/nbapi/en/docs/api) |
+| ❓ FAQ | [FAQ](https://github.com/Lorry-San/nbapi/en/docs/support/faq) |
+| 💬 Interaction avec la communauté | [Canaux de communication](https://github.com/Lorry-San/nbapi/en/docs/support/community-interaction) |
 
 ---
 
 ## ✨ Fonctionnalités clés
 
-> Pour les fonctionnalités détaillées, veuillez vous référer à [Présentation des fonctionnalités](https://docs.newapi.pro/en/docs/guide/wiki/basic-concepts/features-introduction) |
+> Pour les fonctionnalités détaillées, veuillez vous référer à [Présentation des fonctionnalités](https://github.com/Lorry-San/nbapi/en/docs/guide/wiki/basic-concepts/features-introduction) |
 
 ### 🎨 Fonctions principales
 
@@ -206,16 +207,16 @@ docker run --name new-api -d --restart always \
 - 🤖 Connexion par autorisation LinuxDO
 - 📱 Connexion par autorisation Telegram
 - 🔑 Authentification unifiée OIDC
-- 🔍 Requête de quota d'utilisation de clé (avec [new-api-key-tool](https://github.com/Calcium-Ion/new-api-key-tool))
+- 🔍 Requête de quota d'utilisation de clé (avec [nbapi-key-tool](https://github.com/Lorry-San/nbapi-key-tool))
 
 ### 🚀 Fonctionnalités avancées
 
 **Prise en charge des formats d'API:**
-- ⚡ [OpenAI Responses](https://docs.newapi.pro/en/docs/api/ai-model/chat/openai/create-response)
-- ⚡ [OpenAI Realtime API](https://docs.newapi.pro/en/docs/api/ai-model/realtime/create-realtime-session) (y compris Azure)
-- ⚡ [Claude Messages](https://docs.newapi.pro/en/docs/api/ai-model/chat/create-message)
-- ⚡ [Google Gemini](https://doc.newapi.pro/en/api/google-gemini-chat)
-- 🔄 [Modèles Rerank](https://docs.newapi.pro/en/docs/api/ai-model/rerank/create-rerank) (Cohere, Jina)
+- ⚡ [OpenAI Responses](https://github.com/Lorry-San/nbapi/en/docs/api/ai-model/chat/openai/create-response)
+- ⚡ [OpenAI Realtime API](https://github.com/Lorry-San/nbapi/en/docs/api/ai-model/realtime/create-realtime-session) (y compris Azure)
+- ⚡ [Claude Messages](https://github.com/Lorry-San/nbapi/en/docs/api/ai-model/chat/create-message)
+- ⚡ [Google Gemini](https://github.com/Lorry-San/nbapi/en/api/google-gemini-chat)
+- 🔄 [Modèles Rerank](https://github.com/Lorry-San/nbapi/en/docs/api/ai-model/rerank/create-rerank) (Cohere, Jina)
 
 **Routage intelligent:**
 - ⚖️ Sélection aléatoire pondérée des canaux
@@ -258,17 +259,17 @@ docker run --name new-api -d --restart always \
 
 ## 🤖 Prise en charge des modèles
 
-> Pour les détails, veuillez vous référer à [Documentation de l'API - Interface de passerelle](https://docs.newapi.pro/en/docs/api)
+> Pour les détails, veuillez vous référer à [Documentation de l'API - Interface de passerelle](https://github.com/Lorry-San/nbapi/en/docs/api)
 
 | Type de modèle | Description | Documentation |
 |---------|------|------|
-| 🤖 OpenAI-Compatible | Modèles compatibles OpenAI | [Documentation](https://docs.newapi.pro/en/docs/api/ai-model/chat/openai/createchatcompletion) |
-| 🤖 OpenAI Responses | Format OpenAI Responses | [Documentation](https://docs.newapi.pro/en/docs/api/ai-model/chat/openai/createresponse) |
-| 🎨 Midjourney-Proxy | [Midjourney-Proxy(Plus)](https://github.com/novicezk/midjourney-proxy) | [Documentation](https://doc.newapi.pro/api/midjourney-proxy-image) |
-| 🎵 Suno-API | [Suno API](https://github.com/Suno-API/Suno-API) | [Documentation](https://doc.newapi.pro/api/suno-music) |
-| 🔄 Rerank | Cohere, Jina | [Documentation](https://docs.newapi.pro/en/docs/api/ai-model/rerank/creatererank) |
-| 💬 Claude | Format Messages | [Documentation](https://docs.newapi.pro/en/docs/api/ai-model/chat/createmessage) |
-| 🌐 Gemini | Format Google Gemini | [Documentation](https://docs.newapi.pro/en/docs/api/ai-model/chat/gemini/geminirelayv1beta) |
+| 🤖 OpenAI-Compatible | Modèles compatibles OpenAI | [Documentation](https://github.com/Lorry-San/nbapi/en/docs/api/ai-model/chat/openai/createchatcompletion) |
+| 🤖 OpenAI Responses | Format OpenAI Responses | [Documentation](https://github.com/Lorry-San/nbapi/en/docs/api/ai-model/chat/openai/createresponse) |
+| 🎨 Midjourney-Proxy | [Midjourney-Proxy(Plus)](https://github.com/novicezk/midjourney-proxy) | [Documentation](https://github.com/Lorry-San/nbapi/api/midjourney-proxy-image) |
+| 🎵 Suno-API | [Suno API](https://github.com/Suno-API/Suno-API) | [Documentation](https://github.com/Lorry-San/nbapi/api/suno-music) |
+| 🔄 Rerank | Cohere, Jina | [Documentation](https://github.com/Lorry-San/nbapi/en/docs/api/ai-model/rerank/creatererank) |
+| 💬 Claude | Format Messages | [Documentation](https://github.com/Lorry-San/nbapi/en/docs/api/ai-model/chat/createmessage) |
+| 🌐 Gemini | Format Google Gemini | [Documentation](https://github.com/Lorry-San/nbapi/en/docs/api/ai-model/chat/gemini/geminirelayv1beta) |
 | 🔧 Dify | Mode ChatFlow | - |
 | 🎯 Amont personnalisé | Configuration des points d'accès amont légalement autorisés | - |
 
@@ -277,16 +278,16 @@ docker run --name new-api -d --restart always \
 <details>
 <summary>Voir la liste complète des interfaces</summary>
 
-- [Interface de discussion (Chat Completions)](https://docs.newapi.pro/en/docs/api/ai-model/chat/openai/createchatcompletion)
-- [Interface de réponse (Responses)](https://docs.newapi.pro/en/docs/api/ai-model/chat/openai/createresponse)
-- [Interface d'image (Image)](https://docs.newapi.pro/en/docs/api/ai-model/images/openai/post-v1-images-generations)
-- [Interface audio (Audio)](https://docs.newapi.pro/en/docs/api/ai-model/audio/openai/create-transcription)
-- [Interface vidéo (Video)](https://docs.newapi.pro/en/docs/api/ai-model/audio/openai/createspeech)
-- [Interface d'incorporation (Embeddings)](https://docs.newapi.pro/en/docs/api/ai-model/embeddings/createembedding)
-- [Interface de rerank (Rerank)](https://docs.newapi.pro/en/docs/api/ai-model/rerank/creatererank)
-- [Conversation en temps réel (Realtime)](https://docs.newapi.pro/en/docs/api/ai-model/realtime/createrealtimesession)
-- [Discussion Claude](https://docs.newapi.pro/en/docs/api/ai-model/chat/createmessage)
-- [Discussion Google Gemini](https://docs.newapi.pro/en/docs/api/ai-model/chat/gemini/geminirelayv1beta)
+- [Interface de discussion (Chat Completions)](https://github.com/Lorry-San/nbapi/en/docs/api/ai-model/chat/openai/createchatcompletion)
+- [Interface de réponse (Responses)](https://github.com/Lorry-San/nbapi/en/docs/api/ai-model/chat/openai/createresponse)
+- [Interface d'image (Image)](https://github.com/Lorry-San/nbapi/en/docs/api/ai-model/images/openai/post-v1-images-generations)
+- [Interface audio (Audio)](https://github.com/Lorry-San/nbapi/en/docs/api/ai-model/audio/openai/create-transcription)
+- [Interface vidéo (Video)](https://github.com/Lorry-San/nbapi/en/docs/api/ai-model/audio/openai/createspeech)
+- [Interface d'incorporation (Embeddings)](https://github.com/Lorry-San/nbapi/en/docs/api/ai-model/embeddings/createembedding)
+- [Interface de rerank (Rerank)](https://github.com/Lorry-San/nbapi/en/docs/api/ai-model/rerank/creatererank)
+- [Conversation en temps réel (Realtime)](https://github.com/Lorry-San/nbapi/en/docs/api/ai-model/realtime/createrealtimesession)
+- [Discussion Claude](https://github.com/Lorry-San/nbapi/en/docs/api/ai-model/chat/createmessage)
+- [Discussion Google Gemini](https://github.com/Lorry-San/nbapi/en/docs/api/ai-model/chat/gemini/geminirelayv1beta)
 
 </details>
 
@@ -295,7 +296,7 @@ docker run --name new-api -d --restart always \
 ## 🚢 Déploiement
 
 > [!TIP]
-> **Dernière image Docker:** `calciumion/new-api:latest`
+> **Dernière image Docker:** `ghcr.io/lorry-san/nbapi:latest`
 
 ### 📋 Exigences de déploiement
 
@@ -304,6 +305,7 @@ docker run --name new-api -d --restart always \
 | **Base de données locale** | SQLite (Docker doit monter le répertoire `/data`)|
 | **Base de données distante | MySQL ≥ 5.7.8 ou PostgreSQL ≥ 9.6 |
 | **Moteur de conteneur** | Docker / Docker Compose |
+| **Architecture système** | 64 bits uniquement (amd64 / arm64) ; les systèmes 32 bits ne sont pas pris en charge |
 
 ### ⚙️ Configuration des variables d'environnement
 
@@ -312,8 +314,16 @@ docker run --name new-api -d --restart always \
 
 | Nom de variable | Description | Valeur par défaut |
 |--------|------|--------|
-| `SESSION_SECRET` | Secret de session (requis pour le déploiement multi-machines) |
-| `CRYPTO_SECRET` | Secret de chiffrement (requis pour Redis) | - |
+| `SESSION_SECRET` | Secret de signature d’authentification, identique sur tous les nœuds | - |
+| `SESSION_COOKIE_SECURE` | `false`/non défini désactive l’OriginGuard de refresh/logout pour les proxys HTTP locaux ; `true` active le cookie Secure et le contrôle strict de l’Origin | `false` |
+| `SESSION_COOKIE_TRUSTED_URL` | Obligatoire en mode Secure : Origins HTTPS exactes autorisées pour refresh/logout, séparées par des virgules ; ce n’est pas une liste CORS relay | - |
+| `TRUSTED_PROXIES` | Variable absente/vide : approuve le bouclage, les réseaux RFC 1918, l’ULA IPv6 et les réseaux proxy officiels de Cloudflare avec un avertissement au démarrage ; `none` n’approuve aucun proxy ; une liste IP/CIDR explicite remplace les valeurs par défaut | Bouclage, réseaux privés, ULA IPv6, Cloudflare |
+| `USER_SESSION_ACTIVE_LIMIT` | Nombre maximal de Sessions de connexion actives par utilisateur | `50` |
+| `USER_SESSION_ISSUANCE_LIMIT` | Nombre maximal de Sessions créées par utilisateur dans la fenêtre, y compris les Sessions révoquées | `100` |
+| `USER_SESSION_ISSUANCE_WINDOW_SECONDS` | Fenêtre de comptage des Sessions ; limitée à la durée de conservation des Sessions révoquées si elle est supérieure | `86400` |
+| `USER_SESSION_REVOKED_RETENTION_DAYS` | Conservation en jours des Sessions révoquées pour l’audit et le comptage | `7` |
+| `USER_SESSION_HOURLY_ALERT_THRESHOLD` | Seuil global horaire déclenchant uniquement une alerte, sans bloquer les connexions | `5000` |
+| `CRYPTO_SECRET` | Secret HMAC des clés de cache ; les nœuds partageant Redis doivent utiliser la même valeur effective | Par défaut, `SESSION_SECRET` |
 | `SQL_DSN` | Chaine de connexion à la base de données | - |
 | `REDIS_CONN_STRING` | Chaine de connexion Redis | - |
 | `STREAMING_TIMEOUT` | Délai d'expiration du streaming (secondes) | `300` |
@@ -322,14 +332,14 @@ docker run --name new-api -d --restart always \
 | `AZURE_DEFAULT_API_VERSION` | Version de l'API Azure | `2025-04-01-preview` |
 | `ERROR_LOG_ENABLED` | Interrupteur du journal d'erreurs | `false` |
 | `PYROSCOPE_URL` | Adresse du serveur Pyroscope | - |
-| `PYROSCOPE_APP_NAME` | Nom de l'application Pyroscope | `new-api` |
+| `PYROSCOPE_APP_NAME` | Nom de l'application Pyroscope | `nbapi` |
 | `PYROSCOPE_BASIC_AUTH_USER` | Utilisateur Basic Auth Pyroscope | - |
 | `PYROSCOPE_BASIC_AUTH_PASSWORD` | Mot de passe Basic Auth Pyroscope | - |
 | `PYROSCOPE_MUTEX_RATE` | Taux d'échantillonnage mutex Pyroscope | `5` |
 | `PYROSCOPE_BLOCK_RATE` | Taux d'échantillonnage block Pyroscope | `5` |
-| `HOSTNAME` | Nom d'hôte tagué pour Pyroscope | `new-api` |
+| `HOSTNAME` | Nom d'hôte tagué pour Pyroscope | `nbapi` |
 
-📖 **Configuration complète:** [Documentation des variables d'environnement](https://docs.newapi.pro/en/docs/installation/config-maintenance/environment-variables)
+📖 **Configuration complète:** [Documentation des variables d'environnement](https://github.com/Lorry-San/nbapi/en/docs/installation/config-maintenance/environment-variables)
 
 </details>
 
@@ -340,14 +350,20 @@ docker run --name new-api -d --restart always \
 
 ```bash
 # Cloner le projet
-git clone https://github.com/QuantumNous/new-api.git
-cd new-api
+git clone https://github.com/Lorry-San/nbapi.git
+cd nbapi
 
-# Modifier la configuration
-nano docker-compose.yml
+# Generer quatre secrets de production independants
+cat > .env <<EOF
+POSTGRES_PASSWORD=$(cat /proc/sys/kernel/random/uuid)
+REDIS_PASSWORD=$(cat /proc/sys/kernel/random/uuid)
+SESSION_SECRET=$(cat /proc/sys/kernel/random/uuid)
+CRYPTO_SECRET=$(cat /proc/sys/kernel/random/uuid)
+EOF
+chmod 600 .env
 
-# Démarrer le service
-docker-compose up -d
+# Recuperer l'image latest de GHCR et demarrer le service
+docker compose up -d --pull always
 ```
 
 </details>
@@ -357,21 +373,21 @@ docker-compose up -d
 
 **Utilisation de SQLite:**
 ```bash
-docker run --name new-api -d --restart always \
+docker run --name nbapi -d --restart always \
   -p 3000:3000 \
   -e TZ=Asia/Shanghai \
   -v ./data:/data \
-  calciumion/new-api:latest
+  ghcr.io/lorry-san/nbapi:latest
 ```
 
 **Utilisation de MySQL:**
 ```bash
-docker run --name new-api -d --restart always \
+docker run --name nbapi -d --restart always \
   -p 3000:3000 \
   -e SQL_DSN="root:123456@tcp(localhost:3306)/oneapi" \
   -e TZ=Asia/Shanghai \
   -v ./data:/data \
-  calciumion/new-api:latest
+  ghcr.io/lorry-san/nbapi:latest
 ```
 
 > **💡 Explication du chemin:**
@@ -384,7 +400,7 @@ docker run --name new-api -d --restart always \
 <summary><strong>Méthode 3: Panneau BaoTa</strong></summary>
 
 1. Installez le panneau BaoTa (version ≥ 9.2.0)
-2. Recherchez **New-API** dans le magasin d'applications
+2. Recherchez **NBAPI** dans le magasin d'applications
 3. Installation en un clic
 
 📖 [Tutoriel avec des images](./docs/BT.md)
@@ -394,8 +410,20 @@ docker run --name new-api -d --restart always \
 ### ⚠️ Considérations sur le déploiement multi-machines
 
 > [!WARNING]
-> - **Doit définir** `SESSION_SECRET` - Sinon l'état de connexion sera incohérent sur plusieurs machines
-> - **Redis partagé doit définir** `CRYPTO_SECRET` - Sinon les données ne pourront pas être déchiffrées
+> - Tous les nœuds doivent utiliser la même base de données principale et la même valeur `SESSION_SECRET` ; sinon les Access Tokens, sessions Refresh et flux d’authentification temporaires ne peuvent pas être vérifiés de façon cohérente.
+> - Les nœuds connectés au même Redis doivent aussi utiliser le même `CRYPTO_SECRET`, faute de quoi les empreintes de clé de cache diffèrent et les entrées partagées ne peuvent pas être réutilisées de façon cohérente.
+
+La base de données fait autorité pour les Sessions de connexion et pour les limites actives/d’émission par utilisateur. Les entrées Session de Redis sont des caches de courte durée dont le TTL suit `SYNC_FREQUENCY` (60 secondes par défaut), sans jamais dépasser la durée de vie restante de la Session.
+
+| Topologie Redis | Propagation des Sessions | Limitation de débit |
+| --- | --- | --- |
+| Redis partagé | Les révocations et publications de version se propagent normalement immédiatement | Les quotas Redis sont partagés entre les nœuds |
+| Redis indépendant par nœud | Les nœuds se resynchronisent depuis la base dans le délai effectif de `SYNC_FREQUENCY` ; un nouveau Token issu d’une rotation peut recevoir temporairement une réponse 401 sur un nœud dont le cache est obsolète | Chaque nœud possède son propre quota ; la capacité agrégée peut donc atteindre environ la limite configurée multipliée par le nombre de nœuds |
+| Sans Redis | Chaque validation de Session consulte directement la base de données | Les limites en mémoire sont indépendantes sur chaque nœud |
+
+Réduire `SYNC_FREQUENCY` raccourcit la fenêtre d’obsolescence avec des Redis indépendants, mais ajoute une lecture de Session par clé primaire, par SID actif, par nœud et par TTL. Ces garanties donnent une obsolescence bornée à l’authentification Session ; les limites et les autres caches du plan de contrôle adossés à Redis restent dépendants de la topologie.
+
+Consultez [Authentification utilisateur et sessions de connexion](./docs/authentication.md) pour les contrats de token, de vérification Origin et de PAT.
 
 ### 🔄 Nouvelle tentative de canal et cache
 
@@ -420,8 +448,8 @@ docker run --name new-api -d --restart always \
 
 | Projet | Description |
 |------|------|
-| [new-api-key-tool](https://github.com/Calcium-Ion/new-api-key-tool) | Outil de recherche de quota d'utilisation avec une clé |
-| [new-api-horizon](https://github.com/Calcium-Ion/new-api-horizon) | Version optimisée haute performance de New API |
+| [nbapi-key-tool](https://github.com/Lorry-San/nbapi-key-tool) | Outil de recherche de quota d'utilisation avec une clé |
+| [nbapi-horizon](https://github.com/Lorry-San/nbapi-horizon) | Version optimisée haute performance de NBAPI |
 
 ---
 
@@ -431,10 +459,10 @@ docker run --name new-api -d --restart always \
 
 | Ressource | Lien |
 |------|------|
-| 📘 FAQ | [FAQ](https://docs.newapi.pro/en/docs/support/faq) |
-| 💬 Interaction avec la communauté | [Canaux de communication](https://docs.newapi.pro/en/docs/support/community-interaction) |
-| 🐛 Commentaires sur les problèmes | [Commentaires sur les problèmes](https://docs.newapi.pro/en/docs/support/feedback-issues) |
-| 📚 Documentation complète | [Documentation officielle](https://docs.newapi.pro/en/docs) |
+| 📘 FAQ | [FAQ](https://github.com/Lorry-San/nbapi/en/docs/support/faq) |
+| 💬 Interaction avec la communauté | [Canaux de communication](https://github.com/Lorry-San/nbapi/en/docs/support/community-interaction) |
+| 🐛 Commentaires sur les problèmes | [Commentaires sur les problèmes](https://github.com/Lorry-San/nbapi/en/docs/support/feedback-issues) |
+| 📚 Documentation complète | [Documentation officielle](https://github.com/Lorry-San/nbapi/en/docs) |
 
 ### 🤝 Guide de contribution
 
@@ -453,7 +481,7 @@ Ce projet est sous licence [GNU Affero General Public License v3.0 (AGPLv3)](./L
 
 Il s'agit d'un projet open-source développé sur la base de [One API](https://github.com/songquanpeng/one-api) (licence MIT).
 
-Si les politiques de votre organisation ne permettent pas l'utilisation de logiciels sous licence AGPLv3, ou si vous souhaitez éviter les obligations open-source de l'AGPLv3, veuillez nous contacter à : [support@quantumnous.com](mailto:support@quantumnous.com)
+Si les politiques de votre organisation ne permettent pas l'utilisation de logiciels sous licence AGPLv3, ou si vous souhaitez éviter les obligations open-source de l'AGPLv3, veuillez nous contacter à : [GitHub Issues](https://github.com/Lorry-San/nbapi/issues)
 
 ---
 
@@ -461,7 +489,7 @@ Si les politiques de votre organisation ne permettent pas l'utilisation de logic
 
 <div align="center">
 
-[![Graphique de l'historique des étoiles](https://api.star-history.com/svg?repos=Calcium-Ion/new-api&type=Date)](https://star-history.com/#Calcium-Ion/new-api&Date)
+[![Graphique de l'historique des étoiles](https://api.star-history.com/svg?repos=Lorry-San/nbapi&type=Date)](https://star-history.com/#Lorry-San/nbapi&Date)
 
 </div>
 
@@ -469,12 +497,12 @@ Si les politiques de votre organisation ne permettent pas l'utilisation de logic
 
 <div align="center">
 
-### 💖 Merci d'utiliser New API
+### 💖 Merci d'utiliser NBAPI
 
 Si ce projet vous est utile, bienvenue à nous donner une ⭐️ Étoile！
 
-**[Documentation officielle](https://docs.newapi.pro/en/docs)** • **[Commentaires sur les problèmes](https://github.com/Calcium-Ion/new-api/issues)** • **[Dernière version](https://github.com/Calcium-Ion/new-api/releases)**
+**[Documentation officielle](https://github.com/Lorry-San/nbapi/en/docs)** • **[Commentaires sur les problèmes](https://github.com/Lorry-San/nbapi/issues)** • **[Dernière version](https://github.com/Lorry-San/nbapi/releases)**
 
-<sub>Construit avec ❤️ par QuantumNous</sub>
+<sub>Construit avec ❤️ par les contributeurs NBAPI</sub>
 
 </div>

@@ -12,11 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/i18n"
-	"github.com/QuantumNous/new-api/logger"
-	"github.com/QuantumNous/new-api/model"
-	"github.com/gin-contrib/sessions"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/i18n"
+	"github.com/Lorry-San/nbapi/logger"
+	"github.com/Lorry-San/nbapi/model"
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
 	"gorm.io/gorm"
@@ -26,6 +25,7 @@ const mofangProviderName = "Mofang"
 
 type mofangSessionRequest struct {
 	JWT string `json:"jwt"`
+	Aff string `json:"aff"`
 }
 
 type mofangUserInfo struct {
@@ -62,7 +62,7 @@ func MofangOAuthSession(c *gin.Context) {
 		return
 	}
 
-	user, err := findOrCreateMofangUser(mofangUser, sessions.Default(c))
+	user, err := findOrCreateMofangUser(mofangUser, strings.TrimSpace(req.Aff))
 	if err != nil {
 		switch err.(type) {
 		case *OAuthRegistrationDisabledError:
@@ -106,10 +106,8 @@ func MofangOAuthBind(c *gin.Context) {
 		return
 	}
 
-	session := sessions.Default(c)
-	sessionUserId := session.Get("id")
-	userId, ok := sessionUserId.(int)
-	if !ok || userId == 0 {
+	userId := c.GetInt("id")
+	if userId == 0 {
 		common.ApiErrorI18n(c, i18n.MsgAuthNotLoggedIn)
 		return
 	}
@@ -226,7 +224,7 @@ func firstGJSONString(body string, paths ...string) string {
 	return ""
 }
 
-func findOrCreateMofangUser(mofangUser *mofangUserInfo, session sessions.Session) (*model.User, error) {
+func findOrCreateMofangUser(mofangUser *mofangUserInfo, affiliateCode string) (*model.User, error) {
 	user := &model.User{}
 	created := false
 	inviterId := 0
@@ -260,10 +258,8 @@ func findOrCreateMofangUser(mofangUser *mofangUserInfo, session sessions.Session
 			return &OAuthRegistrationDisabledError{}
 		}
 
-		if affCode := session.Get("aff"); affCode != nil {
-			if code, ok := affCode.(string); ok && code != "" {
-				inviterId, _ = model.GetUserIdByAffCode(code)
-			}
+		if affiliateCode != "" {
+			inviterId, _ = model.GetUserIdByAffCode(affiliateCode)
 		}
 
 		createdUser := model.User{

@@ -1,6 +1,6 @@
 package common
 
-import "github.com/QuantumNous/new-api/constant"
+import "github.com/Lorry-San/nbapi/constant"
 
 // GetEndpointTypesByChannelType 获取渠道最优先端点类型（所有的渠道都支持 OpenAI 端点）
 func GetEndpointTypesByChannelType(channelType int, modelName string) []constant.EndpointType {
@@ -30,6 +30,20 @@ func GetEndpointTypesByChannelType(channelType int, modelName string) []constant
 		endpointTypes = []constant.EndpointType{constant.EndpointTypeOpenAI, constant.EndpointTypeOpenAIResponse}
 	case constant.ChannelTypeSora:
 		endpointTypes = []constant.EndpointType{constant.EndpointTypeOpenAIVideo}
+	case constant.ChannelTypeSub2API:
+		endpointTypes = []constant.EndpointType{
+			constant.EndpointTypeOpenAI,
+			constant.EndpointTypeOpenAIResponse,
+			constant.EndpointTypeAnthropic,
+			constant.EndpointTypeGemini,
+			constant.EndpointTypeOpenAIAlphaSearch,
+		}
+	case constant.ChannelTypeCodex:
+		endpointTypes = []constant.EndpointType{
+			constant.EndpointTypeOpenAIResponse,
+			constant.EndpointTypeOpenAIResponseCompact,
+			constant.EndpointTypeOpenAIAlphaSearch,
+		}
 	default:
 		if IsOpenAIResponseOnlyModel(modelName) {
 			endpointTypes = []constant.EndpointType{constant.EndpointTypeOpenAIResponse}

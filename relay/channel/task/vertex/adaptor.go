@@ -9,18 +9,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/model"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/model"
 	"github.com/gin-gonic/gin"
 
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/dto"
-	"github.com/QuantumNous/new-api/relay/channel"
-	geminitask "github.com/QuantumNous/new-api/relay/channel/task/gemini"
-	taskcommon "github.com/QuantumNous/new-api/relay/channel/task/taskcommon"
-	vertexcore "github.com/QuantumNous/new-api/relay/channel/vertex"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	"github.com/QuantumNous/new-api/service"
+	"github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/relay/channel"
+	geminitask "github.com/Lorry-San/nbapi/relay/channel/task/gemini"
+	taskcommon "github.com/Lorry-San/nbapi/relay/channel/task/taskcommon"
+	vertexcore "github.com/Lorry-San/nbapi/relay/channel/vertex"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	"github.com/Lorry-San/nbapi/service"
 )
 
 // ============================

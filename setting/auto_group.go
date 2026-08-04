@@ -1,7 +1,7 @@
 package setting
 
 import (
-	"github.com/QuantumNous/new-api/common"
+	"github.com/Lorry-San/nbapi/common"
 )
 
 var autoGroups = []string{

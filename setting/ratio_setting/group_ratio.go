@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/setting/config"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/setting/config"
+	"github.com/Lorry-San/nbapi/types"
 )
 
 var defaultGroupRatio = map[string]float64{
@@ -25,12 +25,7 @@ var defaultGroupGroupRatio = map[string]map[string]float64{
 
 var groupGroupRatioMap = types.NewRWMap[string, map[string]float64]()
 
-var defaultGroupSpecialUsableGroup = map[string]map[string]string{
-	"vip": {
-		"append_1":   "vip_special_group_1",
-		"-:remove_1": "vip_removed_group_1",
-	},
-}
+var defaultGroupSpecialUsableGroup = map[string]map[string]string{}
 
 type GroupRatioSetting struct {
 	GroupRatio              *types.RWMap[string, float64]            `json:"group_ratio"`

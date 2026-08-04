@@ -7,144 +7,174 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/dto"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/constant"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	"github.com/Lorry-San/nbapi/types"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
 
-func TestOaiResponsesToChatStreamHandlerPreservesTextAndToolCalls(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	oldTimeout := constant.StreamingTimeout
-	constant.StreamingTimeout = 30
-	t.Cleanup(func() {
-		constant.StreamingTimeout = oldTimeout
-	})
-
-	sse := strings.Join([]string{
-		responsesSSE(t, map[string]any{
-			"type": "response.created",
-			"response": map[string]any{
-				"model":      "gpt-5",
-				"created_at": 123,
-			},
-		}),
-		responsesSSE(t, map[string]any{
-			"type":  "response.output_text.delta",
-			"delta": "I will call a tool.",
-		}),
-		responsesSSE(t, map[string]any{
-			"type": "response.output_item.added",
-			"item": map[string]any{
-				"type":    "function_call",
-				"id":      "fc_123",
-				"call_id": "call_123",
-				"name":    "lookup",
-			},
-		}),
-		responsesSSE(t, map[string]any{
-			"type":    "response.function_call_arguments.delta",
-			"item_id": "fc_123",
-			"delta":   `{"query"`,
-		}),
-		responsesSSE(t, map[string]any{
-			"type":    "response.function_call_arguments.delta",
-			"item_id": "fc_123",
-			"delta":   `:"nbapi"}`,
-		}),
-		responsesSSE(t, map[string]any{
-			"type": "response.completed",
-			"response": map[string]any{
-				"model":      "gpt-5",
-				"created_at": 123,
-				"usage": map[string]any{
-					"input_tokens":  1,
-					"output_tokens": 2,
-					"total_tokens":  3,
-				},
-			},
-		}),
-		"data: [DONE]\n",
-	}, "")
+func newResponsesChatTestContext(t *testing.T, body string, isStream bool) (*gin.Context, *httptest.ResponseRecorder, *http.Response, *relaycommon.RelayInfo) {
+	t.Helper()
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	c.Set(common.RequestIdKey, "test")
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+	c.Set(common.RequestIdKey, "responses-test")
 
 	resp := &http.Response{
-		Body: io.NopCloser(strings.NewReader(sse)),
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(strings.NewReader(body)),
+		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
 	}
 	info := &relaycommon.RelayInfo{
-		RelayFormat: types.RelayFormatOpenAI,
-		ChannelMeta: &relaycommon.ChannelMeta{UpstreamModelName: "gpt-5"},
+		ChannelMeta:        &relaycommon.ChannelMeta{UpstreamModelName: "gpt-test"},
+		IsStream:           isStream,
+		RelayFormat:        types.RelayFormatOpenAI,
+		ShouldIncludeUsage: true,
+		DisablePing:        true,
 	}
+	return c, recorder, resp, info
+}
+
+func TestOaiResponsesToChatStreamHandlerConvertsSSEOrderAndUsage(t *testing.T) {
+	oldMode := gin.Mode()
+	gin.SetMode(gin.TestMode)
+	t.Cleanup(func() { gin.SetMode(oldMode) })
+
+	oldTimeout := constant.StreamingTimeout
+	constant.StreamingTimeout = 30
+	t.Cleanup(func() { constant.StreamingTimeout = oldTimeout })
+
+	body := strings.Join([]string{
+		`data: {"type":"response.created","response":{"id":"resp_1","model":"gpt-test","created_at":1710000000}}`,
+		`data: {"type":"response.output_text.delta","delta":"hello"}`,
+		`data: {"type":"response.output_item.added","output_index":1,"item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"lookup"}}`,
+		`data: {"type":"response.function_call_arguments.delta","output_index":1,"delta":"{\"q\":\"x\"}"}`,
+		`data: {"type":"response.completed","response":{"status":"completed","usage":{"input_tokens":2,"output_tokens":3,"total_tokens":5}}}`,
+		`data: [DONE]`,
+		``,
+	}, "\n")
+
+	c, recorder, resp, info := newResponsesChatTestContext(t, body, true)
 
 	usage, err := OaiResponsesToChatStreamHandler(c, info, resp)
 	require.Nil(t, err)
 	require.NotNil(t, usage)
+	require.Equal(t, 2, usage.PromptTokens)
+	require.Equal(t, 3, usage.CompletionTokens)
+	require.Equal(t, 5, usage.TotalTokens)
+
+	got := recorder.Body.String()
+	require.Equal(t, "text/event-stream", recorder.Header().Get("Content-Type"))
+	require.Contains(t, got, `"role":"assistant"`)
+	require.Contains(t, got, `"content":"hello"`)
+	require.Contains(t, got, `"name":"lookup"`)
+	require.Contains(t, got, `"arguments":"{\"q\":\"x\"}"`)
+	require.Contains(t, got, `"finish_reason":"tool_calls"`)
+	require.Contains(t, got, `"usage":{"prompt_tokens":2,"completion_tokens":3,"total_tokens":5`)
+	require.Contains(t, got, `data: [DONE]`)
+	requireOrderedSubstrings(t, got,
+		`"role":"assistant"`,
+		`"content":"hello"`,
+		`"name":"lookup"`,
+		`"arguments":"{\"q\":\"x\"}"`,
+		`"finish_reason":"tool_calls"`,
+		`"usage":{"prompt_tokens":2,"completion_tokens":3,"total_tokens":5`,
+		`data: [DONE]`,
+	)
+}
+
+func TestOaiResponsesToChatBufferedStreamHandlerReturnsJSONFromSSE(t *testing.T) {
+	oldMode := gin.Mode()
+	gin.SetMode(gin.TestMode)
+	t.Cleanup(func() { gin.SetMode(oldMode) })
+
+	body := strings.Join([]string{
+		`data: {"type":"response.output_text.delta","delta":"buffered text"}`,
+		`data: {"type":"response.output_item.added","output_index":0,"item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"lookup"}}`,
+		`data: {"type":"response.function_call_arguments.delta","output_index":0,"delta":"{\"q\":\"x\"}"}`,
+		`data: {"type":"response.done","response":{"model":"gpt-test","status":"completed","usage":{"input_tokens":1,"output_tokens":2,"total_tokens":3}}}`,
+		`data: [DONE]`,
+		``,
+	}, "\n")
+
+	c, recorder, resp, info := newResponsesChatTestContext(t, body, false)
+
+	usage, err := OaiResponsesToChatBufferedStreamHandler(c, info, resp)
+	require.Nil(t, err)
+	require.NotNil(t, usage)
 	require.Equal(t, 3, usage.TotalTokens)
 
-	chunks := parseChatSSEChunks(t, recorder.Body.String())
-	var sawText bool
-	var sawToolName bool
-	var toolArgs strings.Builder
-	var finishReason string
-
-	for _, chunk := range chunks {
-		require.Len(t, chunk.Choices, 1)
-		choice := chunk.Choices[0]
-		if choice.Delta.Content != nil && *choice.Delta.Content == "I will call a tool." {
-			sawText = true
-		}
-		for _, toolCall := range choice.Delta.ToolCalls {
-			require.Equal(t, "call_123", toolCall.ID)
-			if toolCall.Function.Name == "lookup" {
-				sawToolName = true
-			}
-			toolArgs.WriteString(toolCall.Function.Arguments)
-		}
-		if choice.FinishReason != nil {
-			finishReason = *choice.FinishReason
-		}
-	}
-
-	require.True(t, sawText)
-	require.True(t, sawToolName)
-	require.JSONEq(t, `{"query":"nbapi"}`, toolArgs.String())
-	require.Equal(t, "tool_calls", finishReason)
+	got := recorder.Body.String()
+	require.NotContains(t, got, `data:`)
+	require.Contains(t, got, `"object":"chat.completion"`)
+	require.Contains(t, got, `"content":"buffered text"`)
+	require.Contains(t, got, `"name":"lookup"`)
+	require.Contains(t, got, `"arguments":"{\"q\":\"x\"}"`)
+	require.Contains(t, got, `"finish_reason":"tool_calls"`)
 }
 
-func responsesSSE(t *testing.T, event map[string]any) string {
-	t.Helper()
-	raw, err := common.Marshal(event)
-	require.NoError(t, err)
-	return "data: " + string(raw) + "\n"
+func TestOaiChatToResponsesStreamHandlerConvertsSSEOrderAndUsage(t *testing.T) {
+	oldMode := gin.Mode()
+	gin.SetMode(gin.TestMode)
+	t.Cleanup(func() { gin.SetMode(oldMode) })
+
+	oldTimeout := constant.StreamingTimeout
+	constant.StreamingTimeout = 30
+	t.Cleanup(func() { constant.StreamingTimeout = oldTimeout })
+
+	body := strings.Join([]string{
+		`data: {"id":"chatcmpl_1","object":"chat.completion.chunk","created":1710000000,"model":"gpt-test","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}`,
+		`data: {"id":"chatcmpl_1","object":"chat.completion.chunk","created":1710000000,"model":"gpt-test","choices":[{"index":0,"delta":{"content":"hello"},"finish_reason":null}]}`,
+		`data: {"id":"chatcmpl_1","object":"chat.completion.chunk","created":1710000000,"model":"gpt-test","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_1","type":"function","function":{"name":"lookup"}}]},"finish_reason":null}]}`,
+		`data: {"id":"chatcmpl_1","object":"chat.completion.chunk","created":1710000000,"model":"gpt-test","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\"q\":\"x\"}"}}]},"finish_reason":null}]}`,
+		`data: {"id":"chatcmpl_1","object":"chat.completion.chunk","created":1710000000,"model":"gpt-test","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}`,
+		`data: {"id":"chatcmpl_1","object":"chat.completion.chunk","created":1710000000,"model":"gpt-test","choices":[],"usage":{"prompt_tokens":2,"completion_tokens":3,"total_tokens":5}}`,
+		`data: [DONE]`,
+		``,
+	}, "\n")
+
+	c, recorder, resp, info := newResponsesChatTestContext(t, body, true)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+
+	usage, err := OaiChatToResponsesStreamHandler(c, info, resp)
+	require.Nil(t, err)
+	require.NotNil(t, usage)
+	require.Equal(t, 2, usage.PromptTokens)
+	require.Equal(t, 3, usage.CompletionTokens)
+	require.Equal(t, 5, usage.TotalTokens)
+
+	got := recorder.Body.String()
+	require.Equal(t, "text/event-stream", recorder.Header().Get("Content-Type"))
+	require.Contains(t, got, `event: response.created`)
+	require.Contains(t, got, `event: response.output_text.delta`)
+	require.Contains(t, got, `"delta":"hello"`)
+	require.Contains(t, got, `event: response.function_call_arguments.delta`)
+	require.Contains(t, got, `"delta":"{\"q\":\"x\"}"`)
+	require.Contains(t, got, `event: response.completed`)
+	require.Contains(t, got, `"input_tokens":2`)
+	require.Contains(t, got, `"output_tokens":3`)
+	requireOrderedSubstrings(t, got,
+		`event: response.created`,
+		`event: response.output_item.added`,
+		`event: response.output_text.delta`,
+		`event: response.output_item.added`,
+		`event: response.function_call_arguments.delta`,
+		`event: response.output_text.done`,
+		`event: response.function_call_arguments.done`,
+		`event: response.completed`,
+	)
 }
 
-func parseChatSSEChunks(t *testing.T, body string) []dto.ChatCompletionsStreamResponse {
+func requireOrderedSubstrings(t *testing.T, s string, parts ...string) {
 	t.Helper()
 
-	chunks := make([]dto.ChatCompletionsStreamResponse, 0)
-	for _, line := range strings.Split(body, "\n") {
-		line = strings.TrimSpace(line)
-		if !strings.HasPrefix(line, "data: ") {
-			continue
-		}
-		data := strings.TrimSpace(strings.TrimPrefix(line, "data: "))
-		if data == "" || data == "[DONE]" {
-			continue
-		}
-		var chunk dto.ChatCompletionsStreamResponse
-		require.NoError(t, common.Unmarshal([]byte(data), &chunk))
-		if len(chunk.Choices) == 0 {
-			continue
-		}
-		chunks = append(chunks, chunk)
+	offset := 0
+	for _, part := range parts {
+		idx := strings.Index(s[offset:], part)
+		require.NotEqualf(t, -1, idx, "missing %q after byte offset %d", part, offset)
+		offset += idx + len(part)
 	}
-	return chunks
 }

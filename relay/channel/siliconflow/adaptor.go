@@ -6,13 +6,13 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/dto"
-	"github.com/QuantumNous/new-api/relay/channel"
-	"github.com/QuantumNous/new-api/relay/channel/openai"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	"github.com/QuantumNous/new-api/relay/constant"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/relay/channel"
+	"github.com/Lorry-San/nbapi/relay/channel/openai"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	"github.com/Lorry-San/nbapi/relay/constant"
+	"github.com/Lorry-San/nbapi/types"
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
@@ -67,7 +67,7 @@ func (a *Adaptor) Init(info *relaycommon.RelayInfo) {
 
 func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 	if info.RelayMode == constant.RelayModeRerank {
-		return fmt.Sprintf("%s/v1/rerank", info.ChannelBaseUrl), nil
+		return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, "/v1/rerank", info.ChannelType), nil
 	}
 	return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, info.RequestURLPath, info.ChannelType), nil
 }
@@ -110,7 +110,7 @@ func (a *Adaptor) ConvertEmbeddingRequest(c *gin.Context, info *relaycommon.Rela
 	return request, nil
 }
 
-func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (usage any, err *types.NewAPIError) {
+func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (usage any, err *types.NBAPIError) {
 	switch info.RelayMode {
 	case constant.RelayModeRerank:
 		usage, err = siliconflowRerankHandler(c, info, resp)

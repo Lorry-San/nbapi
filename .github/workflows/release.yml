@@ -1,4 +1,6 @@
-name: Release (Linux amd64, Windows amd64)
+name: Release (Linux, macOS, Windows)
+permissions:
+  contents: write
 
 on:
   workflow_dispatch:
@@ -11,128 +13,71 @@ on:
       - '*'
       - '!*-alpha*'
 
-permissions:
-  contents: write
-
 jobs:
-  frontend:
-    name: Build frontend assets
+  checks:
+    name: Tests and frontend checks
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
     steps:
       - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          fetch-depth: 0
-
-      - name: Determine version
-        run: |
-          VERSION="$(git describe --tags)"
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: latest
-
-      - name: Build frontend (default)
-        env:
-          CI: ""
-          NODE_OPTIONS: "--max-old-space-size=4096"
+      - name: Check frontend
         run: |
-          cd web/default
-          bun install
-          DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION="$VERSION" bun run build
-
-      - name: Build frontend (classic)
-        env:
-          CI: ""
-          NODE_OPTIONS: "--max-old-space-size=4096"
-        run: |
-          cd web/classic
-          bun install
-          VITE_REACT_APP_VERSION="$VERSION" bun run build
-
-      - name: Upload frontend assets
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-dist
-          path: |
-            web/default/dist
-            web/classic/dist
-          retention-days: 1
-
-  release:
-    name: Release ${{ matrix.name }}
-    needs: frontend
-    runs-on: ${{ matrix.runner }}
-    defaults:
-      run:
-        shell: bash
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: linux-amd64
-            runner: ubuntu-latest
-            goos: linux
-            goarch: amd64
-            ext: ''
-          - name: windows-amd64
-            runner: windows-latest
-            goos: windows
-            goarch: amd64
-            ext: '.exe'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          fetch-depth: 0
-
-      - name: Determine version
-        run: |
-          VERSION="$(git describe --tags)"
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-
-      - name: Download frontend assets
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-dist
-          path: .
-
-      - name: Restore frontend asset paths
-        run: |
-          mkdir -p web/default web/classic
-          if [ -d default/dist ]; then
-            rm -rf web/default/dist
-            mv default/dist web/default/dist
-          fi
-          if [ -d classic/dist ]; then
-            rm -rf web/classic/dist
-            mv classic/dist web/classic/dist
-          fi
-          test -d web/default/dist
-          test -d web/classic/dist
-
+          cd web
+          bun install --frozen-lockfile
+          bun run build:check
       - name: Set up Go
-        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version: '>=1.25.1'
+      - name: Test backend
+        run: go test ./...
 
-      - name: Build backend
+  linux:
+    name: Linux Release
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+      - name: Determine Version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION=$(cat VERSION)
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: latest
+      - name: Build Frontend
         env:
-          CGO_ENABLED: 0
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
+          CI: ""
+        run: |
+          cd web
+          bun install --frozen-lockfile
+          DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$VERSION bun run build
+          cd ..
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: '>=1.25.1'
+      - name: Build Backend (amd64)
         run: |
           go mod download
-          go build -ldflags "-s -w -X 'github.com/QuantumNous/new-api/common.Version=$VERSION'" -o "nbapi-${VERSION}-${{ matrix.name }}${{ matrix.ext }}"
-
-      - name: Generate checksum
+          go build -ldflags "-s -w -X 'github.com/Lorry-San/nbapi/common.Version=$VERSION' -extldflags '-static'" -o nbapi-$VERSION
+      - name: Build Backend (arm64)
         run: |
-          sha256sum "nbapi-${VERSION}-${{ matrix.name }}${{ matrix.ext }}" > "checksums-${{ matrix.name }}.txt"
+          sudo apt-get update
+          DEBIAN_FRONTEND=noninteractive sudo apt-get install -y gcc-aarch64-linux-gnu
+          CC=aarch64-linux-gnu-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -ldflags "-s -w -X 'github.com/Lorry-San/nbapi/common.Version=$VERSION' -extldflags '-static'" -o nbapi-arm64-$VERSION
+      - name: Generate checksums
+        run: sha256sum nbapi-* > checksums-linux.txt
 
       - name: Prepare release notes
         if: startsWith(github.ref, 'refs/tags/')
@@ -145,12 +90,114 @@ jobs:
           fi
 
       - name: Release
-        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         if: startsWith(github.ref, 'refs/tags/')
         with:
           body_path: release-body.md
           files: |
-            nbapi-${{ env.VERSION }}-${{ matrix.name }}${{ matrix.ext }}
-            checksums-${{ matrix.name }}.txt
+            nbapi-*
+            checksums-linux.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  macos:
+    name: macOS Release
+    needs: checks
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+      - name: Determine Version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION=$(cat VERSION)
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: latest
+      - name: Build Frontend
+        env:
+          CI: ""
+          NODE_OPTIONS: "--max-old-space-size=4096"
+        run: |
+          cd web
+          bun install --frozen-lockfile
+          DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$VERSION bun run build
+          cd ..
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: '>=1.25.1'
+      - name: Build Backend
+        run: |
+          go mod download
+          go build -ldflags "-X 'github.com/Lorry-San/nbapi/common.Version=$VERSION'" -o nbapi-macos-$VERSION
+      - name: Generate checksums
+        run: shasum -a 256 nbapi-macos-* > checksums-macos.txt
+
+      - name: Release
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            nbapi-macos-*
+            checksums-macos.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  windows:
+    name: Windows Release
+    needs: checks
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+      - name: Determine Version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION=$(cat VERSION)
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: latest
+      - name: Build Frontend
+        env:
+          CI: ""
+        run: |
+          cd web
+          bun install --frozen-lockfile
+          DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$VERSION bun run build
+          cd ..
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: '>=1.25.1'
+      - name: Build Backend
+        run: |
+          go mod download
+          go build -ldflags "-s -w -X 'github.com/Lorry-San/nbapi/common.Version=$VERSION'" -o nbapi-$VERSION.exe
+      - name: Generate checksums
+        run: sha256sum nbapi-*.exe > checksums-windows.txt
+
+      - name: Release
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            nbapi-*.exe
+            checksums-windows.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

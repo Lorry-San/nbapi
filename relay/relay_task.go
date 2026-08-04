@@ -9,16 +9,16 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/dto"
-	"github.com/QuantumNous/new-api/model"
-	"github.com/QuantumNous/new-api/relay/channel"
-	"github.com/QuantumNous/new-api/relay/channel/task/taskcommon"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	relayconstant "github.com/QuantumNous/new-api/relay/constant"
-	"github.com/QuantumNous/new-api/relay/helper"
-	"github.com/QuantumNous/new-api/service"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/model"
+	"github.com/Lorry-San/nbapi/relay/channel"
+	"github.com/Lorry-San/nbapi/relay/channel/task/taskcommon"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	relayconstant "github.com/Lorry-San/nbapi/relay/constant"
+	"github.com/Lorry-San/nbapi/relay/helper"
+	"github.com/Lorry-San/nbapi/service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -90,9 +90,9 @@ func ResolveOriginTask(c *gin.Context, info *relaycommon.RelayInfo) *dto.TaskErr
 	info.LockedChannel = ch
 
 	if originTask.ChannelId != info.ChannelId {
-		key, _, newAPIError := ch.GetNextEnabledKey()
-		if newAPIError != nil {
-			return service.TaskErrorWrapper(newAPIError, "channel_no_available_key", newAPIError.StatusCode)
+		key, _, nbapiError := ch.GetNextEnabledKey()
+		if nbapiError != nil {
+			return service.TaskErrorWrapper(nbapiError, "channel_no_available_key", nbapiError.StatusCode)
 		}
 		common.SetContextKey(c, constant.ContextKeyChannelKey, key)
 		common.SetContextKey(c, constant.ContextKeyChannelType, ch.Type)
@@ -121,14 +121,15 @@ func ResolveOriginTask(c *gin.Context, info *relaycommon.RelayInfo) *dto.TaskErr
 			if seconds <= 0 {
 				seconds = 4
 			}
-			sizeStr, _ := taskData["size"].(string)
-			if info.PriceData.OtherRatios == nil {
-				info.PriceData.OtherRatios = map[string]float64{}
+			// 历史任务数据可能包含未经校验的时长，作为计费乘数前必须钳制
+			if seconds > relaycommon.MaxTaskDurationSeconds {
+				seconds = relaycommon.MaxTaskDurationSeconds
 			}
-			info.PriceData.OtherRatios["seconds"] = float64(seconds)
-			info.PriceData.OtherRatios["size"] = 1
+			sizeStr, _ := taskData["size"].(string)
+			info.PriceData.AddOtherRatio("seconds", float64(seconds))
+			info.PriceData.AddOtherRatio("size", 1)
 			if sizeStr == "1792x1024" || sizeStr == "1024x1792" {
-				info.PriceData.OtherRatios["size"] = 1.666667
+				info.PriceData.AddOtherRatio("size", 1.666667)
 			}
 		}
 	}
@@ -193,13 +194,12 @@ func RelayTaskSubmit(c *gin.Context, info *relaycommon.RelayInfo) (*TaskSubmitRe
 		}
 	}
 
-	// 6. 将 OtherRatios 应用到基础额度
+	// 6. 将 OtherRatios 应用到基础额度（饱和转换，防止溢出成负数）
 	if !common.StringsContains(constant.TaskPricePatches, modelName) {
-		for _, ra := range info.PriceData.OtherRatios {
-			if ra != 1.0 {
-				info.PriceData.Quota = int(float64(info.PriceData.Quota) * ra)
-			}
-		}
+		quotaWithRatios := info.PriceData.ApplyOtherRatiosToFloat(float64(info.PriceData.Quota))
+		quota, clamp := common.QuotaFromFloatChecked(quotaWithRatios)
+		info.PriceData.Quota = quota
+		noteTaskQuotaClamp(info, clamp)
 	}
 
 	// 7. 预扣费（仅首次 — 重试时 info.Billing 已存在，跳过）
@@ -227,12 +227,12 @@ func RelayTaskSubmit(c *gin.Context, info *relaycommon.RelayInfo) (*TaskSubmitRe
 	}
 
 	// 10. 返回 OtherRatios 给下游（header 必须在 DoResponse 写 body 之前设置）
-	otherRatios := info.PriceData.OtherRatios
+	otherRatios := info.PriceData.OtherRatios()
 	if otherRatios == nil {
 		otherRatios = map[string]float64{}
 	}
 	ratiosJSON, _ := common.Marshal(otherRatios)
-	c.Header("X-New-Api-Other-Ratios", string(ratiosJSON))
+	c.Header("X-NBAPI-Other-Ratios", string(ratiosJSON))
 
 	// 11. 解析响应
 	upstreamTaskID, taskData, taskErr := adaptor.DoResponse(c, resp, info)
@@ -243,10 +243,12 @@ func RelayTaskSubmit(c *gin.Context, info *relaycommon.RelayInfo) (*TaskSubmitRe
 	// 11. 提交后计费调整：让适配器根据上游实际返回调整 OtherRatios
 	finalQuota := info.PriceData.Quota
 	if adjustedRatios := adaptor.AdjustBillingOnSubmit(info, taskData); len(adjustedRatios) > 0 {
-		// 基于调整后的 ratios 重新计算 quota
-		finalQuota = recalcQuotaFromRatios(info, adjustedRatios)
-		info.PriceData.OtherRatios = adjustedRatios
-		info.PriceData.Quota = finalQuota
+		if adjustedQuota, ok := recalcQuotaFromRatios(info, adjustedRatios); ok {
+			// 基于调整后的 ratios 重新计算 quota
+			finalQuota = adjustedQuota
+			info.PriceData.ReplaceOtherRatios(adjustedRatios)
+			info.PriceData.Quota = finalQuota
+		}
 	}
 
 	return &TaskSubmitResult{
@@ -259,23 +261,30 @@ func RelayTaskSubmit(c *gin.Context, info *relaycommon.RelayInfo) (*TaskSubmitRe
 
 // recalcQuotaFromRatios 根据 adjustedRatios 重新计算 quota。
 // 公式: baseQuota × ∏(ratio) — 其中 baseQuota 是不含 OtherRatios 的基础额度。
-func recalcQuotaFromRatios(info *relaycommon.RelayInfo, ratios map[string]float64) int {
+func recalcQuotaFromRatios(info *relaycommon.RelayInfo, ratios map[string]float64) (int, bool) {
 	// 从 PriceData 获取不含 OtherRatios 的基础价格
-	baseQuota := info.PriceData.Quota
-	// 先除掉原有的 OtherRatios 恢复基础额度
-	for _, ra := range info.PriceData.OtherRatios {
-		if ra != 1.0 && ra > 0 {
-			baseQuota = int(float64(baseQuota) / ra)
-		}
+	baseQuota := info.PriceData.RemoveOtherRatiosFromFloat(float64(info.PriceData.Quota))
+	priceData := info.PriceData
+	if !priceData.ReplaceOtherRatios(ratios) {
+		return 0, false
 	}
 	// 应用新的 ratios
-	result := float64(baseQuota)
-	for _, ra := range ratios {
-		if ra != 1.0 {
-			result *= ra
-		}
+	result := priceData.ApplyOtherRatiosToFloat(baseQuota)
+	quota, clamp := common.QuotaFromFloatChecked(result)
+	noteTaskQuotaClamp(info, clamp)
+	return quota, true
+}
+
+// noteTaskQuotaClamp records the first quota saturation event onto the task's
+// RelayInfo so LogTaskConsumption can surface it on the submit log's
+// admin_info. First non-nil clamp wins.
+func noteTaskQuotaClamp(info *relaycommon.RelayInfo, clamp *common.QuotaClamp) {
+	if clamp == nil || info == nil {
+		return
 	}
-	return int(result)
+	if info.QuotaClamp == nil {
+		info.QuotaClamp = clamp
+	}
 }
 
 var fetchRespBuilders = map[int]func(c *gin.Context) (respBody []byte, taskResp *dto.TaskError){

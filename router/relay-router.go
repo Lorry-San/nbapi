@@ -1,11 +1,11 @@
 package router
 
 import (
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/controller"
-	"github.com/QuantumNous/new-api/middleware"
-	"github.com/QuantumNous/new-api/relay"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/controller"
+	"github.com/Lorry-San/nbapi/middleware"
+	"github.com/Lorry-San/nbapi/relay"
+	"github.com/Lorry-San/nbapi/types"
 
 	"github.com/gin-gonic/gin"
 )
@@ -103,6 +103,11 @@ func SetRelayRouter(router *gin.Engine) {
 		})
 		httpRouter.POST("/responses/compact", func(c *gin.Context) {
 			controller.Relay(c, types.RelayFormatOpenAIResponsesCompaction)
+		})
+
+		// alpha search related routes (Codex standalone web search)
+		httpRouter.POST("/alpha/search", func(c *gin.Context) {
+			controller.Relay(c, types.RelayFormatOpenAIAlphaSearch)
 		})
 
 		// image related routes

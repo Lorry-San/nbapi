@@ -6,13 +6,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/middleware"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/middleware"
 
 	"github.com/gin-gonic/gin"
 )
 
-func SetRouter(router *gin.Engine, assets ThemeAssets) {
+func SetRouter(router *gin.Engine, assets WebAssets) {
 	SetApiRouter(router)
 	SetDashboardRouter(router)
 	SetRelayRouter(router)

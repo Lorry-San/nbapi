@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/common/limiter"
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/setting"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/common/limiter"
+	"github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/setting"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
@@ -19,6 +19,7 @@ import (
 const (
 	ModelRequestRateLimitCountMark        = "MRRL"
 	ModelRequestRateLimitSuccessCountMark = "MRRLS"
+	modelRateLimitTimeFormat              = "2006-01-02T15:04:05.000Z"
 )
 
 // 检查Redis中的请求限制
@@ -41,13 +42,13 @@ func checkRedisRateLimit(ctx context.Context, rdb *redis.Client, key string, max
 
 	// 检查时间窗口
 	oldTimeStr, _ := rdb.LIndex(ctx, key, -1).Result()
-	oldTime, err := time.Parse(timeFormat, oldTimeStr)
+	oldTime, err := time.Parse(modelRateLimitTimeFormat, oldTimeStr)
 	if err != nil {
 		return false, err
 	}
 
-	nowTimeStr := time.Now().Format(timeFormat)
-	nowTime, err := time.Parse(timeFormat, nowTimeStr)
+	nowTimeStr := time.Now().UTC().Format(modelRateLimitTimeFormat)
+	nowTime, err := time.Parse(modelRateLimitTimeFormat, nowTimeStr)
 	if err != nil {
 		return false, err
 	}
@@ -68,7 +69,7 @@ func recordRedisRequest(ctx context.Context, rdb *redis.Client, key string, maxC
 		return
 	}
 
-	now := time.Now().Format(timeFormat)
+	now := time.Now().UTC().Format(modelRateLimitTimeFormat)
 	rdb.LPush(ctx, key, now)
 	rdb.LTrim(ctx, key, 0, int64(maxCount-1))
 	rdb.Expire(ctx, key, time.Duration(setting.ModelRequestRateLimitDurationMinutes)*time.Minute)

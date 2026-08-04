@@ -3,12 +3,13 @@ package common
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/dto"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/dto"
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
@@ -23,17 +24,123 @@ type HasImage interface {
 }
 
 func GetFullRequestURL(baseURL string, requestURL string, channelType int) string {
-	fullRequestURL := fmt.Sprintf("%s%s", baseURL, requestURL)
+	fullRequestURL := joinBaseURLAndRequestURL(baseURL, requestURL)
 
 	if strings.HasPrefix(baseURL, "https://gateway.ai.cloudflare.com") {
 		switch channelType {
 		case constant.ChannelTypeOpenAI:
-			fullRequestURL = fmt.Sprintf("%s%s", baseURL, strings.TrimPrefix(requestURL, "/v1"))
+			fullRequestURL = joinBaseURLAndRequestURL(baseURL, strings.TrimPrefix(requestURL, "/v1"))
 		case constant.ChannelTypeAzure:
-			fullRequestURL = fmt.Sprintf("%s%s", baseURL, strings.TrimPrefix(requestURL, "/openai/deployments"))
+			fullRequestURL = joinBaseURLAndRequestURL(baseURL, strings.TrimPrefix(requestURL, "/openai/deployments"))
 		}
 	}
 	return fullRequestURL
+}
+
+func joinBaseURLAndRequestURL(baseURL string, requestURL string) string {
+	baseURL = strings.TrimRight(baseURL, "/")
+	if requestURL == "" {
+		return baseURL
+	}
+	if baseURLHasVersionPath(baseURL) {
+		requestURL = trimDefaultAPIVersionPrefix(requestURL)
+	}
+	if !strings.HasPrefix(requestURL, "/") {
+		requestURL = "/" + requestURL
+	}
+	return fmt.Sprintf("%s%s", baseURL, requestURL)
+}
+
+func baseURLHasVersionPath(baseURL string) bool {
+	parsed, err := url.Parse(baseURL)
+	if err != nil || parsed.Path == "" || parsed.Path == "/" {
+		return false
+	}
+	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	version := parts[len(parts)-1]
+	if len(version) < 2 || version[0] != 'v' {
+		return false
+	}
+	for _, ch := range version[1:] {
+		if ch < '0' || ch > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func trimDefaultAPIVersionPrefix(requestURL string) string {
+	if requestURL == "/v1" || requestURL == "v1" {
+		return ""
+	}
+	if strings.HasPrefix(requestURL, "/v1/") {
+		return strings.TrimPrefix(requestURL, "/v1")
+	}
+	if strings.HasPrefix(requestURL, "v1/") {
+		return strings.TrimPrefix(requestURL, "v1")
+	}
+	return requestURL
+}
+
+func SanitizeURLForLog(rawURL string) string {
+	if rawURL == "" {
+		return rawURL
+	}
+
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+
+	query := parsedURL.Query()
+	if len(query) == 0 {
+		return rawURL
+	}
+
+	changed := false
+	for key := range query {
+		if isSensitiveURLQueryKey(key) {
+			query.Set(key, "***masked***")
+			changed = true
+		}
+	}
+	if !changed {
+		return rawURL
+	}
+
+	parsedURL.RawQuery = query.Encode()
+	return parsedURL.String()
+}
+
+func isSensitiveURLQueryKey(key string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(key))
+	switch normalized {
+	case "key",
+		"api_key",
+		"api-key",
+		"apikey",
+		"x-api-key",
+		"access_token",
+		"refresh_token",
+		"id_token",
+		"token",
+		"authorization",
+		"auth",
+		"client_secret",
+		"secret",
+		"password",
+		"passwd",
+		"signature",
+		"sig",
+		"awsaccesskeyid",
+		"x-amz-credential",
+		"x-amz-security-token",
+		"x-amz-signature":
+		return true
+	}
+	return strings.Contains(normalized, "token") ||
+		strings.Contains(normalized, "secret") ||
+		strings.Contains(normalized, "signature")
 }
 
 func GetAPIVersion(c *gin.Context) string {
@@ -74,6 +181,22 @@ func GetTaskRequest(c *gin.Context) (TaskSubmitReq, error) {
 func validatePrompt(prompt string) *dto.TaskError {
 	if strings.TrimSpace(prompt) == "" {
 		return createTaskError(fmt.Errorf("prompt is required"), "invalid_request", http.StatusBadRequest, true)
+	}
+	return nil
+}
+
+// MaxTaskDurationSeconds caps user-supplied video duration. Duration is used
+// as a billing multiplier (OtherRatio "seconds"); an unbounded value could
+// overflow quota calculation into a negative charge.
+const MaxTaskDurationSeconds = 3600
+
+func validateTaskDurationBounds(req TaskSubmitReq) *dto.TaskError {
+	seconds := req.Duration
+	if seconds == 0 && req.Seconds != "" {
+		seconds, _ = strconv.Atoi(req.Seconds)
+	}
+	if seconds < 0 || seconds > MaxTaskDurationSeconds {
+		return createTaskError(fmt.Errorf("seconds must be between 1 and %d", MaxTaskDurationSeconds), "invalid_seconds", http.StatusBadRequest, true)
 	}
 	return nil
 }
@@ -133,12 +256,27 @@ func ValidateMultipartDirect(c *gin.Context, info *RelayInfo) *dto.TaskError {
 	prompt = req.Prompt
 	model = req.Model
 	size = req.Size
-	seconds, _ = strconv.Atoi(req.Seconds)
+	if strings.TrimSpace(req.Seconds) != "" {
+		parsedSeconds, err := strconv.Atoi(req.Seconds)
+		if err != nil {
+			return createTaskError(fmt.Errorf("seconds is invalid"), "invalid_seconds", http.StatusBadRequest, true)
+		}
+		seconds = parsedSeconds
+	}
 	if seconds == 0 {
 		seconds = req.Duration
 	}
+	if req.Duration > common.MaxRequestDuration || seconds > common.MaxRequestDuration {
+		return createTaskError(fmt.Errorf("duration must be less than or equal to %d seconds", common.MaxRequestDuration), "invalid_duration", http.StatusBadRequest, true)
+	}
+	if taskDurationMetadataExceedsLimit(req.Metadata) {
+		return createTaskError(fmt.Errorf("durationSeconds must be less than or equal to %d seconds", common.MaxRequestDuration), "invalid_duration", http.StatusBadRequest, true)
+	}
 	if req.InputReference != "" {
 		req.Images = []string{req.InputReference}
+	} else if len(req.Images) == 0 && strings.TrimSpace(req.Image) != "" {
+		// 兼容单图上传
+		req.Images = []string{strings.TrimSpace(req.Image)}
 	}
 
 	if strings.TrimSpace(req.Model) == "" {
@@ -150,6 +288,10 @@ func ValidateMultipartDirect(c *gin.Context, info *RelayInfo) *dto.TaskError {
 	}
 
 	if taskErr := validatePrompt(prompt); taskErr != nil {
+		return taskErr
+	}
+
+	if taskErr := validateTaskDurationBounds(req); taskErr != nil {
 		return taskErr
 	}
 
@@ -179,6 +321,29 @@ func ValidateMultipartDirect(c *gin.Context, info *RelayInfo) *dto.TaskError {
 	storeTaskRequest(c, info, action, req)
 
 	return nil
+}
+
+func taskDurationMetadataExceedsLimit(metadata map[string]interface{}) bool {
+	if metadata == nil {
+		return false
+	}
+	value, ok := metadata["durationSeconds"]
+	if !ok {
+		return false
+	}
+	switch v := value.(type) {
+	case float64:
+		return v > float64(common.MaxRequestDuration)
+	case int:
+		return v > common.MaxRequestDuration
+	case int64:
+		return v > int64(common.MaxRequestDuration)
+	case string:
+		seconds, err := strconv.Atoi(strings.TrimSpace(v))
+		return err != nil || seconds > common.MaxRequestDuration
+	default:
+		return false
+	}
 }
 
 func isKnownTaskField(field string) bool {
@@ -211,6 +376,10 @@ func ValidateBasicTaskRequest(c *gin.Context, info *RelayInfo, action string) *d
 	}
 
 	if taskErr := validatePrompt(req.Prompt); taskErr != nil {
+		return taskErr
+	}
+
+	if taskErr := validateTaskDurationBounds(req); taskErr != nil {
 		return taskErr
 	}
 

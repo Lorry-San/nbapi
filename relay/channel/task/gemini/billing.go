@@ -3,6 +3,9 @@ package gemini
 import (
 	"strconv"
 	"strings"
+
+	"github.com/Lorry-San/nbapi/common"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
 )
 
 // ParseVeoDurationSeconds extracts durationSeconds from metadata.
@@ -17,12 +20,12 @@ func ParseVeoDurationSeconds(metadata map[string]any) int {
 	}
 	switch n := v.(type) {
 	case float64:
-		if int(n) > 0 {
-			return int(n)
+		if n > 0 {
+			return clampVeoDuration(common.QuotaFromFloatTrunc(n))
 		}
 	case int:
 		if n > 0 {
-			return n
+			return clampVeoDuration(n)
 		}
 	}
 	return 8
@@ -46,21 +49,33 @@ func ParseVeoResolution(metadata map[string]any) string {
 
 // ResolveVeoDuration returns the effective duration in seconds.
 // Priority: metadata["durationSeconds"] > stdDuration > stdSeconds > default (8).
+// The result is capped because it is used as a billing multiplier and the
+// metadata path bypasses standard request validation.
 func ResolveVeoDuration(metadata map[string]any, stdDuration int, stdSeconds string) int {
 	if metadata != nil {
 		if _, exists := metadata["durationSeconds"]; exists {
 			if d := ParseVeoDurationSeconds(metadata); d > 0 {
-				return d
+				return min(d, relaycommon.MaxTaskDurationSeconds)
 			}
 		}
 	}
 	if stdDuration > 0 {
-		return stdDuration
+		return min(stdDuration, relaycommon.MaxTaskDurationSeconds)
 	}
 	if s, err := strconv.Atoi(stdSeconds); err == nil && s > 0 {
-		return s
+		return min(s, relaycommon.MaxTaskDurationSeconds)
 	}
 	return 8
+}
+
+func clampVeoDuration(seconds int) int {
+	if seconds <= 0 {
+		return 8
+	}
+	if seconds > common.MaxRequestDuration {
+		return common.MaxRequestDuration
+	}
+	return seconds
 }
 
 // ResolveVeoResolution returns the effective resolution string (lowercase).

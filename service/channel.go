@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/dto"
-	"github.com/QuantumNous/new-api/model"
-	"github.com/QuantumNous/new-api/setting/operation_setting"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/model"
+	"github.com/Lorry-San/nbapi/setting/operation_setting"
+	"github.com/Lorry-San/nbapi/types"
 )
 
 func formatNotifyType(channelId int, status int) string {
@@ -42,7 +42,7 @@ func EnableChannel(channelId int, usingKey string, channelName string) {
 	}
 }
 
-func ShouldDisableChannel(err *types.NewAPIError) bool {
+func ShouldDisableChannel(err *types.NBAPIError) bool {
 	if !common.AutomaticDisableChannelEnabled {
 		return false
 	}
@@ -64,11 +64,11 @@ func ShouldDisableChannel(err *types.NewAPIError) bool {
 	return search
 }
 
-func ShouldEnableChannel(newAPIError *types.NewAPIError, status int) bool {
+func ShouldEnableChannel(nbapiError *types.NBAPIError, status int) bool {
 	if !common.AutomaticEnableChannelEnabled {
 		return false
 	}
-	if newAPIError != nil {
+	if nbapiError != nil {
 		return false
 	}
 	if status != common.ChannelStatusAutoDisabled {

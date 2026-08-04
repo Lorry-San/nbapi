@@ -1,8 +1,8 @@
 <div align="center">
 
-![new-api](/web/default/public/logo.png)
+![nbapi](/web/public/logo.png)
 
-# New API
+# NBAPI
 
 🍥 **次世代大規模モデルゲートウェイとAI資産管理システム**
 
@@ -15,31 +15,26 @@
 </p>
 
 <p align="center">
-  <a href="https://raw.githubusercontent.com/Calcium-Ion/new-api/main/LICENSE">
-    <img src="https://img.shields.io/github/license/Calcium-Ion/new-api?color=brightgreen" alt="license">
+  <a href="https://raw.githubusercontent.com/Lorry-San/nbapi/main/LICENSE">
+    <img src="https://img.shields.io/github/license/Lorry-San/nbapi?color=brightgreen" alt="license">
   </a><!--
-  --><a href="https://github.com/Calcium-Ion/new-api/releases/latest">
-    <img src="https://img.shields.io/github/v/release/Calcium-Ion/new-api?color=brightgreen&include_prereleases" alt="release">
+  --><a href="https://github.com/Lorry-San/nbapi/releases/latest">
+    <img src="https://img.shields.io/github/v/release/Lorry-San/nbapi?color=brightgreen&include_prereleases" alt="release">
   </a><!--
-  --><a href="https://hub.docker.com/r/CalciumIon/new-api">
-    <img src="https://img.shields.io/badge/docker-dockerHub-blue" alt="docker">
-  </a><!--
-  --><a href="https://goreportcard.com/report/github.com/Calcium-Ion/new-api">
-    <img src="https://goreportcard.com/badge/github.com/Calcium-Ion/new-api" alt="GoReportCard">
+  --><a href="https://github.com/users/Lorry-San/packages/container/package/nbapi">
+    <img src="https://img.shields.io/badge/docker-GHCR-blue" alt="docker">
   </a>
 </p>
 
 <p align="center">
   <a href="https://trendshift.io/repositories/20180" target="_blank">
-    <img src="https://trendshift.io/api/badge/repositories/20180" alt="QuantumNous%2Fnew-api | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/>
+    <img src="https://trendshift.io/api/badge/repositories/20180" alt="Lorry-San%2Fnbapi | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/>
   </a>
   <br>
-  <a href="https://hellogithub.com/repository/QuantumNous/new-api" target="_blank">
+  <a href="https://hellogithub.com/repository/Lorry-San/nbapi" target="_blank">
     <img src="https://api.hellogithub.com/v1/widgets/recommend.svg?rid=539ac4217e69431684ad4a0bab768811&claim_uid=tbFPfKIDHpc4TzR" alt="Featured｜HelloGitHub" style="width: 250px; height: 54px;" width="250" height="54" />
   </a><!--
-  --><a href="https://www.producthunt.com/products/new-api/launches/new-api?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-new-api" target="_blank" rel="noopener noreferrer">
-    <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1047693&theme=light&t=1769577875005" alt="New API - All-in-one AI asset management gateway. | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" />
-  </a>
+  -->
 </p>
 
 <p align="center">
@@ -78,7 +73,7 @@
   --><a href="https://bda.pku.edu.cn/" target="_blank">
     <img src="./docs/images/pku.png" alt="北京大学" height="80" />
   </a><!--
-  --><a href="https://www.compshare.cn/?ytag=GPU_yy_gh_newapi" target="_blank">
+  --><a href="https://www.compshare.cn/?ytag=GPU_yy_gh_nbapi" target="_blank">
     <img src="./docs/images/ucloud.png" alt="UCloud 優刻得" height="80" />
   </a><!--
   --><a href="https://www.aliyun.com/" target="_blank">
@@ -94,13 +89,13 @@
 ## 🙏 特別な感謝
 
 <p align="center">
-  <a href="https://www.jetbrains.com/?from=new-api" target="_blank">
+  <a href="https://www.jetbrains.com/?from=nbapi" target="_blank">
     <img src="https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.png" alt="JetBrains Logo" width="120" />
   </a>
 </p>
 
 <p align="center">
-  <strong>感謝 <a href="https://www.jetbrains.com/?from=new-api">JetBrains</a> が本プロジェクトに無料のオープンソース開発ライセンスを提供してくれたことに感謝します</strong>
+  <strong>感謝 <a href="https://www.jetbrains.com/?from=nbapi">JetBrains</a> が本プロジェクトに無料のオープンソース開発ライセンスを提供してくれたことに感謝します</strong>
 </p>
 
 ---
@@ -111,14 +106,20 @@
 
 ```bash
 # プロジェクトをクローン
-git clone https://github.com/QuantumNous/new-api.git
-cd new-api
+git clone https://github.com/Lorry-San/nbapi.git
+cd nbapi
 
-# docker-compose.yml 設定を編集
-nano docker-compose.yml
+# 4 つの独立した本番環境シークレットを生成
+cat > .env <<EOF
+POSTGRES_PASSWORD=$(cat /proc/sys/kernel/random/uuid)
+REDIS_PASSWORD=$(cat /proc/sys/kernel/random/uuid)
+SESSION_SECRET=$(cat /proc/sys/kernel/random/uuid)
+CRYPTO_SECRET=$(cat /proc/sys/kernel/random/uuid)
+EOF
+chmod 600 .env
 
-# サービスを起動
-docker-compose up -d
+# GHCR の latest イメージを取得してサービスを起動
+docker compose up -d --pull always
 ```
 
 <details>
@@ -126,22 +127,22 @@ docker-compose up -d
 
 ```bash
 # 最新のイメージをプル
-docker pull calciumion/new-api:latest
+docker pull ghcr.io/lorry-san/nbapi:latest
 
 # SQLiteを使用（デフォルト）
-docker run --name new-api -d --restart always \
+docker run --name nbapi -d --restart always \
   -p 3000:3000 \
   -e TZ=Asia/Shanghai \
   -v ./data:/data \
-  calciumion/new-api:latest
+  ghcr.io/lorry-san/nbapi:latest
 
 # MySQLを使用
-docker run --name new-api -d --restart always \
+docker run --name nbapi -d --restart always \
   -p 3000:3000 \
   -e SQL_DSN="root:123456@tcp(localhost:3306)/oneapi" \
   -e TZ=Asia/Shanghai \
   -v ./data:/data \
-  calciumion/new-api:latest
+  ghcr.io/lorry-san/nbapi:latest
 ```
 
 > **💡 ヒント:** `-v ./data:/data` は現在のディレクトリの `data` フォルダにデータを保存します。絶対パスに変更することもできます：`-v /your/custom/path:/data`
@@ -155,7 +156,7 @@ docker run --name new-api -d --restart always \
 > [!WARNING]
 > 本プロジェクトを公衆向け生成 AI サービスまたは API 再販サービスとして運営する場合、ユーザーは届出、コンテンツセキュリティ、本人確認、ログ保持、税務、決済、上流認可などの必要なコンプライアンス義務を先に完了してください。
 
-📖 その他のデプロイ方法については[デプロイガイド](https://docs.newapi.pro/ja/docs/installation)を参照してください。
+📖 その他のデプロイ方法については[デプロイガイド](https://github.com/Lorry-San/nbapi/ja/docs/installation)を参照してください。
 
 ---
 
@@ -163,7 +164,7 @@ docker run --name new-api -d --restart always \
 
 <div align="center">
 
-### 📖 [公式ドキュメント](https://docs.newapi.pro/ja/docs) | [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/QuantumNous/new-api)
+### 📖 [公式ドキュメント](https://github.com/Lorry-San/nbapi/ja/docs) | [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Lorry-San/nbapi)
 
 </div>
 
@@ -171,17 +172,17 @@ docker run --name new-api -d --restart always \
 
 | カテゴリ | リンク |
 |------|------|
-| 🚀 デプロイガイド | [インストールドキュメント](https://docs.newapi.pro/ja/docs/installation) |
-| ⚙️ 環境設定 | [環境変数](https://docs.newapi.pro/ja/docs/installation/config-maintenance/environment-variables) |
-| 📡 APIドキュメント | [APIドキュメント](https://docs.newapi.pro/ja/docs/api) |
-| ❓ よくある質問 | [FAQ](https://docs.newapi.pro/ja/docs/support/faq) |
-| 💬 コミュニティ交流 | [交流チャネル](https://docs.newapi.pro/ja/docs/support/community-interaction) |
+| 🚀 デプロイガイド | [インストールドキュメント](https://github.com/Lorry-San/nbapi/ja/docs/installation) |
+| ⚙️ 環境設定 | [環境変数](https://github.com/Lorry-San/nbapi/ja/docs/installation/config-maintenance/environment-variables) |
+| 📡 APIドキュメント | [APIドキュメント](https://github.com/Lorry-San/nbapi/ja/docs/api) |
+| ❓ よくある質問 | [FAQ](https://github.com/Lorry-San/nbapi/ja/docs/support/faq) |
+| 💬 コミュニティ交流 | [交流チャネル](https://github.com/Lorry-San/nbapi/ja/docs/support/community-interaction) |
 
 ---
 
 ## ✨ 主な機能
 
-> 詳細な機能については[機能説明](https://docs.newapi.pro/ja/docs/guide/wiki/basic-concepts/features-introduction)を参照してください。
+> 詳細な機能については[機能説明](https://github.com/Lorry-San/nbapi/ja/docs/guide/wiki/basic-concepts/features-introduction)を参照してください。
 
 ### 🎨 コア機能
 
@@ -206,18 +207,18 @@ docker run --name new-api -d --restart always \
 - 🤖 LinuxDO認証ログイン
 - 📱 Telegram認証ログイン
 - 🔑 OIDC統一認証
-- 🔍 Key使用量クォータ照会（[new-api-key-tool](https://github.com/Calcium-Ion/new-api-key-tool)と併用）
+- 🔍 Key使用量クォータ照会（[nbapi-key-tool](https://github.com/Lorry-San/nbapi-key-tool)と併用）
 
 
 
 ### 🚀 高度な機能
 
 **APIフォーマットサポート:**
-- ⚡ [OpenAI Responses](https://docs.newapi.pro/ja/docs/api/ai-model/chat/openai/create-response)
-- ⚡ [OpenAI Realtime API](https://docs.newapi.pro/ja/docs/api/ai-model/realtime/create-realtime-session)（Azureを含む）
-- ⚡ [Claude Messages](https://docs.newapi.pro/ja/docs/api/ai-model/chat/create-message)
-- ⚡ [Google Gemini](https://doc.newapi.pro/ja/api/google-gemini-chat)
-- 🔄 [Rerankモデル](https://docs.newapi.pro/ja/docs/api/ai-model/rerank/create-rerank)（Cohere、Jina）
+- ⚡ [OpenAI Responses](https://github.com/Lorry-San/nbapi/ja/docs/api/ai-model/chat/openai/create-response)
+- ⚡ [OpenAI Realtime API](https://github.com/Lorry-San/nbapi/ja/docs/api/ai-model/realtime/create-realtime-session)（Azureを含む）
+- ⚡ [Claude Messages](https://github.com/Lorry-San/nbapi/ja/docs/api/ai-model/chat/create-message)
+- ⚡ [Google Gemini](https://github.com/Lorry-San/nbapi/ja/api/google-gemini-chat)
+- 🔄 [Rerankモデル](https://github.com/Lorry-San/nbapi/ja/docs/api/ai-model/rerank/create-rerank)（Cohere、Jina）
 
 **インテリジェントルーティング:**
 - ⚖️ チャネル重み付けランダム
@@ -260,17 +261,17 @@ docker run --name new-api -d --restart always \
 
 ## 🤖 モデルサポート
 
-> 詳細については[APIドキュメント - ゲートウェイインターフェース](https://docs.newapi.pro/ja/docs/api)
+> 詳細については[APIドキュメント - ゲートウェイインターフェース](https://github.com/Lorry-San/nbapi/ja/docs/api)
 
 | モデルタイプ | 説明 | ドキュメント |
 |---------|------|------|
-| 🤖 OpenAI-Compatible | OpenAI互換モデル | [ドキュメント](https://docs.newapi.pro/ja/docs/api/ai-model/chat/openai/createchatcompletion) |
-| 🤖 OpenAI Responses | OpenAI Responsesフォーマット | [ドキュメント](https://docs.newapi.pro/ja/docs/api/ai-model/chat/openai/createresponse) |
-| 🎨 Midjourney-Proxy | [Midjourney-Proxy(Plus)](https://github.com/novicezk/midjourney-proxy) | [ドキュメント](https://doc.newapi.pro/api/midjourney-proxy-image) |
-| 🎵 Suno-API | [Suno API](https://github.com/Suno-API/Suno-API) | [ドキュメント](https://doc.newapi.pro/api/suno-music) |
-| 🔄 Rerank | Cohere、Jina | [ドキュメント](https://docs.newapi.pro/ja/docs/api/ai-model/rerank/creatererank) |
-| 💬 Claude | Messagesフォーマット | [ドキュメント](https://docs.newapi.pro/ja/docs/api/ai-model/chat/createmessage) |
-| 🌐 Gemini | Google Geminiフォーマット | [ドキュメント](https://docs.newapi.pro/ja/docs/api/ai-model/chat/gemini/geminirelayv1beta) |
+| 🤖 OpenAI-Compatible | OpenAI互換モデル | [ドキュメント](https://github.com/Lorry-San/nbapi/ja/docs/api/ai-model/chat/openai/createchatcompletion) |
+| 🤖 OpenAI Responses | OpenAI Responsesフォーマット | [ドキュメント](https://github.com/Lorry-San/nbapi/ja/docs/api/ai-model/chat/openai/createresponse) |
+| 🎨 Midjourney-Proxy | [Midjourney-Proxy(Plus)](https://github.com/novicezk/midjourney-proxy) | [ドキュメント](https://github.com/Lorry-San/nbapi/api/midjourney-proxy-image) |
+| 🎵 Suno-API | [Suno API](https://github.com/Suno-API/Suno-API) | [ドキュメント](https://github.com/Lorry-San/nbapi/api/suno-music) |
+| 🔄 Rerank | Cohere、Jina | [ドキュメント](https://github.com/Lorry-San/nbapi/ja/docs/api/ai-model/rerank/creatererank) |
+| 💬 Claude | Messagesフォーマット | [ドキュメント](https://github.com/Lorry-San/nbapi/ja/docs/api/ai-model/chat/createmessage) |
+| 🌐 Gemini | Google Geminiフォーマット | [ドキュメント](https://github.com/Lorry-San/nbapi/ja/docs/api/ai-model/chat/gemini/geminirelayv1beta) |
 | 🔧 Dify | ChatFlowモード | - |
 | 🎯 カスタム上流 | 合法的に許可された上流エンドポイントの設定をサポート | - |
 
@@ -279,16 +280,16 @@ docker run --name new-api -d --restart always \
 <details>
 <summary>完全なインターフェースリストを表示</summary>
 
-- [チャットインターフェース (Chat Completions)](https://docs.newapi.pro/ja/docs/api/ai-model/chat/openai/createchatcompletion)
-- [レスポンスインターフェース (Responses)](https://docs.newapi.pro/ja/docs/api/ai-model/chat/openai/createresponse)
-- [イメージインターフェース (Image)](https://docs.newapi.pro/ja/docs/api/ai-model/images/openai/post-v1-images-generations)
-- [オーディオインターフェース (Audio)](https://docs.newapi.pro/ja/docs/api/ai-model/audio/openai/create-transcription)
-- [ビデオインターフェース (Video)](https://docs.newapi.pro/ja/docs/api/ai-model/audio/openai/createspeech)
-- [エンベッドインターフェース (Embeddings)](https://docs.newapi.pro/ja/docs/api/ai-model/embeddings/createembedding)
-- [再ランク付けインターフェース (Rerank)](https://docs.newapi.pro/ja/docs/api/ai-model/rerank/creatererank)
-- [リアルタイム対話インターフェース (Realtime)](https://docs.newapi.pro/ja/docs/api/ai-model/realtime/createrealtimesession)
-- [Claudeチャット](https://docs.newapi.pro/ja/docs/api/ai-model/chat/createmessage)
-- [Google Geminiチャット](https://docs.newapi.pro/ja/docs/api/ai-model/chat/gemini/geminirelayv1beta)
+- [チャットインターフェース (Chat Completions)](https://github.com/Lorry-San/nbapi/ja/docs/api/ai-model/chat/openai/createchatcompletion)
+- [レスポンスインターフェース (Responses)](https://github.com/Lorry-San/nbapi/ja/docs/api/ai-model/chat/openai/createresponse)
+- [イメージインターフェース (Image)](https://github.com/Lorry-San/nbapi/ja/docs/api/ai-model/images/openai/post-v1-images-generations)
+- [オーディオインターフェース (Audio)](https://github.com/Lorry-San/nbapi/ja/docs/api/ai-model/audio/openai/create-transcription)
+- [ビデオインターフェース (Video)](https://github.com/Lorry-San/nbapi/ja/docs/api/ai-model/audio/openai/createspeech)
+- [エンベッドインターフェース (Embeddings)](https://github.com/Lorry-San/nbapi/ja/docs/api/ai-model/embeddings/createembedding)
+- [再ランク付けインターフェース (Rerank)](https://github.com/Lorry-San/nbapi/ja/docs/api/ai-model/rerank/creatererank)
+- [リアルタイム対話インターフェース (Realtime)](https://github.com/Lorry-San/nbapi/ja/docs/api/ai-model/realtime/createrealtimesession)
+- [Claudeチャット](https://github.com/Lorry-San/nbapi/ja/docs/api/ai-model/chat/createmessage)
+- [Google Geminiチャット](https://github.com/Lorry-San/nbapi/ja/docs/api/ai-model/chat/gemini/geminirelayv1beta)
 
 </details>
 
@@ -297,7 +298,7 @@ docker run --name new-api -d --restart always \
 ## 🚢 デプロイ
 
 > [!TIP]
-> **最新のDockerイメージ:** `calciumion/new-api:latest`
+> **最新のDockerイメージ:** `ghcr.io/lorry-san/nbapi:latest`
 
 ### 📋 デプロイ要件
 
@@ -306,6 +307,7 @@ docker run --name new-api -d --restart always \
 | **ローカルデータベース** | SQLite（Dockerは `/data` ディレクトリをマウントする必要があります）|
 | **リモートデータベース** | MySQL ≥ 5.7.8 または PostgreSQL ≥ 9.6 |
 | **コンテナエンジン** | Docker / Docker Compose |
+| **システムアーキテクチャ** | 64ビットのみ対応（amd64 / arm64）。32ビットシステムは非対応 |
 
 ### ⚙️ 環境変数設定
 
@@ -314,8 +316,16 @@ docker run --name new-api -d --restart always \
 
 | 変数名 | 説明 | デフォルト値 |
 |--------|------|--------|
-| `SESSION_SECRET` | セッションシークレット（マルチマシンデプロイに必須） | - |
-| `CRYPTO_SECRET` | 暗号化シークレット（Redisに必須） | - |
+| `SESSION_SECRET` | 認証署名シークレット。すべてのノードで同じ値が必要 | - |
+| `SESSION_COOKIE_SECURE` | `false`/未設定ではローカル HTTP 開発プロキシ向けに refresh/logout の OriginGuard を無効化し、`true` では Secure Cookie と厳格な Origin 検証を有効化 | `false` |
+| `SESSION_COOKIE_TRUSTED_URL` | Secure モードでは必須。refresh/logout を許可する完全一致の HTTPS Origin をカンマ区切りで指定。relay CORS 設定ではありません | - |
+| `TRUSTED_PROXIES` | 未設定/空ではループバック、RFC 1918、IPv6 ULA、Cloudflare 公式プロキシネットワークを信頼して起動時に警告し、`none` ではすべて無効、明示的なプロキシ IP/CIDR リストは既定値を完全に置き換えます | ループバック、プライベートネットワーク、IPv6 ULA、Cloudflare |
+| `USER_SESSION_ACTIVE_LIMIT` | 1 ユーザーあたりの有効なログイン Session 上限 | `50` |
+| `USER_SESSION_ISSUANCE_LIMIT` | カウント期間内に作成できる Session 数の上限（取り消し済みを含む） | `100` |
+| `USER_SESSION_ISSUANCE_WINDOW_SECONDS` | Session 発行のカウント期間（秒）。取り消し済み Session の保持期間を超える場合は自動的に制限 | `86400` |
+| `USER_SESSION_REVOKED_RETENTION_DAYS` | 監査と発行数計算のため取り消し済み Session を保持する日数 | `7` |
+| `USER_SESSION_HOURLY_ALERT_THRESHOLD` | 1 時間あたりのグローバル Session 発行数の警告閾値。ログインは拒否しません | `5000` |
+| `CRYPTO_SECRET` | キャッシュキー用 HMAC シークレット。Redis を共有するノードでは同じ実効値が必要 | デフォルトは `SESSION_SECRET` |
 | `SQL_DSN** | データベース接続文字列 | - |
 | `REDIS_CONN_STRING` | Redis接続文字列 | - |
 | `STREAMING_TIMEOUT` | ストリーミング応答のタイムアウト時間（秒） | `300` |
@@ -324,14 +334,14 @@ docker run --name new-api -d --restart always \
 | `AZURE_DEFAULT_API_VERSION` | Azure APIバージョン | `2025-04-01-preview` |
 | `ERROR_LOG_ENABLED` | エラーログスイッチ | `false` |
 | `PYROSCOPE_URL` | Pyroscopeサーバーのアドレス | - |
-| `PYROSCOPE_APP_NAME` | Pyroscopeアプリ名 | `new-api` |
+| `PYROSCOPE_APP_NAME` | Pyroscopeアプリ名 | `nbapi` |
 | `PYROSCOPE_BASIC_AUTH_USER` | Pyroscope Basic Authユーザー | - |
 | `PYROSCOPE_BASIC_AUTH_PASSWORD` | Pyroscope Basic Authパスワード | - |
 | `PYROSCOPE_MUTEX_RATE` | Pyroscope mutexサンプリング率 | `5` |
 | `PYROSCOPE_BLOCK_RATE` | Pyroscope blockサンプリング率 | `5` |
-| `HOSTNAME` | Pyroscope用のホスト名タグ | `new-api` |
+| `HOSTNAME` | Pyroscope用のホスト名タグ | `nbapi` |
 
-📖 **完全な設定:** [環境変数ドキュメント](https://docs.newapi.pro/ja/docs/installation/config-maintenance/environment-variables)
+📖 **完全な設定:** [環境変数ドキュメント](https://github.com/Lorry-San/nbapi/ja/docs/installation/config-maintenance/environment-variables)
 
 </details>
 
@@ -342,14 +352,20 @@ docker run --name new-api -d --restart always \
 
 ```bash
 # プロジェクトをクローン
-git clone https://github.com/QuantumNous/new-api.git
-cd new-api
+git clone https://github.com/Lorry-San/nbapi.git
+cd nbapi
 
-# 設定を編集
-nano docker-compose.yml
+# 4 つの独立した本番環境シークレットを生成
+cat > .env <<EOF
+POSTGRES_PASSWORD=$(cat /proc/sys/kernel/random/uuid)
+REDIS_PASSWORD=$(cat /proc/sys/kernel/random/uuid)
+SESSION_SECRET=$(cat /proc/sys/kernel/random/uuid)
+CRYPTO_SECRET=$(cat /proc/sys/kernel/random/uuid)
+EOF
+chmod 600 .env
 
-# サービスを起動
-docker-compose up -d
+# GHCR の latest イメージを取得してサービスを起動
+docker compose up -d --pull always
 ```
 
 </details>
@@ -359,21 +375,21 @@ docker-compose up -d
 
 **SQLiteを使用:**
 ```bash
-docker run --name new-api -d --restart always \
+docker run --name nbapi -d --restart always \
   -p 3000:3000 \
   -e TZ=Asia/Shanghai \
   -v ./data:/data \
-  calciumion/new-api:latest
+  ghcr.io/lorry-san/nbapi:latest
 ```
 
 **MySQLを使用:**
 ```bash
-docker run --name new-api -d --restart always \
+docker run --name nbapi -d --restart always \
   -p 3000:3000 \
   -e SQL_DSN="root:123456@tcp(localhost:3306)/oneapi" \
   -e TZ=Asia/Shanghai \
   -v ./data:/data \
-  calciumion/new-api:latest
+  ghcr.io/lorry-san/nbapi:latest
 ```
 
 > **💡 パス説明:**
@@ -385,7 +401,7 @@ docker run --name new-api -d --restart always \
 <details>
 <summary><strong>方法 3: 宝塔パネル</strong></summary>
 
-1. 宝塔パネル（**9.2.0バージョン**以上）をインストールし、アプリケーションストアで**New-API**を検索してインストールします。
+1. 宝塔パネル（**9.2.0バージョン**以上）をインストールし、アプリケーションストアで**NBAPI**を検索してインストールします。
 
 📖 [画像付きチュートリアル](./docs/BT.md)
 
@@ -394,8 +410,20 @@ docker run --name new-api -d --restart always \
 ### ⚠️ マルチマシンデプロイの注意事項
 
 > [!WARNING]
-> - **必ず設定する必要があります** `SESSION_SECRET` - そうしないとマルチマシンデプロイ時にログイン状態が不一致になります
-> - **共有Redisは必ず設定する必要があります** `CRYPTO_SECRET` - そうしないとデータを復号化できません
+> - すべてのノードで同じプライマリデータベースと同じ `SESSION_SECRET` を使用してください。異なる場合、Access Token、Refresh セッション、一時認証フローを一貫して検証できません。
+> - 同じ Redis に接続するノードでは同じ `CRYPTO_SECRET` も設定してください。異なる場合、キャッシュキーのダイジェストが一致せず、共有エントリを正しく再利用できません。
+
+ログイン Session とユーザー単位の有効数／発行数制限では、データベースが信頼できる唯一の情報源です。Redis の Session エントリは短期キャッシュであり、TTL は `SYNC_FREQUENCY`（デフォルト 60 秒）に従い、Session の残り有効期間を超えません。
+
+| Redis トポロジー | Session 状態の伝播 | レート制限 |
+| --- | --- | --- |
+| すべてのノードで Redis を共有 | 取り消しとバージョン更新は通常即時に伝播 | Redis の制限枠はノード間で共有 |
+| ノードごとに独立した Redis | 有効な `SYNC_FREQUENCY` 以内にデータベースへフォールバックして収束。バージョンローテーション直後の新しい Token は、古いキャッシュを持つノードで一時的に 401 になる場合があります | ノードごとに独立して計数するため、クラスター全体では設定値の約ノード数倍まで許可される可能性があります |
+| Redis なし | Session の検証ごとにデータベースを直接参照 | メモリ内の制限枠はノードごとに独立 |
+
+`SYNC_FREQUENCY` を短くすると独立 Redis のキャッシュ陳腐化時間は短くなりますが、有効な SID ごと、ノードごと、TTL ごとにデータベースへの主キー照会が 1 回増えます。この保証は Session 認証の陳腐化時間を限定するものです。レート制限や Redis を使うその他のコントロールプレーンキャッシュは、引き続きトポロジーに依存します。
+
+Token、Origin 検証、PAT の契約については[ユーザー認証とログインセッション](./docs/authentication.md)を参照してください。
 
 ### 🔄 チャネルリトライとキャッシュ
 
@@ -420,8 +448,8 @@ docker run --name new-api -d --restart always \
 
 | プロジェクト | 説明 |
 |------|------|
-| [new-api-key-tool](https://github.com/Calcium-Ion/new-api-key-tool) | キー使用量クォータ照会ツール |
-| [new-api-horizon](https://github.com/Calcium-Ion/new-api-horizon) | New API高性能最適化版 |
+| [nbapi-key-tool](https://github.com/Lorry-San/nbapi-key-tool) | キー使用量クォータ照会ツール |
+| [nbapi-horizon](https://github.com/Lorry-San/nbapi-horizon) | NBAPI高性能最適化版 |
 
 ---
 
@@ -431,10 +459,10 @@ docker run --name new-api -d --restart always \
 
 | リソース | リンク |
 |------|------|
-| 📘 よくある質問 | [FAQ](https://docs.newapi.pro/ja/docs/support/faq) |
-| 💬 コミュニティ交流 | [交流チャネル](https://docs.newapi.pro/ja/docs/support/community-interaction) |
-| 🐛 問題のフィードバック | [問題フィードバック](https://docs.newapi.pro/ja/docs/support/feedback-issues) |
-| 📚 完全なドキュメント | [公式ドキュメント](https://docs.newapi.pro/ja/docs) |
+| 📘 よくある質問 | [FAQ](https://github.com/Lorry-San/nbapi/ja/docs/support/faq) |
+| 💬 コミュニティ交流 | [交流チャネル](https://github.com/Lorry-San/nbapi/ja/docs/support/community-interaction) |
+| 🐛 問題のフィードバック | [問題フィードバック](https://github.com/Lorry-San/nbapi/ja/docs/support/feedback-issues) |
+| 📚 完全なドキュメント | [公式ドキュメント](https://github.com/Lorry-San/nbapi/ja/docs) |
 
 ### 🤝 貢献ガイド
 
@@ -453,7 +481,7 @@ docker run --name new-api -d --restart always \
 
 本プロジェクトは、[One API](https://github.com/songquanpeng/one-api)（MITライセンス）をベースに開発されたオープンソースプロジェクトです。
 
-お客様の組織のポリシーがAGPLv3ライセンスのソフトウェアの使用を許可していない場合、またはAGPLv3のオープンソース義務を回避したい場合は、こちらまでお問い合わせください：[support@quantumnous.com](mailto:support@quantumnous.com)
+お客様の組織のポリシーがAGPLv3ライセンスのソフトウェアの使用を許可していない場合、またはAGPLv3のオープンソース義務を回避したい場合は、こちらまでお問い合わせください：[GitHub Issues](https://github.com/Lorry-San/nbapi/issues)
 
 ---
 
@@ -461,7 +489,7 @@ docker run --name new-api -d --restart always \
 
 <div align="center">
 
-[![スター履歴チャート](https://api.star-history.com/svg?repos=Calcium-Ion/new-api&type=Date)](https://star-history.com/#Calcium-Ion/new-api&Date)
+[![スター履歴チャート](https://api.star-history.com/svg?repos=Lorry-San/nbapi&type=Date)](https://star-history.com/#Lorry-San/nbapi&Date)
 
 </div>
 
@@ -469,12 +497,12 @@ docker run --name new-api -d --restart always \
 
 <div align="center">
 
-### 💖 New APIをご利用いただきありがとうございます
+### 💖 NBAPIをご利用いただきありがとうございます
 
 このプロジェクトがあなたのお役に立てたなら、ぜひ ⭐️ スターをください！
 
-**[公式ドキュメント](https://docs.newapi.pro/ja/docs)** • **[問題フィードバック](https://github.com/Calcium-Ion/new-api/issues)** • **[最新リリース](https://github.com/Calcium-Ion/new-api/releases)**
+**[公式ドキュメント](https://github.com/Lorry-San/nbapi/ja/docs)** • **[問題フィードバック](https://github.com/Lorry-San/nbapi/issues)** • **[最新リリース](https://github.com/Lorry-San/nbapi/releases)**
 
-<sub>❤️ で構築された QuantumNous</sub>
+<sub>NBAPI contributors built this with ❤️</sub>
 
 </div>

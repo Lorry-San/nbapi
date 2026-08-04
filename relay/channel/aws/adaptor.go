@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/QuantumNous/new-api/dto"
-	"github.com/QuantumNous/new-api/relay/channel"
-	"github.com/QuantumNous/new-api/relay/channel/claude"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/relay/channel"
+	"github.com/Lorry-San/nbapi/relay/channel/claude"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	"github.com/Lorry-San/nbapi/service"
+	"github.com/Lorry-San/nbapi/types"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
 	"github.com/pkg/errors"
 
@@ -123,9 +123,13 @@ func (a *Adaptor) ConvertOpenAIRequest(c *gin.Context, info *relaycommon.RelayIn
 	}
 
 	// 原有的Claude模型处理逻辑
-	claudeReq, err := claude.RequestOpenAI2ClaudeMessage(c, *request)
+	result, err := service.ConvertRequest(c, info, types.RelayFormatClaude, request)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert openai request to claude request")
+	}
+	claudeReq, ok := result.Value.(*dto.ClaudeRequest)
+	if !ok {
+		return nil, fmt.Errorf("expected Anthropic Messages request, got %T", result.Value)
 	}
 	info.UpstreamModelName = claudeReq.Model
 	return claudeReq, err
@@ -153,7 +157,7 @@ func (a *Adaptor) DoRequest(c *gin.Context, info *relaycommon.RelayInfo, request
 	}
 }
 
-func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (usage any, err *types.NewAPIError) {
+func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (usage any, err *types.NBAPIError) {
 	if a.ClientMode == ClientModeApiKey {
 		claudeAdaptor := claude.Adaptor{}
 		usage, err = claudeAdaptor.DoResponse(c, resp, info)

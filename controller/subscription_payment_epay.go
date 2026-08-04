@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/Calcium-Ion/go-epay/epay"
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/model"
-	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/model"
+	"github.com/Lorry-San/nbapi/service"
+	"github.com/Lorry-San/nbapi/setting/operation_setting"
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 )
@@ -172,7 +172,7 @@ func SubscriptionEpayReturn(c *gin.Context) {
 	if c.Request.Method == "POST" {
 		// POST 请求：从 POST body 解析参数
 		if err := c.Request.ParseForm(); err != nil {
-			c.Redirect(http.StatusFound, paymentReturnPath("/console/topup?pay=fail"))
+			c.Redirect(http.StatusFound, paymentReturnPath("/wallet?pay=fail"))
 			return
 		}
 		params = lo.Reduce(lo.Keys(c.Request.PostForm), func(r map[string]string, t string, i int) map[string]string {
@@ -188,29 +188,29 @@ func SubscriptionEpayReturn(c *gin.Context) {
 	}
 
 	if len(params) == 0 {
-		c.Redirect(http.StatusFound, paymentReturnPath("/console/topup?pay=fail"))
+		c.Redirect(http.StatusFound, paymentReturnPath("/wallet?pay=fail"))
 		return
 	}
 
 	client := GetEpayClient()
 	if client == nil {
-		c.Redirect(http.StatusFound, paymentReturnPath("/console/topup?pay=fail"))
+		c.Redirect(http.StatusFound, paymentReturnPath("/wallet?pay=fail"))
 		return
 	}
 	verifyInfo, err := client.Verify(params)
 	if err != nil || !verifyInfo.VerifyStatus {
-		c.Redirect(http.StatusFound, paymentReturnPath("/console/topup?pay=fail"))
+		c.Redirect(http.StatusFound, paymentReturnPath("/wallet?pay=fail"))
 		return
 	}
 	if verifyInfo.TradeStatus == epay.StatusTradeSuccess {
 		LockOrder(verifyInfo.ServiceTradeNo)
 		defer UnlockOrder(verifyInfo.ServiceTradeNo)
 		if err := model.CompleteSubscriptionOrder(verifyInfo.ServiceTradeNo, common.GetJsonString(verifyInfo), model.PaymentProviderEpay, verifyInfo.Type); err != nil {
-			c.Redirect(http.StatusFound, paymentReturnPath("/console/topup?pay=fail"))
+			c.Redirect(http.StatusFound, paymentReturnPath("/wallet?pay=fail"))
 			return
 		}
-		c.Redirect(http.StatusFound, paymentReturnPath("/console/topup?pay=success"))
+		c.Redirect(http.StatusFound, paymentReturnPath("/wallet?pay=success"))
 		return
 	}
-	c.Redirect(http.StatusFound, paymentReturnPath("/console/topup?pay=pending"))
+	c.Redirect(http.StatusFound, paymentReturnPath("/wallet?pay=pending"))
 }

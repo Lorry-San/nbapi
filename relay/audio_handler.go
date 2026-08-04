@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/dto"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	"github.com/QuantumNous/new-api/relay/helper"
-	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/dto"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	"github.com/Lorry-San/nbapi/relay/helper"
+	"github.com/Lorry-San/nbapi/service"
+	"github.com/Lorry-San/nbapi/types"
 
 	"github.com/gin-gonic/gin"
 )
 
-func AudioHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types.NewAPIError) {
+func AudioHelper(c *gin.Context, info *relaycommon.RelayInfo) (nbapiError *types.NBAPIError) {
 	info.InitChannelMeta(c)
 
 	audioReq, ok := info.Request.(*dto.AudioRequest)
@@ -54,18 +54,18 @@ func AudioHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *type
 	if resp != nil {
 		httpResp = resp.(*http.Response)
 		if httpResp.StatusCode != http.StatusOK {
-			newAPIError = service.RelayErrorHandler(c.Request.Context(), httpResp, false)
+			nbapiError = service.RelayErrorHandler(c.Request.Context(), httpResp, false)
 			// reset status code 重置状态码
-			service.ResetStatusCode(newAPIError, statusCodeMappingStr)
-			return newAPIError
+			service.ResetStatusCode(nbapiError, statusCodeMappingStr)
+			return nbapiError
 		}
 	}
 
-	usage, newAPIError := adaptor.DoResponse(c, httpResp, info)
-	if newAPIError != nil {
+	usage, nbapiError := adaptor.DoResponse(c, httpResp, info)
+	if nbapiError != nil {
 		// reset status code 重置状态码
-		service.ResetStatusCode(newAPIError, statusCodeMappingStr)
-		return newAPIError
+		service.ResetStatusCode(nbapiError, statusCodeMappingStr)
+		return nbapiError
 	}
 	if usage.(*dto.Usage).CompletionTokenDetails.AudioTokens > 0 || usage.(*dto.Usage).PromptTokensDetails.AudioTokens > 0 {
 		service.PostAudioConsumeQuota(c, info, usage.(*dto.Usage), "")

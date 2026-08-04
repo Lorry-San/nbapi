@@ -7,13 +7,13 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/dto"
-	"github.com/QuantumNous/new-api/relay/channel"
-	"github.com/QuantumNous/new-api/relay/channel/openai"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	relayconstant "github.com/QuantumNous/new-api/relay/constant"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/relay/channel"
+	"github.com/Lorry-San/nbapi/relay/channel/openai"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	relayconstant "github.com/Lorry-San/nbapi/relay/constant"
+	"github.com/Lorry-San/nbapi/types"
 
 	"github.com/gin-gonic/gin"
 )
@@ -111,19 +111,21 @@ func (a *Adaptor) DoRequest(c *gin.Context, info *relaycommon.RelayInfo, request
 	return channel.DoApiRequest(a, c, info, requestBody)
 }
 
-func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (usage any, err *types.NewAPIError) {
-	if info.RelayMode != relayconstant.RelayModeResponses && info.RelayMode != relayconstant.RelayModeResponsesCompact {
+func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (usage any, err *types.NBAPIError) {
+	switch info.RelayMode {
+	case relayconstant.RelayModeAlphaSearch:
+		// Alpha search responses are handled by relay.AlphaSearchHelper.
+		return nil, types.NewError(errors.New("codex channel: alpha search response should be handled by AlphaSearchHelper"), types.ErrorCodeInvalidRequest)
+	case relayconstant.RelayModeResponsesCompact:
+		return openai.OaiResponsesCompactionHandler(c, resp)
+	case relayconstant.RelayModeResponses:
+		if info.IsStream {
+			return openai.OaiResponsesStreamHandler(c, info, resp)
+		}
+		return openai.OaiResponsesHandler(c, info, resp)
+	default:
 		return nil, types.NewError(errors.New("codex channel: endpoint not supported"), types.ErrorCodeInvalidRequest)
 	}
-
-	if info.RelayMode == relayconstant.RelayModeResponsesCompact {
-		return openai.OaiResponsesCompactionHandler(c, resp)
-	}
-
-	if info.IsStream {
-		return openai.OaiResponsesStreamHandler(c, info, resp)
-	}
-	return openai.OaiResponsesHandler(c, info, resp)
 }
 
 func (a *Adaptor) GetModelList() []string {
@@ -135,12 +137,16 @@ func (a *Adaptor) GetChannelName() string {
 }
 
 func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
-	if info.RelayMode != relayconstant.RelayModeResponses && info.RelayMode != relayconstant.RelayModeResponsesCompact {
-		return "", errors.New("codex channel: only /v1/responses and /v1/responses/compact are supported")
-	}
-	path := "/backend-api/codex/responses"
-	if info.RelayMode == relayconstant.RelayModeResponsesCompact {
+	var path string
+	switch info.RelayMode {
+	case relayconstant.RelayModeResponses:
+		path = "/backend-api/codex/responses"
+	case relayconstant.RelayModeResponsesCompact:
 		path = "/backend-api/codex/responses/compact"
+	case relayconstant.RelayModeAlphaSearch:
+		path = "/backend-api/codex/alpha/search"
+	default:
+		return "", errors.New("codex channel: only /v1/responses, /v1/responses/compact and /v1/alpha/search are supported")
 	}
 	return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, path, info.ChannelType), nil
 }

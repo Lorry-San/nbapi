@@ -7,19 +7,19 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/dto"
-	"github.com/QuantumNous/new-api/relay/channel/openai"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	"github.com/QuantumNous/new-api/relay/helper"
-	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/relay/channel/openai"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	"github.com/Lorry-San/nbapi/relay/helper"
+	"github.com/Lorry-San/nbapi/service"
+	"github.com/Lorry-San/nbapi/types"
 
 	"github.com/gin-gonic/gin"
 )
 
-func ChatCompletionsToResponsesHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NewAPIError) {
+func ChatCompletionsToResponsesHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NBAPIError) {
 	if resp == nil || resp.Body == nil {
 		return nil, types.NewOpenAIError(fmt.Errorf("invalid response"), types.ErrorCodeBadResponse, http.StatusInternalServerError)
 	}
@@ -101,7 +101,7 @@ func extractClaudeChatResponseText(resp *dto.OpenAITextResponse) string {
 	return sb.String()
 }
 
-func ChatCompletionsToResponsesStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NewAPIError) {
+func ChatCompletionsToResponsesStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NBAPIError) {
 	if resp == nil || resp.Body == nil {
 		return nil, types.NewOpenAIError(fmt.Errorf("invalid response"), types.ErrorCodeBadResponse, http.StatusInternalServerError)
 	}
@@ -117,12 +117,12 @@ func ChatCompletionsToResponsesStreamHandler(c *gin.Context, info *relaycommon.R
 
 	type streamResult struct {
 		usage *dto.Usage
-		err   *types.NewAPIError
+		err   *types.NBAPIError
 	}
 	resultCh := make(chan streamResult, 1)
 	go func() {
-		usage, newAPIError := openai.ChatCompletionsToResponsesStreamHandler(c, info, chatResp)
-		resultCh <- streamResult{usage: usage, err: newAPIError}
+		usage, nbapiError := openai.OaiChatToResponsesStreamHandler(c, info, chatResp)
+		resultCh <- streamResult{usage: usage, err: nbapiError}
 	}()
 
 	claudeInfo := &ClaudeResponseInfo{
@@ -179,7 +179,7 @@ func scanClaudeStreamAsChatCompletions(
 	body io.Reader,
 	claudeInfo *ClaudeResponseInfo,
 	writeChatChunk func(*dto.ChatCompletionsStreamResponse) error,
-) *types.NewAPIError {
+) *types.NBAPIError {
 	scanner := bufio.NewScanner(body)
 	maxBufferSize := helper.DefaultMaxScannerBufferSize
 	if constant.StreamScannerMaxBufferMB > 0 {

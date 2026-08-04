@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/QuantumNous/new-api/common"
+	"github.com/Lorry-San/nbapi/common"
 )
 
 const (
@@ -146,22 +146,22 @@ type OpsAlertMetricsMetadata struct {
 }
 
 var defaultOpsAlertRules = []OpsAlertRuleInput{
-	{Name: "错误率极高", Description: "当错误率超过 20% 且持续 1 分钟时触发告警（服务严重异常）", Metric: OpsAlertMetricErrorRate, Comparator: OpsAlertComparatorGT, Threshold: 20, Level: "P0", Enabled: true, WindowSeconds: 60, DurationSeconds: 60, CooldownSeconds: 1800, NotifyEmail: true, Scope: "overall"},
-	{Name: "错误率过高", Description: "当错误率超过 5% 且持续 5 分钟时触发告警", Metric: OpsAlertMetricErrorRate, Comparator: OpsAlertComparatorGT, Threshold: 5, Level: "P1", Enabled: true, WindowSeconds: 300, DurationSeconds: 300, CooldownSeconds: 1800, NotifyEmail: true, Scope: "overall"},
-	{Name: "成功率过低", Description: "当成功率低于 95% 且持续 5 分钟时触发告警", Metric: OpsAlertMetricSuccessRate, Comparator: OpsAlertComparatorLT, Threshold: 95, Level: "P0", Enabled: true, WindowSeconds: 300, DurationSeconds: 300, CooldownSeconds: 1800, NotifyEmail: true, Scope: "overall"},
-	{Name: "P95延迟过高", Description: "当 P95 延迟超过 2000ms 且持续 10 分钟时触发告警", Metric: OpsAlertMetricP95LatencyMs, Comparator: OpsAlertComparatorGT, Threshold: 2000, Level: "P2", Enabled: true, WindowSeconds: 600, DurationSeconds: 600, CooldownSeconds: 1800, NotifyEmail: true, Scope: "overall"},
-	{Name: "P99延迟过高", Description: "当 P99 延迟超过 3000ms 且持续 10 分钟时触发告警", Metric: OpsAlertMetricP99LatencyMs, Comparator: OpsAlertComparatorGT, Threshold: 3000, Level: "P2", Enabled: true, WindowSeconds: 600, DurationSeconds: 600, CooldownSeconds: 1800, NotifyEmail: true, Scope: "overall"},
-	{Name: "内存使用率过高", Description: "当内存使用率超过 90% 且持续 10 分钟时触发告警（可能导致 OOM）", Metric: OpsAlertMetricMemoryUsagePercent, Comparator: OpsAlertComparatorGT, Threshold: 90, Level: "P1", Enabled: true, WindowSeconds: 600, DurationSeconds: 600, CooldownSeconds: 1800, NotifyEmail: true, Scope: "overall"},
-	{Name: "CPU使用率过高", Description: "当 CPU 使用率超过 85% 且持续 10 分钟时触发告警", Metric: OpsAlertMetricCPUUsagePercent, Comparator: OpsAlertComparatorGT, Threshold: 85, Level: "P2", Enabled: true, WindowSeconds: 600, DurationSeconds: 600, CooldownSeconds: 1800, NotifyEmail: true, Scope: "overall"},
+	{Name: "错误率极�?, Description: "当错误率超过 20% 且持�?1 分钟时触发告警（服务严重异常�?, Metric: OpsAlertMetricErrorRate, Comparator: OpsAlertComparatorGT, Threshold: 20, Level: "P0", Enabled: true, WindowSeconds: 60, DurationSeconds: 60, CooldownSeconds: 1800, NotifyEmail: true, Scope: "overall"},
+	{Name: "错误率过�?, Description: "当错误率超过 5% 且持�?5 分钟时触发告�?, Metric: OpsAlertMetricErrorRate, Comparator: OpsAlertComparatorGT, Threshold: 5, Level: "P1", Enabled: true, WindowSeconds: 300, DurationSeconds: 300, CooldownSeconds: 1800, NotifyEmail: true, Scope: "overall"},
+	{Name: "成功率过�?, Description: "当成功率低于 95% 且持�?5 分钟时触发告�?, Metric: OpsAlertMetricSuccessRate, Comparator: OpsAlertComparatorLT, Threshold: 95, Level: "P0", Enabled: true, WindowSeconds: 300, DurationSeconds: 300, CooldownSeconds: 1800, NotifyEmail: true, Scope: "overall"},
+	{Name: "P95延迟过高", Description: "�?P95 延迟超过 2000ms 且持�?10 分钟时触发告�?, Metric: OpsAlertMetricP95LatencyMs, Comparator: OpsAlertComparatorGT, Threshold: 2000, Level: "P2", Enabled: true, WindowSeconds: 600, DurationSeconds: 600, CooldownSeconds: 1800, NotifyEmail: true, Scope: "overall"},
+	{Name: "P99延迟过高", Description: "�?P99 延迟超过 3000ms 且持�?10 分钟时触发告�?, Metric: OpsAlertMetricP99LatencyMs, Comparator: OpsAlertComparatorGT, Threshold: 3000, Level: "P2", Enabled: true, WindowSeconds: 600, DurationSeconds: 600, CooldownSeconds: 1800, NotifyEmail: true, Scope: "overall"},
+	{Name: "内存使用率过�?, Description: "当内存使用率超过 90% 且持�?10 分钟时触发告警（可能导致 OOM�?, Metric: OpsAlertMetricMemoryUsagePercent, Comparator: OpsAlertComparatorGT, Threshold: 90, Level: "P1", Enabled: true, WindowSeconds: 600, DurationSeconds: 600, CooldownSeconds: 1800, NotifyEmail: true, Scope: "overall"},
+	{Name: "CPU使用率过�?, Description: "�?CPU 使用率超�?85% 且持�?10 分钟时触发告�?, Metric: OpsAlertMetricCPUUsagePercent, Comparator: OpsAlertComparatorGT, Threshold: 85, Level: "P2", Enabled: true, WindowSeconds: 600, DurationSeconds: 600, CooldownSeconds: 1800, NotifyEmail: true, Scope: "overall"},
 }
 
 var opsAlertSeedMu sync.Mutex
 
 func GetOpsAlertMetricsMetadata() []OpsAlertMetricsMetadata {
 	return []OpsAlertMetricsMetadata{
-		{Key: OpsAlertMetricErrorRate, Label: "错误率", Unit: "%", Comparator: OpsAlertComparatorGT},
-		{Key: OpsAlertMetricUpstreamErrorRate, Label: "上游错误率", Unit: "%", Comparator: OpsAlertComparatorGT},
-		{Key: OpsAlertMetricSuccessRate, Label: "成功率", Unit: "%", Comparator: OpsAlertComparatorLT},
+		{Key: OpsAlertMetricErrorRate, Label: "错误�?, Unit: "%", Comparator: OpsAlertComparatorGT},
+		{Key: OpsAlertMetricUpstreamErrorRate, Label: "上游错误�?, Unit: "%", Comparator: OpsAlertComparatorGT},
+		{Key: OpsAlertMetricSuccessRate, Label: "成功�?, Unit: "%", Comparator: OpsAlertComparatorLT},
 		{Key: OpsAlertMetricSLA, Label: "SLA", Unit: "%", Comparator: OpsAlertComparatorLT},
 		{Key: OpsAlertMetricAvgQPS, Label: "平均 QPS", Unit: "", Comparator: OpsAlertComparatorGT},
 		{Key: OpsAlertMetricAvgTPS, Label: "平均 TPS", Unit: "", Comparator: OpsAlertComparatorGT},
@@ -171,13 +171,13 @@ func GetOpsAlertMetricsMetadata() []OpsAlertMetricsMetadata {
 		{Key: OpsAlertMetricAvgLatencyMs, Label: "平均请求时长", Unit: "ms", Comparator: OpsAlertComparatorGT},
 		{Key: OpsAlertMetricP95LatencyMs, Label: "P95 请求时长", Unit: "ms", Comparator: OpsAlertComparatorGT},
 		{Key: OpsAlertMetricP99LatencyMs, Label: "P99 请求时长", Unit: "ms", Comparator: OpsAlertComparatorGT},
-		{Key: OpsAlertMetricAvgTTFTMs, Label: "平均首 Token", Unit: "ms", Comparator: OpsAlertComparatorGT},
-		{Key: OpsAlertMetricP95TTFTMs, Label: "P95 首 Token", Unit: "ms", Comparator: OpsAlertComparatorGT},
-		{Key: OpsAlertMetricP99TTFTMs, Label: "P99 首 Token", Unit: "ms", Comparator: OpsAlertComparatorGT},
+		{Key: OpsAlertMetricAvgTTFTMs, Label: "平均�?Token", Unit: "ms", Comparator: OpsAlertComparatorGT},
+		{Key: OpsAlertMetricP95TTFTMs, Label: "P95 �?Token", Unit: "ms", Comparator: OpsAlertComparatorGT},
+		{Key: OpsAlertMetricP99TTFTMs, Label: "P99 �?Token", Unit: "ms", Comparator: OpsAlertComparatorGT},
 		{Key: OpsAlertMetricChannelSwitches, Label: "渠道切换次数", Unit: "", Comparator: OpsAlertComparatorGT},
-		{Key: OpsAlertMetricCPUUsagePercent, Label: "CPU 使用率", Unit: "%", Comparator: OpsAlertComparatorGT},
-		{Key: OpsAlertMetricMemoryUsagePercent, Label: "内存使用率", Unit: "%", Comparator: OpsAlertComparatorGT},
-		{Key: OpsAlertMetricDiskUsagePercent, Label: "磁盘使用率", Unit: "%", Comparator: OpsAlertComparatorGT},
+		{Key: OpsAlertMetricCPUUsagePercent, Label: "CPU 使用�?, Unit: "%", Comparator: OpsAlertComparatorGT},
+		{Key: OpsAlertMetricMemoryUsagePercent, Label: "内存使用�?, Unit: "%", Comparator: OpsAlertComparatorGT},
+		{Key: OpsAlertMetricDiskUsagePercent, Label: "磁盘使用�?, Unit: "%", Comparator: OpsAlertComparatorGT},
 		{Key: OpsAlertMetricConcurrencyQueueDepth, Label: "并发/排队深度", Unit: "", Comparator: OpsAlertComparatorGT},
 	}
 }

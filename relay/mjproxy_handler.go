@@ -11,17 +11,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/dto"
-	"github.com/QuantumNous/new-api/logger"
-	"github.com/QuantumNous/new-api/model"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	relayconstant "github.com/QuantumNous/new-api/relay/constant"
-	"github.com/QuantumNous/new-api/relay/helper"
-	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/setting"
-	"github.com/QuantumNous/new-api/setting/system_setting"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/logger"
+	"github.com/Lorry-San/nbapi/model"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	relayconstant "github.com/Lorry-San/nbapi/relay/constant"
+	"github.com/Lorry-San/nbapi/relay/helper"
+	"github.com/Lorry-San/nbapi/service"
+	"github.com/Lorry-San/nbapi/setting"
+	"github.com/Lorry-San/nbapi/setting/system_setting"
 
 	"github.com/gin-gonic/gin"
 )
@@ -36,10 +36,11 @@ func RelayMidjourneyImage(c *gin.Context) {
 		return
 	}
 	var httpClient *http.Client
+	var proxy string
 	if channel, err := model.CacheGetChannel(midjourneyTask.ChannelId); err == nil {
-		proxy := channel.GetSetting().Proxy
+		proxy = channel.GetSetting().Proxy
 		if proxy != "" {
-			if httpClient, err = service.NewProxyHttpClient(proxy); err != nil {
+			if httpClient, err = service.GetHttpClientWithProxy(proxy); err != nil {
 				c.JSON(400, gin.H{
 					"error": "proxy_url_invalid",
 				})
@@ -48,12 +49,20 @@ func RelayMidjourneyImage(c *gin.Context) {
 		}
 	}
 	if httpClient == nil {
-		httpClient = service.GetHttpClient()
+		httpClient = service.GetSSRFProtectedHTTPClient()
 	}
-	fetchSetting := system_setting.GetFetchSetting()
-	if err := common.ValidateURLWithFetchSetting(midjourneyTask.ImageUrl, fetchSetting.EnableSSRFProtection, fetchSetting.AllowPrivateIp, fetchSetting.DomainFilterMode, fetchSetting.IpFilterMode, fetchSetting.DomainList, fetchSetting.IpList, fetchSetting.AllowedPorts, fetchSetting.ApplyIPFilterForDomain); err != nil {
+	var validateErr error
+	if proxy == "" {
+		validateErr = service.ValidateSSRFProtectedFetchURL(midjourneyTask.ImageUrl)
+	} else {
+		// 渠道代理路径的连接由代理侧建立，无法做拨号时逐 IP 校验，
+		// 因此保留请求前的一次性 SSRF 校验。
+		fetchSetting := system_setting.GetFetchSetting()
+		validateErr = common.ValidateURLWithFetchSetting(midjourneyTask.ImageUrl, fetchSetting.EnableSSRFProtection, fetchSetting.AllowPrivateIp, fetchSetting.DomainFilterMode, fetchSetting.IpFilterMode, fetchSetting.DomainList, fetchSetting.IpList, fetchSetting.AllowedPorts, fetchSetting.ApplyIPFilterForDomain)
+	}
+	if validateErr != nil {
 		c.JSON(http.StatusForbidden, gin.H{
-			"error": fmt.Sprintf("request blocked: %v", err),
+			"error": fmt.Sprintf("request blocked: %v", validateErr),
 		})
 		return
 	}

@@ -9,10 +9,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/QuantumNous/new-api/dto"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/dto"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	"github.com/Lorry-San/nbapi/service"
+	"github.com/Lorry-San/nbapi/types"
 	"github.com/gin-gonic/gin"
 )
 
@@ -105,7 +105,7 @@ func getContentTypeByFormat(format string) string {
 	return "audio/mpeg" // default to mp3
 }
 
-func handleTTSResponse(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (usage any, err *types.NewAPIError) {
+func handleTTSResponse(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (usage any, err *types.NBAPIError) {
 	body, readErr := io.ReadAll(resp.Body)
 	if readErr != nil {
 		return nil, types.NewErrorWithStatusCode(
@@ -172,7 +172,7 @@ func handleTTSResponse(c *gin.Context, resp *http.Response, info *relaycommon.Re
 	return usage, nil
 }
 
-func handleChatCompletionResponse(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (usage any, err *types.NewAPIError) {
+func handleChatCompletionResponse(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (usage any, err *types.NBAPIError) {
 	body, readErr := io.ReadAll(resp.Body)
 	if readErr != nil {
 		return nil, types.NewErrorWithStatusCode(

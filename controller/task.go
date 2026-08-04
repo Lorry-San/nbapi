@@ -3,21 +3,15 @@ package controller
 import (
 	"strconv"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/dto"
-	"github.com/QuantumNous/new-api/model"
-	"github.com/QuantumNous/new-api/relay"
-	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/model"
+	"github.com/Lorry-San/nbapi/relay"
+	"github.com/Lorry-San/nbapi/types"
 
 	"github.com/gin-gonic/gin"
 )
-
-// UpdateTaskBulk 薄入口，实际轮询逻辑在 service 层
-func UpdateTaskBulk() {
-	service.TaskPollingLoop()
-}
 
 func GetAllTask(c *gin.Context) {
 	pageInfo := common.GetPageQuery(c)

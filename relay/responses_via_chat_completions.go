@@ -6,20 +6,20 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/dto"
-	"github.com/QuantumNous/new-api/relay/channel"
-	"github.com/QuantumNous/new-api/relay/channel/claude"
-	openaichannel "github.com/QuantumNous/new-api/relay/channel/openai"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	relayconstant "github.com/QuantumNous/new-api/relay/constant"
-	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/relay/channel"
+	"github.com/Lorry-San/nbapi/relay/channel/claude"
+	openaichannel "github.com/Lorry-San/nbapi/relay/channel/openai"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	relayconstant "github.com/Lorry-San/nbapi/relay/constant"
+	"github.com/Lorry-San/nbapi/service"
+	"github.com/Lorry-San/nbapi/types"
 
 	"github.com/gin-gonic/gin"
 )
 
-func responsesViaChatCompletions(c *gin.Context, info *relaycommon.RelayInfo, adaptor channel.Adaptor, request *dto.OpenAIResponsesRequest) (*dto.Usage, *types.NewAPIError) {
+func responsesViaChatCompletions(c *gin.Context, info *relaycommon.RelayInfo, adaptor channel.Adaptor, request *dto.OpenAIResponsesRequest) (*dto.Usage, *types.NBAPIError) {
 	chatReq, err := service.ResponsesRequestToChatCompletionsRequest(request)
 	if err != nil {
 		return nil, types.NewErrorWithStatusCode(err, types.ErrorCodeInvalidRequest, http.StatusBadRequest, types.ErrOptionWithSkipRetry())
@@ -39,7 +39,6 @@ func responsesViaChatCompletions(c *gin.Context, info *relaycommon.RelayInfo, ad
 		info.RequestURLPath = savedRequestURLPath
 	}()
 
-	info.UpstreamResponsesViaChatCompletions = true
 	info.RelayMode = relayconstant.RelayModeChatCompletions
 	info.RequestURLPath = "/v1/chat/completions"
 	info.AppendRequestConversion(types.RelayFormatOpenAI)
@@ -50,8 +49,8 @@ func responsesViaChatCompletions(c *gin.Context, info *relaycommon.RelayInfo, ad
 	}
 	relaycommon.AppendRequestConversionFromRequest(info, convertedRequest)
 	info.FinalRequestRelayFormat = types.RelayFormatOpenAI
-	if format, ok := relaycommon.GuessRelayFormatFromRequest(convertedRequest); ok && format == types.RelayFormatClaude {
-		info.FinalRequestRelayFormat = types.RelayFormatClaude
+	if format, ok := relaycommon.GuessRelayFormatFromRequest(convertedRequest); ok {
+		info.FinalRequestRelayFormat = format
 	}
 
 	jsonData, err := common.Marshal(convertedRequest)
@@ -67,7 +66,7 @@ func responsesViaChatCompletions(c *gin.Context, info *relaycommon.RelayInfo, ad
 	if len(info.ParamOverride) > 0 {
 		jsonData, err = relaycommon.ApplyParamOverrideWithRelayInfo(jsonData, info)
 		if err != nil {
-			return nil, newAPIErrorFromParamOverride(err)
+			return nil, nbapiErrorFromParamOverride(err)
 		}
 	}
 
@@ -90,37 +89,32 @@ func responsesViaChatCompletions(c *gin.Context, info *relaycommon.RelayInfo, ad
 
 	statusCodeMappingStr := c.GetString("status_code_mapping")
 	httpResp := resp.(*http.Response)
-	info.IsStream = info.IsStream || strings.HasPrefix(httpResp.Header.Get("Content-Type"), "text/event-stream")
+	info.IsStream = info.IsStream || strings.Contains(strings.ToLower(httpResp.Header.Get("Content-Type")), "text/event-stream")
 	if httpResp.StatusCode != http.StatusOK {
-		newApiErr := service.RelayErrorHandler(c.Request.Context(), httpResp, false)
-		service.ResetStatusCode(newApiErr, statusCodeMappingStr)
-		return nil, newApiErr
+		nbapiErr := service.RelayErrorHandler(c.Request.Context(), httpResp, false)
+		service.ResetStatusCode(nbapiErr, statusCodeMappingStr)
+		return nil, nbapiErr
 	}
 
-	usage, newApiErr := handleResponsesViaChatCompletionsResponse(c, info, httpResp)
-	if newApiErr != nil {
-		service.ResetStatusCode(newApiErr, statusCodeMappingStr)
-		return nil, newApiErr
+	usage, nbapiErr := handleResponsesViaChatCompletionsResponse(c, info, httpResp)
+	if nbapiErr != nil {
+		service.ResetStatusCode(nbapiErr, statusCodeMappingStr)
+		return nil, nbapiErr
 	}
 	return usage, nil
 }
 
-func handleResponsesViaChatCompletionsResponse(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NewAPIError) {
+func handleResponsesViaChatCompletionsResponse(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NBAPIError) {
 	switch info.GetFinalRequestRelayFormat() {
 	case types.RelayFormatClaude:
 		if info.IsStream {
 			return claude.ChatCompletionsToResponsesStreamHandler(c, info, resp)
 		}
 		return claude.ChatCompletionsToResponsesHandler(c, info, resp)
-	case types.RelayFormatOpenAI:
-		if info.IsStream {
-			return openaichannel.ChatCompletionsToResponsesStreamHandler(c, info, resp)
-		}
-		return openaichannel.ChatCompletionsToResponsesHandler(c, info, resp)
 	default:
 		if info.IsStream {
-			return openaichannel.ChatCompletionsToResponsesStreamHandler(c, info, resp)
+			return openaichannel.OaiChatToResponsesStreamHandler(c, info, resp)
 		}
-		return openaichannel.ChatCompletionsToResponsesHandler(c, info, resp)
+		return openaichannel.OaiChatToResponsesHandler(c, info, resp)
 	}
 }

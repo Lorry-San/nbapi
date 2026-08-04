@@ -1,7 +1,7 @@
 package model_setting
 
 import (
-	"github.com/QuantumNous/new-api/setting/config"
+	"github.com/Lorry-San/nbapi/setting/config"
 )
 
 // GeminiSettings defines Gemini model configuration. 注意bool要以enabled结尾才可以生效编辑
@@ -28,7 +28,9 @@ var defaultGeminiSettings = GeminiSettings{
 		"gemini-2.0-flash-exp-image-generation",
 		"gemini-2.0-flash-exp",
 		"gemini-3-pro-image-preview",
+		"gemini-3-pro-image",
 		"gemini-2.5-flash-image",
+		"gemini-3.1-flash-image",
 		"gemini-3.1-flash-image-preview",
 	},
 	ThinkingAdapterEnabled:                false,

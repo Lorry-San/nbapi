@@ -1,19 +1,18 @@
 package cohere
 
 import (
-	"bufio"
 	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/dto"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	"github.com/QuantumNous/new-api/relay/helper"
-	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/dto"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	"github.com/Lorry-San/nbapi/relay/helper"
+	"github.com/Lorry-San/nbapi/service"
+	"github.com/Lorry-San/nbapi/types"
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
@@ -81,12 +80,12 @@ func stopReasonCohere2OpenAI(reason string) string {
 	}
 }
 
-func cohereStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NewAPIError) {
+func cohereStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NBAPIError) {
 	responseId := helper.GetResponseID(c)
 	createdTime := common.GetTimestamp()
 	usage := &dto.Usage{}
 	responseText := ""
-	scanner := bufio.NewScanner(resp.Body)
+	scanner := helper.NewStreamScanner(resp.Body)
 	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 		if atEOF && len(data) == 0 {
 			return 0, nil, nil
@@ -105,6 +104,9 @@ func cohereStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http
 		for scanner.Scan() {
 			data := scanner.Text()
 			dataChan <- data
+		}
+		if err := scanner.Err(); err != nil {
+			common.SysLog("error reading stream: " + err.Error())
 		}
 		stopChan <- true
 	}()
@@ -172,7 +174,7 @@ func cohereStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http
 	return usage, nil
 }
 
-func cohereHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NewAPIError) {
+func cohereHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NBAPIError) {
 	createdTime := common.GetTimestamp()
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -214,7 +216,7 @@ func cohereHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Respo
 	return &usage, nil
 }
 
-func cohereRerankHandler(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (*dto.Usage, *types.NewAPIError) {
+func cohereRerankHandler(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (*dto.Usage, *types.NBAPIError) {
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, types.NewError(err, types.ErrorCodeBadResponseBody)

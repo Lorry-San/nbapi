@@ -1,4 +1,4 @@
-name: Publish NBAPI Docker image (tag)
+name: Publish Docker image (Multi-arch)
 
 on:
   push:
@@ -8,42 +8,63 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag name to build, for example beta-5.30-1'
+        description: 'Tag name to build (e.g., v0.10.8-alpha.3)'
         required: true
         type: string
 
-permissions:
-  contents: read
-  packages: write
-
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build_single_arch:
+    name: Build & push (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+
+    permissions:
+      packages: write
+      contents: read
+      id-token: write
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Check out
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: ${{ github.event_name == 'workflow_dispatch' && 0 || 1 }}
           ref: ${{ github.event.inputs.tag || github.ref }}
 
-      - name: Resolve version
+      - name: Resolve tag & write VERSION
         id: version
-        shell: bash
         run: |
           if [ -n "${{ github.event.inputs.tag }}" ]; then
-            VERSION="${{ github.event.inputs.tag }}"
-            if ! git rev-parse "refs/tags/$VERSION" >/dev/null 2>&1; then
-              echo "::error::Tag '$VERSION' does not exist"
+            TAG="${{ github.event.inputs.tag }}"
+            if ! git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
+              echo "::error::Tag '$TAG' does not exist"
               exit 1
             fi
           else
-            VERSION="${GITHUB_REF#refs/tags/}"
+            TAG=${GITHUB_REF#refs/tags/}
           fi
-          echo "$VERSION" > VERSION
-          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "TAG=${TAG}" >> $GITHUB_ENV
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "${TAG}" > VERSION
+          echo "Building tag: ${TAG} for ${{ matrix.arch }}"
+          OWNER_LC=$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          echo "GHCR_IMAGE=ghcr.io/${OWNER_LC}/nbapi" >> $GITHUB_ENV
+          DOCKERHUB_OWNER=$(printf '%s' "${{ secrets.DOCKERHUB_USERNAME }}" | tr '[:upper:]' '[:lower:]')
+          echo "DOCKERHUB_IMAGE=${DOCKERHUB_OWNER}/nbapi" >> $GITHUB_ENV
+          echo "HAS_DOCKERHUB=${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -52,28 +73,136 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
+      - name: Log in to Docker Hub
+        if: env.HAS_DOCKERHUB == 'true'
+        uses: docker/login-action@c99871dec2022cc055c062a10cc1a1310835ceb4 # v4.3.0
         with:
-          images: ghcr.io/${{ github.repository_owner }}/nbapi
-          tags: |
-            type=raw,value=${{ steps.version.outputs.value }}
-          flavor: |
-            latest=false
-          labels: |
-            org.opencontainers.image.version=${{ steps.version.outputs.value }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push
-        uses: docker/build-push-action@v6
+      - name: Prepare image tags
+        id: image_tags
+        run: |
+          {
+            echo "tags<<EOF"
+            echo "${GHCR_IMAGE}:${TAG}-${{ matrix.arch }}"
+            echo "${GHCR_IMAGE}:latest-${{ matrix.arch }}"
+            if [ "${HAS_DOCKERHUB}" = "true" ]; then
+              echo "${DOCKERHUB_IMAGE}:${TAG}-${{ matrix.arch }}"
+              echo "${DOCKERHUB_IMAGE}:latest-${{ matrix.arch }}"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Extract metadata (labels)
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.GHCR_IMAGE }}
+
+      - name: Build & push
+        id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
-          file: ./Dockerfile
-          platforms: linux/amd64
+          platforms: ${{ matrix.platform }}
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.image_tags.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            NBAPI_VERSION=${{ steps.version.outputs.value }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: mode=max
+          sbom: true
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Sign image with cosign
+        run: cosign sign --yes ${GHCR_IMAGE}@${{ steps.build.outputs.digest }}
+
+      - name: Image summary
+        run: |
+          echo "### Docker Image Digest (${{ matrix.arch }})" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.image_tags.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.build.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  create_manifests:
+    name: Create multi-arch manifests
+    needs: [build_single_arch]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    permissions:
+      packages: write
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Set version
+        run: |
+          echo "TAG=${{ needs.build_single_arch.outputs.tag }}" >> $GITHUB_ENV
+          OWNER_LC=$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          echo "GHCR_IMAGE=ghcr.io/${OWNER_LC}/nbapi" >> $GITHUB_ENV
+          DOCKERHUB_OWNER=$(printf '%s' "${{ secrets.DOCKERHUB_USERNAME }}" | tr '[:upper:]' '[:lower:]')
+          echo "DOCKERHUB_IMAGE=${DOCKERHUB_OWNER}/nbapi" >> $GITHUB_ENV
+          echo "HAS_DOCKERHUB=${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}" >> $GITHUB_ENV
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        if: env.HAS_DOCKERHUB == 'true'
+        uses: docker/login-action@c99871dec2022cc055c062a10cc1a1310835ceb4 # v4.3.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Create & push manifest (GHCR version)
+        run: |
+          docker buildx imagetools create \
+            -t ${GHCR_IMAGE}:${TAG} \
+            ${GHCR_IMAGE}:${TAG}-amd64 \
+            ${GHCR_IMAGE}:${TAG}-arm64
+
+      - name: Create & push manifest (GHCR latest)
+        run: |
+          docker buildx imagetools create \
+            -t ${GHCR_IMAGE}:latest \
+            ${GHCR_IMAGE}:latest-amd64 \
+            ${GHCR_IMAGE}:latest-arm64
+
+      - name: Create & push manifest (version)
+        if: env.HAS_DOCKERHUB == 'true'
+        run: |
+          docker buildx imagetools create \
+            -t ${DOCKERHUB_IMAGE}:${TAG} \
+            ${DOCKERHUB_IMAGE}:${TAG}-amd64 \
+            ${DOCKERHUB_IMAGE}:${TAG}-arm64
+
+      - name: Create & push manifest (latest)
+        if: env.HAS_DOCKERHUB == 'true'
+        run: |
+          docker buildx imagetools create \
+            -t ${DOCKERHUB_IMAGE}:latest \
+            ${DOCKERHUB_IMAGE}:latest-amd64 \
+            ${DOCKERHUB_IMAGE}:latest-arm64
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign manifests with cosign
+        run: |
+          cosign sign --yes ${GHCR_IMAGE}:${TAG}
+          cosign sign --yes ${GHCR_IMAGE}:latest
+
+      - name: Manifest summary
+        run: |
+          echo "### Multi-arch Manifest" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          docker buildx imagetools inspect ${GHCR_IMAGE}:${TAG} >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

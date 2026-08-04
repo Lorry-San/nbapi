@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/model"
-	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/setting/operation_setting"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/model"
+	"github.com/Lorry-San/nbapi/service"
+	"github.com/Lorry-San/nbapi/setting/operation_setting"
+	"github.com/Lorry-San/nbapi/types"
 
 	"github.com/shopspring/decimal"
 
@@ -144,7 +144,7 @@ func GetResponseBody(method, url string, channel *model.Channel, headers http.He
 	for k := range headers {
 		req.Header.Add(k, headers.Get(k))
 	}
-	client, err := service.NewProxyHttpClient(channel.GetSetting().Proxy)
+	client, err := service.GetHttpClientWithProxy(channel.GetSetting().Proxy)
 	if err != nil {
 		return nil, err
 	}

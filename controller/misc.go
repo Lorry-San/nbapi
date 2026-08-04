@@ -3,21 +3,23 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/logger"
-	"github.com/QuantumNous/new-api/middleware"
-	"github.com/QuantumNous/new-api/model"
-	"github.com/QuantumNous/new-api/oauth"
-	"github.com/QuantumNous/new-api/setting"
-	"github.com/QuantumNous/new-api/setting/console_setting"
-	"github.com/QuantumNous/new-api/setting/operation_setting"
-	"github.com/QuantumNous/new-api/setting/system_setting"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/i18n"
+	"github.com/Lorry-San/nbapi/logger"
+	"github.com/Lorry-San/nbapi/middleware"
+	"github.com/Lorry-San/nbapi/model"
+	"github.com/Lorry-San/nbapi/oauth"
+	"github.com/Lorry-San/nbapi/setting"
+	"github.com/Lorry-San/nbapi/setting/console_setting"
+	"github.com/Lorry-San/nbapi/setting/operation_setting"
+	"github.com/Lorry-San/nbapi/setting/system_setting"
 
 	"github.com/gin-gonic/gin"
 )
@@ -43,7 +45,7 @@ func checkHAHealth(c *gin.Context) (gin.H, error) {
 		return data, err
 	}
 
-	if common.UsingPostgreSQL {
+	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
 		var inRecovery bool
 		var transactionReadOnly string
 		row := model.DB.WithContext(ctx).Raw("SELECT pg_is_in_recovery(), current_setting('transaction_read_only')").Row()
@@ -60,7 +62,7 @@ func checkHAHealth(c *gin.Context) (gin.H, error) {
 		}
 	}
 
-	if common.UsingMySQL {
+	if common.UsingMainDatabase(common.DatabaseTypeMySQL) {
 		var readOnly int
 		row := model.DB.WithContext(ctx).Raw("SELECT IF(@@global.read_only OR @@global.super_read_only, 1, 0)").Row()
 		if err := row.Scan(&readOnly); err != nil {
@@ -150,7 +152,7 @@ func GetStatus(c *gin.Context) {
 		"mofang_login_url":            common.MofangLoginUrl,
 		"telegram_oauth":              common.TelegramOAuthEnabled,
 		"telegram_bot_name":           common.TelegramBotName,
-		"theme":                       system_setting.GetThemeSettings().Frontend,
+		"theme":                       "default",
 		"system_name":                 common.SystemName,
 		"logo":                        common.Logo,
 		"footer_html":                 common.Footer,
@@ -313,8 +315,8 @@ func GetHomePageContent(c *gin.Context) {
 	common.OptionMapRWMutex.RLock()
 	defer common.OptionMapRWMutex.RUnlock()
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "",
+		"success":    true,
+		"message":    "",
 		"data":       common.OptionMap["HomePageContent"],
 		"background": common.OptionMap["HomePageBackground"],
 	})
@@ -322,12 +324,9 @@ func GetHomePageContent(c *gin.Context) {
 }
 
 func SendEmailVerification(c *gin.Context) {
-	email := c.Query("email")
+	email := model.NormalizeEmail(c.Query("email"))
 	if err := common.Validate.Var(email, "required,email"); err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "无效的参数",
-		})
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
 	parts := strings.Split(email, "@")
@@ -368,10 +367,7 @@ func SendEmailVerification(c *gin.Context) {
 	}
 
 	if model.IsEmailAlreadyTaken(email) {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "邮箱地址已被占用",
-		})
+		common.ApiErrorI18n(c, i18n.MsgUserEmailAlreadyTaken)
 		return
 	}
 	code := common.GenerateVerificationCode(6)
@@ -393,15 +389,12 @@ func SendEmailVerification(c *gin.Context) {
 }
 
 func SendPasswordResetEmail(c *gin.Context) {
-	email := c.Query("email")
+	email := model.NormalizeEmail(c.Query("email"))
 	if err := common.Validate.Var(email, "required,email"); err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "无效的参数",
-		})
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
-	if model.IsEmailAlreadyTaken(email) {
+	if _, err := model.GetUniqueUserByEmail(email); err == nil {
 		code := common.GenerateVerificationCode(0)
 		common.RegisterVerificationCodeWithKey(email, code, common.PasswordResetPurpose)
 		link := fmt.Sprintf("%s/user/reset?email=%s&token=%s", system_setting.ServerAddress, email, code)
@@ -414,6 +407,8 @@ func SendPasswordResetEmail(c *gin.Context) {
 		if err != nil {
 			logger.LogError(c.Request.Context(), fmt.Sprintf("failed to send password reset email to %s: %s", email, err.Error()))
 		}
+	} else if err != nil && !errors.Is(err, model.ErrEmailNotFound) {
+		logger.LogWarn(c.Request.Context(), fmt.Sprintf("skip password reset email for %s: %s", email, err.Error()))
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -429,23 +424,26 @@ type PasswordResetRequest struct {
 func ResetPassword(c *gin.Context) {
 	var req PasswordResetRequest
 	err := json.NewDecoder(c.Request.Body).Decode(&req)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	req.Email = model.NormalizeEmail(req.Email)
 	if req.Email == "" || req.Token == "" {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "无效的参数",
-		})
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
 	if !common.VerifyCodeWithKey(req.Email, req.Token, common.PasswordResetPurpose) {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "重置链接非法或已过期",
-		})
+		common.ApiErrorI18n(c, i18n.MsgUserPasswordResetLinkInvalid)
 		return
 	}
 	password := common.GenerateVerificationCode(12)
 	err = model.ResetUserPasswordByEmail(req.Email, password)
 	if err != nil {
+		if errors.Is(err, model.ErrEmailNotFound) || errors.Is(err, model.ErrEmailAmbiguous) {
+			common.ApiErrorI18n(c, i18n.MsgUserPasswordResetLinkInvalid)
+			return
+		}
 		common.ApiError(c, err)
 		return
 	}

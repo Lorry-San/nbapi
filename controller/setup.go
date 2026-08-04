@@ -3,10 +3,10 @@ package controller
 import (
 	"time"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/model"
-	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/model"
+	"github.com/Lorry-San/nbapi/setting/operation_setting"
 	"github.com/gin-gonic/gin"
 )
 
@@ -36,15 +36,7 @@ func GetSetup(c *gin.Context) {
 		return
 	}
 	setup.RootInit = model.RootUserExists()
-	if common.UsingMySQL {
-		setup.DatabaseType = "mysql"
-	}
-	if common.UsingPostgreSQL {
-		setup.DatabaseType = "postgres"
-	}
-	if common.UsingSQLite {
-		setup.DatabaseType = "sqlite"
-	}
+	setup.DatabaseType = string(common.MainDatabaseType())
 	c.JSON(200, gin.H{
 		"success": true,
 		"data":    setup,

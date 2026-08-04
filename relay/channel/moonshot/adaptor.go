@@ -5,16 +5,17 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
-	channelconstant "github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/dto"
-	"github.com/QuantumNous/new-api/relay/channel"
-	"github.com/QuantumNous/new-api/relay/channel/claude"
-	"github.com/QuantumNous/new-api/relay/channel/openai"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	"github.com/QuantumNous/new-api/relay/constant"
-	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	channelconstant "github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/relay/channel"
+	"github.com/Lorry-San/nbapi/relay/channel/claude"
+	"github.com/Lorry-San/nbapi/relay/channel/openai"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	"github.com/Lorry-San/nbapi/relay/constant"
+	"github.com/Lorry-San/nbapi/types"
 
 	"github.com/gin-gonic/gin"
 )
@@ -51,8 +52,10 @@ func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 		if info.RelayFormat == types.RelayFormatClaude {
 			return fmt.Sprintf("%s/v1/messages", specialPlan.ClaudeBaseURL), nil
 		}
-		if info.RelayFormat == types.RelayFormatOpenAI || info.UpstreamResponsesViaChatCompletions {
-			return fmt.Sprintf("%s/chat/completions", specialPlan.OpenAIBaseURL), nil
+		if info.RelayFormat == types.RelayFormatOpenAI ||
+			info.RelayFormat == types.RelayFormatOpenAIResponses ||
+			info.RelayFormat == types.RelayFormatOpenAIResponsesCompaction {
+			return relaycommon.GetFullRequestURL(specialPlan.OpenAIBaseURL, moonshotOpenAIRequestPath(info), info.ChannelType), nil
 		}
 	}
 
@@ -61,15 +64,41 @@ func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 		return fmt.Sprintf("%s/anthropic/v1/messages", info.ChannelBaseUrl), nil
 	default:
 		if info.RelayMode == constant.RelayModeRerank {
-			return fmt.Sprintf("%s/v1/rerank", info.ChannelBaseUrl), nil
+			return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, "/v1/rerank", info.ChannelType), nil
 		} else if info.RelayMode == constant.RelayModeEmbeddings {
-			return fmt.Sprintf("%s/v1/embeddings", info.ChannelBaseUrl), nil
+			return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, "/v1/embeddings", info.ChannelType), nil
 		} else if info.RelayMode == constant.RelayModeChatCompletions {
-			return fmt.Sprintf("%s/v1/chat/completions", info.ChannelBaseUrl), nil
+			return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, "/v1/chat/completions", info.ChannelType), nil
 		} else if info.RelayMode == constant.RelayModeCompletions {
-			return fmt.Sprintf("%s/v1/completions", info.ChannelBaseUrl), nil
+			return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, "/v1/completions", info.ChannelType), nil
+		} else if info.RelayMode == constant.RelayModeResponses || info.RelayMode == constant.RelayModeResponsesCompact {
+			return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, info.RequestURLPath, info.ChannelType), nil
 		}
-		return fmt.Sprintf("%s/v1/chat/completions", info.ChannelBaseUrl), nil
+		return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, "/v1/chat/completions", info.ChannelType), nil
+	}
+}
+
+func moonshotOpenAIRequestPath(info *relaycommon.RelayInfo) string {
+	if info == nil {
+		return "/v1/chat/completions"
+	}
+	switch info.RelayMode {
+	case constant.RelayModeResponses, constant.RelayModeResponsesCompact:
+		if info.RequestURLPath != "" {
+			return info.RequestURLPath
+		}
+		if info.RelayMode == constant.RelayModeResponsesCompact {
+			return "/v1/responses/compact"
+		}
+		return "/v1/responses"
+	case constant.RelayModeRerank:
+		return "/v1/rerank"
+	case constant.RelayModeEmbeddings:
+		return "/v1/embeddings"
+	case constant.RelayModeCompletions:
+		return "/v1/completions"
+	default:
+		return "/v1/chat/completions"
 	}
 }
 
@@ -80,11 +109,35 @@ func (a *Adaptor) SetupRequestHeader(c *gin.Context, req *http.Header, info *rel
 }
 
 func (a *Adaptor) ConvertOpenAIRequest(c *gin.Context, info *relaycommon.RelayInfo, request *dto.GeneralOpenAIRequest) (any, error) {
+	if request.Temperature != nil && isTemperatureOneOnlyModel(getUpstreamModelName(info, request.Model)) && *request.Temperature != 1.0 {
+		request.Temperature = common.GetPointer[float64](1.0)
+	}
 	return request, nil
 }
 
+func getUpstreamModelName(info *relaycommon.RelayInfo, fallback string) string {
+	if info != nil && info.ChannelMeta != nil && info.UpstreamModelName != "" {
+		return info.UpstreamModelName
+	}
+	return fallback
+}
+
+func isTemperatureOneOnlyModel(model string) bool {
+	return strings.EqualFold(model, "kimi-k2.6")
+}
+
 func (a *Adaptor) ConvertOpenAIResponsesRequest(c *gin.Context, info *relaycommon.RelayInfo, request dto.OpenAIResponsesRequest) (any, error) {
-	chatReq, err := service.ResponsesRequestToChatCompletionsRequest(&request)
+	if request.Model == "" && info != nil {
+		request.Model = info.UpstreamModelName
+	}
+	if request.Temperature != nil && isTemperatureOneOnlyModel(getUpstreamModelName(info, request.Model)) && *request.Temperature != 1.0 {
+		request.Temperature = common.GetPointer[float64](1.0)
+	}
+	if !shouldConvertMoonshotResponsesViaChat(info) {
+		return request, nil
+	}
+
+	chatReq, err := convertMoonshotResponsesRequestToChatCompletionsRequest(&request)
 	if err != nil {
 		return nil, err
 	}
@@ -93,10 +146,10 @@ func (a *Adaptor) ConvertOpenAIResponsesRequest(c *gin.Context, info *relaycommo
 		chatReq.MaxCompletionTokens = nil
 	}
 	if info != nil {
-		info.UpstreamResponsesViaChatCompletions = true
-		info.FinalRequestRelayFormat = types.RelayFormatOpenAI
 		info.RelayMode = constant.RelayModeChatCompletions
 		info.RequestURLPath = "/v1/chat/completions"
+		info.FinalRequestRelayFormat = types.RelayFormatOpenAI
+		info.AppendRequestConversion(types.RelayFormatOpenAI)
 	}
 	return chatReq, nil
 }
@@ -113,12 +166,12 @@ func (a *Adaptor) ConvertEmbeddingRequest(c *gin.Context, info *relaycommon.Rela
 	return request, nil
 }
 
-func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (usage any, err *types.NewAPIError) {
-	if info != nil && info.UpstreamResponsesViaChatCompletions {
+func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (usage any, err *types.NBAPIError) {
+	if isMoonshotResponsesViaChatResponse(info) {
 		if info.IsStream {
-			return openai.ChatCompletionsToResponsesStreamHandler(c, info, resp)
+			return openai.OaiChatToResponsesStreamHandler(c, info, resp)
 		}
-		return openai.ChatCompletionsToResponsesHandler(c, info, resp)
+		return openai.OaiChatToResponsesHandler(c, info, resp)
 	}
 
 	switch info.RelayFormat {
@@ -137,4 +190,19 @@ func (a *Adaptor) GetModelList() []string {
 
 func (a *Adaptor) GetChannelName() string {
 	return ChannelName
+}
+
+func shouldConvertMoonshotResponsesViaChat(info *relaycommon.RelayInfo) bool {
+	if info == nil {
+		return true
+	}
+	return info.RelayFormat == "" || info.RelayFormat == types.RelayFormatOpenAIResponses
+}
+
+func isMoonshotResponsesViaChatResponse(info *relaycommon.RelayInfo) bool {
+	if info == nil {
+		return false
+	}
+	return info.RelayFormat == types.RelayFormatOpenAIResponses &&
+		info.GetFinalRequestRelayFormat() == types.RelayFormatOpenAI
 }

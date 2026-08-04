@@ -1,6 +1,6 @@
 package common
 
-import "github.com/QuantumNous/new-api/constant"
+import "github.com/Lorry-San/nbapi/constant"
 
 func ChannelType2APIType(channelType int) (int, bool) {
 	apiType := -1
@@ -75,6 +75,10 @@ func ChannelType2APIType(channelType int) (int, bool) {
 		apiType = constant.APITypeReplicate
 	case constant.ChannelTypeCodex:
 		apiType = constant.APITypeCodex
+	case constant.ChannelTypeAdvancedCustom:
+		apiType = constant.APITypeAdvancedCustom
+	case constant.ChannelTypeSub2API:
+		apiType = constant.APITypeSub2API
 	}
 	if apiType == -1 {
 		return constant.APITypeOpenAI, false

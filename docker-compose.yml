@@ -1,87 +1,75 @@
-# NBAPI Docker Compose Configuration
-#
-# Quick Start:
-#   1. Copy .env.docker.example to .env.docker and change passwords.
-#   2. docker compose --env-file .env.docker up -d
-#   3. Open http://localhost:3000
-#
-# The PostgreSQL database name stays `new-api` for compatibility with existing
-# deployments and migrations.
-
 services:
   nbapi:
-    image: ${NBAPI_IMAGE:-ghcr.io/lorry-san/nbapi:beta-5.30-1}
-    container_name: ${NBAPI_CONTAINER:-nbapi}
+    image: ghcr.io/lorry-san/nbapi:latest
+    pull_policy: always
+    container_name: nbapi
     restart: unless-stopped
     command: --log-dir /app/logs
     ports:
-      - "${APP_PORT:-3000}:3000"
+      - "${NBAPI_PORT:-3000}:3000"
     volumes:
       - ./data:/data
       - ./logs:/app/logs
     environment:
-      SQL_DSN: postgresql://root:${POSTGRES_PASSWORD:-change_me_postgres_password}@postgres:5432/new-api
-      REDIS_CONN_STRING: redis://:${REDIS_PASSWORD:-change_me_redis_password}@redis:6379
-      SESSION_SECRET: ${SESSION_SECRET:-change_me_to_a_long_random_session_secret}
+      SQL_DSN: postgresql://root:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/nbapi
+      REDIS_CONN_STRING: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      CRYPTO_SECRET: ${CRYPTO_SECRET:?CRYPTO_SECRET is required}
       TZ: ${TZ:-Asia/Shanghai}
+      ERROR_LOG_ENABLED: ${ERROR_LOG_ENABLED:-true}
+      BATCH_UPDATE_ENABLED: ${BATCH_UPDATE_ENABLED:-true}
       NODE_NAME: ${NODE_NAME:-nbapi-node-1}
-      ERROR_LOG_ENABLED: "true"
-      BATCH_UPDATE_ENABLED: "true"
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
     depends_on:
-      redis:
-        condition: service_healthy
       postgres:
         condition: service_healthy
-    networks:
-      - nbapi-network
+      redis:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://localhost:3000/api/status | grep -o '\"success\":\\s*true' || exit 1"]
+      test:
+        - CMD-SHELL
+        - wget -q -O - http://localhost:3000/api/status | grep -q '"success":true'
       interval: 30s
       timeout: 10s
       retries: 3
-
-  redis:
-    image: redis:7-alpine
-    container_name: nbapi-redis
-    restart: unless-stopped
-    command:
-      - redis-server
-      - --appendonly
-      - "yes"
-      - --requirepass
-      - ${REDIS_PASSWORD:-change_me_redis_password}
-    volumes:
-      - redis_data:/data
-    networks:
-      - nbapi-network
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-change_me_redis_password} ping | grep PONG"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
+      start_period: 30s
 
   postgres:
-    image: postgres:15-alpine
-    container_name: nbapi-postgres
+    image: postgres:15
+    container_name: postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: root
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_postgres_password}
-      POSTGRES_DB: new-api
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: nbapi
     volumes:
       - pg_data:/var/lib/postgresql/data
-    networks:
-      - nbapi-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U root -d new-api"]
+      test: ["CMD-SHELL", "pg_isready -U root -d nbapi"]
       interval: 10s
-      timeout: 3s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    command:
+      - sh
+      - -c
+      - exec redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD}"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - redis-cli -a "$${REDIS_PASSWORD}" ping 2>/dev/null | grep -q PONG
+      interval: 10s
+      timeout: 5s
       retries: 5
 
 volumes:
   pg_data:
   redis_data:
-
-networks:
-  nbapi-network:
-    driver: bridge

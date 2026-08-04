@@ -3,50 +3,52 @@ package relay
 import (
 	"strconv"
 
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/relay/channel"
-	"github.com/QuantumNous/new-api/relay/channel/ali"
-	"github.com/QuantumNous/new-api/relay/channel/aws"
-	"github.com/QuantumNous/new-api/relay/channel/baidu"
-	"github.com/QuantumNous/new-api/relay/channel/baidu_v2"
-	"github.com/QuantumNous/new-api/relay/channel/claude"
-	"github.com/QuantumNous/new-api/relay/channel/cloudflare"
-	"github.com/QuantumNous/new-api/relay/channel/codex"
-	"github.com/QuantumNous/new-api/relay/channel/cohere"
-	"github.com/QuantumNous/new-api/relay/channel/coze"
-	"github.com/QuantumNous/new-api/relay/channel/deepseek"
-	"github.com/QuantumNous/new-api/relay/channel/dify"
-	"github.com/QuantumNous/new-api/relay/channel/gemini"
-	"github.com/QuantumNous/new-api/relay/channel/jimeng"
-	"github.com/QuantumNous/new-api/relay/channel/jina"
-	"github.com/QuantumNous/new-api/relay/channel/minimax"
-	"github.com/QuantumNous/new-api/relay/channel/mistral"
-	"github.com/QuantumNous/new-api/relay/channel/mokaai"
-	"github.com/QuantumNous/new-api/relay/channel/moonshot"
-	"github.com/QuantumNous/new-api/relay/channel/ollama"
-	"github.com/QuantumNous/new-api/relay/channel/openai"
-	"github.com/QuantumNous/new-api/relay/channel/palm"
-	"github.com/QuantumNous/new-api/relay/channel/perplexity"
-	"github.com/QuantumNous/new-api/relay/channel/replicate"
-	"github.com/QuantumNous/new-api/relay/channel/siliconflow"
-	"github.com/QuantumNous/new-api/relay/channel/submodel"
-	taskali "github.com/QuantumNous/new-api/relay/channel/task/ali"
-	taskdoubao "github.com/QuantumNous/new-api/relay/channel/task/doubao"
-	taskGemini "github.com/QuantumNous/new-api/relay/channel/task/gemini"
-	"github.com/QuantumNous/new-api/relay/channel/task/hailuo"
-	taskjimeng "github.com/QuantumNous/new-api/relay/channel/task/jimeng"
-	"github.com/QuantumNous/new-api/relay/channel/task/kling"
-	tasksora "github.com/QuantumNous/new-api/relay/channel/task/sora"
-	"github.com/QuantumNous/new-api/relay/channel/task/suno"
-	taskvertex "github.com/QuantumNous/new-api/relay/channel/task/vertex"
-	taskVidu "github.com/QuantumNous/new-api/relay/channel/task/vidu"
-	"github.com/QuantumNous/new-api/relay/channel/tencent"
-	"github.com/QuantumNous/new-api/relay/channel/vertex"
-	"github.com/QuantumNous/new-api/relay/channel/volcengine"
-	"github.com/QuantumNous/new-api/relay/channel/xai"
-	"github.com/QuantumNous/new-api/relay/channel/xunfei"
-	"github.com/QuantumNous/new-api/relay/channel/zhipu"
-	"github.com/QuantumNous/new-api/relay/channel/zhipu_4v"
+	"github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/relay/channel"
+	"github.com/Lorry-San/nbapi/relay/channel/advancedcustom"
+	"github.com/Lorry-San/nbapi/relay/channel/ali"
+	"github.com/Lorry-San/nbapi/relay/channel/aws"
+	"github.com/Lorry-San/nbapi/relay/channel/baidu"
+	"github.com/Lorry-San/nbapi/relay/channel/baidu_v2"
+	"github.com/Lorry-San/nbapi/relay/channel/claude"
+	"github.com/Lorry-San/nbapi/relay/channel/cloudflare"
+	"github.com/Lorry-San/nbapi/relay/channel/codex"
+	"github.com/Lorry-San/nbapi/relay/channel/cohere"
+	"github.com/Lorry-San/nbapi/relay/channel/coze"
+	"github.com/Lorry-San/nbapi/relay/channel/deepseek"
+	"github.com/Lorry-San/nbapi/relay/channel/dify"
+	"github.com/Lorry-San/nbapi/relay/channel/gemini"
+	"github.com/Lorry-San/nbapi/relay/channel/jimeng"
+	"github.com/Lorry-San/nbapi/relay/channel/jina"
+	"github.com/Lorry-San/nbapi/relay/channel/minimax"
+	"github.com/Lorry-San/nbapi/relay/channel/mistral"
+	"github.com/Lorry-San/nbapi/relay/channel/mokaai"
+	"github.com/Lorry-San/nbapi/relay/channel/moonshot"
+	"github.com/Lorry-San/nbapi/relay/channel/ollama"
+	"github.com/Lorry-San/nbapi/relay/channel/openai"
+	"github.com/Lorry-San/nbapi/relay/channel/palm"
+	"github.com/Lorry-San/nbapi/relay/channel/perplexity"
+	"github.com/Lorry-San/nbapi/relay/channel/replicate"
+	"github.com/Lorry-San/nbapi/relay/channel/siliconflow"
+	"github.com/Lorry-San/nbapi/relay/channel/sub2api"
+	"github.com/Lorry-San/nbapi/relay/channel/submodel"
+	taskali "github.com/Lorry-San/nbapi/relay/channel/task/ali"
+	taskdoubao "github.com/Lorry-San/nbapi/relay/channel/task/doubao"
+	taskGemini "github.com/Lorry-San/nbapi/relay/channel/task/gemini"
+	"github.com/Lorry-San/nbapi/relay/channel/task/hailuo"
+	taskjimeng "github.com/Lorry-San/nbapi/relay/channel/task/jimeng"
+	"github.com/Lorry-San/nbapi/relay/channel/task/kling"
+	tasksora "github.com/Lorry-San/nbapi/relay/channel/task/sora"
+	"github.com/Lorry-San/nbapi/relay/channel/task/suno"
+	taskvertex "github.com/Lorry-San/nbapi/relay/channel/task/vertex"
+	taskVidu "github.com/Lorry-San/nbapi/relay/channel/task/vidu"
+	"github.com/Lorry-San/nbapi/relay/channel/tencent"
+	"github.com/Lorry-San/nbapi/relay/channel/vertex"
+	"github.com/Lorry-San/nbapi/relay/channel/volcengine"
+	"github.com/Lorry-San/nbapi/relay/channel/xai"
+	"github.com/Lorry-San/nbapi/relay/channel/xunfei"
+	"github.com/Lorry-San/nbapi/relay/channel/zhipu"
+	"github.com/Lorry-San/nbapi/relay/channel/zhipu_4v"
 	"github.com/gin-gonic/gin"
 )
 
@@ -65,7 +67,7 @@ func GetAdaptor(apiType int) channel.Adaptor {
 	case constant.APITypePaLM:
 		return &palm.Adaptor{}
 	case constant.APITypeTencent:
-		return &tencent.Adaptor{}
+		return &tencent.DispatchAdaptor{}
 	case constant.APITypeXunfei:
 		return &xunfei.Adaptor{}
 	case constant.APITypeZhipu:
@@ -120,6 +122,10 @@ func GetAdaptor(apiType int) channel.Adaptor {
 		return &replicate.Adaptor{}
 	case constant.APITypeCodex:
 		return &codex.Adaptor{}
+	case constant.APITypeAdvancedCustom:
+		return &advancedcustom.Adaptor{}
+	case constant.APITypeSub2API:
+		return &sub2api.Adaptor{}
 	}
 	return nil
 }

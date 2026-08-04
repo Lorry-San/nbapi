@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/model"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/model"
 
 	"github.com/samber/lo"
 
@@ -19,12 +19,12 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pkg/errors"
 
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/dto"
-	"github.com/QuantumNous/new-api/relay/channel"
-	taskcommon "github.com/QuantumNous/new-api/relay/channel/task/taskcommon"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	"github.com/QuantumNous/new-api/service"
+	"github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/relay/channel"
+	taskcommon "github.com/Lorry-San/nbapi/relay/channel/task/taskcommon"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	"github.com/Lorry-San/nbapi/service"
 )
 
 // ============================
@@ -136,7 +136,7 @@ func (a *TaskAdaptor) ValidateRequestAndSetAction(c *gin.Context, info *relaycom
 func (a *TaskAdaptor) BuildRequestURL(info *relaycommon.RelayInfo) (string, error) {
 	path := lo.Ternary(info.Action == constant.TaskActionGenerate, "/v1/videos/image2video", "/v1/videos/text2video")
 
-	if isNewAPIRelay(info.ApiKey) {
+	if isNBAPIRelay(info.ApiKey) {
 		return fmt.Sprintf("%s/kling%s", a.baseURL, path), nil
 	}
 
@@ -226,7 +226,7 @@ func (a *TaskAdaptor) FetchTask(baseUrl, key string, body map[string]any, proxy 
 	}
 	path := lo.Ternary(action == constant.TaskActionGenerate, "/v1/videos/image2video", "/v1/videos/text2video")
 	url := fmt.Sprintf("%s%s/%s", baseUrl, path, taskID)
-	if isNewAPIRelay(key) {
+	if isNBAPIRelay(key) {
 		url = fmt.Sprintf("%s/kling%s/%s", baseUrl, path, taskID)
 	}
 
@@ -311,8 +311,8 @@ func (a *TaskAdaptor) createJWTToken() (string, error) {
 }
 
 func (a *TaskAdaptor) createJWTTokenWithKey(apiKey string) (string, error) {
-	if isNewAPIRelay(apiKey) {
-		return apiKey, nil // new api relay
+	if isNBAPIRelay(apiKey) {
+		return apiKey, nil // NBAPI relay
 	}
 	keyParts := strings.Split(apiKey, "|")
 	if len(keyParts) != 2 {
@@ -358,7 +358,8 @@ func (a *TaskAdaptor) ParseTaskResult(respBody []byte) (*relaycommon.TaskInfo, e
 			taskInfo.Url = video.Url
 		}
 		if tokens, err := strconv.ParseFloat(resPayload.Data.FinalUnitDeduction, 64); err == nil {
-			rounded := int(math.Ceil(tokens))
+			// 上游返回的扣费数值，饱和转换防止超大数值回绕成负数
+			rounded := common.QuotaFromFloat(math.Ceil(tokens))
 			if rounded > 0 {
 				taskInfo.CompletionTokens = rounded
 				taskInfo.TotalTokens = rounded
@@ -372,7 +373,7 @@ func (a *TaskAdaptor) ParseTaskResult(respBody []byte) (*relaycommon.TaskInfo, e
 	return taskInfo, nil
 }
 
-func isNewAPIRelay(apiKey string) bool {
+func isNBAPIRelay(apiKey string) bool {
 	return strings.HasPrefix(apiKey, "sk-")
 }
 

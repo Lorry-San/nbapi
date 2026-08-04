@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/types"
 
 	"github.com/gin-gonic/gin"
 )
@@ -244,7 +244,7 @@ type OutputConfigForEffort struct {
 func (c *ClaudeRequest) GetTokenCountMeta() *types.TokenCountMeta {
 	maxTokens := 0
 	if c.MaxTokens != nil {
-		maxTokens = int(*c.MaxTokens)
+		maxTokens = common.BoundedRequestTokens(*c.MaxTokens)
 	}
 	var tokenCountMeta = types.TokenCountMeta{
 		TokenType: types.TokenTypeTokenizer,
@@ -564,6 +564,7 @@ type ClaudeUsage struct {
 	ClaudeCacheCreation5mTokens int                  `json:"claude_cache_creation_5_m_tokens"`
 	ClaudeCacheCreation1hTokens int                  `json:"claude_cache_creation_1_h_tokens"`
 	ServerToolUse               *ClaudeServerToolUse `json:"server_tool_use,omitempty"`
+	BillingUsage                *BillingUsage        `json:"billing_usage,omitempty"`
 }
 
 type ClaudeCacheCreationUsage struct {

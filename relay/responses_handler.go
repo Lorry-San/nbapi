@@ -6,32 +6,55 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/dto"
-	"github.com/QuantumNous/new-api/logger"
-	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	relayconstant "github.com/QuantumNous/new-api/relay/constant"
-	"github.com/QuantumNous/new-api/relay/helper"
-	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/setting/model_setting"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/Lorry-San/nbapi/common"
+	appconstant "github.com/Lorry-San/nbapi/constant"
+	"github.com/Lorry-San/nbapi/dto"
+	"github.com/Lorry-San/nbapi/logger"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
+	relayconstant "github.com/Lorry-San/nbapi/relay/constant"
+	"github.com/Lorry-San/nbapi/relay/helper"
+	"github.com/Lorry-San/nbapi/service"
+	"github.com/Lorry-San/nbapi/setting/model_setting"
+	"github.com/Lorry-San/nbapi/types"
 
 	"github.com/gin-gonic/gin"
 )
 
-func ResponsesHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types.NewAPIError) {
+func ResponsesHelper(c *gin.Context, info *relaycommon.RelayInfo) (nbapiError *types.NBAPIError) {
 	info.InitChannelMeta(c)
+	if info.RelayMode == relayconstant.RelayModeResponsesCompact {
+		switch info.ApiType {
+		case appconstant.APITypeOpenAI, appconstant.APITypeCodex:
+		default:
+			return types.NewErrorWithStatusCode(
+				fmt.Errorf("unsupported endpoint %q for api type %d", "/v1/responses/compact", info.ApiType),
+				types.ErrorCodeInvalidRequest,
+				http.StatusBadRequest,
+				types.ErrOptionWithSkipRetry(),
+			)
+		}
+	}
 
 	var responsesReq *dto.OpenAIResponsesRequest
 	switch req := info.Request.(type) {
 	case *dto.OpenAIResponsesRequest:
 		responsesReq = req
 	case *dto.OpenAIResponsesCompactionRequest:
+		// Only fields documented for POST /v1/responses/compact are forwarded:
+		// model, input, instructions, previous_response_id, prompt_cache_key,
+		// prompt_cache_options, prompt_cache_retention, service_tier.
+		// Undocumented Codex-parity fields (tools, reasoning, text) are parsed
+		// for client compatibility but intentionally not sent upstream.
 		responsesReq = &dto.OpenAIResponsesRequest{
-			Model:              req.Model,
-			Input:              req.Input,
-			Instructions:       req.Instructions,
-			PreviousResponseID: req.PreviousResponseID,
+			Model:                req.Model,
+			Input:                req.Input,
+			Instructions:         req.Instructions,
+			PreviousResponseID:   req.PreviousResponseID,
+			ParallelToolCalls:    req.ParallelToolCalls,
+			ServiceTier:          req.ServiceTier,
+			PromptCacheKey:       req.PromptCacheKey,
+			PromptCacheOptions:   req.PromptCacheOptions,
+			PromptCacheRetention: req.PromptCacheRetention,
 		}
 	default:
 		return types.NewErrorWithStatusCode(
@@ -58,14 +81,16 @@ func ResponsesHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *
 	}
 	adaptor.Init(info)
 	passThroughGlobal := model_setting.GetGlobalSettings().PassThroughRequestEnabled
-
-	if (info.RelayMode == relayconstant.RelayModeResponses ||
-		info.RelayMode == relayconstant.RelayModeResponsesCompact) &&
+	moonshotResponsesViaChat := info.RelayMode == relayconstant.RelayModeResponses &&
+		info.ApiType == appconstant.APITypeMoonshot
+	if info.RelayMode == relayconstant.RelayModeResponses &&
 		info.ChannelSetting.ForceResponsesToChatCompletions &&
-		!passThroughGlobal {
-		usage, newAPIError := responsesViaChatCompletions(c, info, adaptor, request)
-		if newAPIError != nil {
-			return newAPIError
+		!passThroughGlobal &&
+		!info.ChannelSetting.PassThroughBodyEnabled &&
+		!moonshotResponsesViaChat {
+		usage, nbapiError := responsesViaChatCompletions(c, info, adaptor, request)
+		if nbapiError != nil {
+			return nbapiError
 		}
 
 		if strings.HasPrefix(info.OriginModelName, "gpt-4o-audio") {
@@ -77,7 +102,7 @@ func ResponsesHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *
 	}
 
 	var requestBody io.Reader
-	if passThroughGlobal || info.ChannelSetting.PassThroughBodyEnabled {
+	if (passThroughGlobal || info.ChannelSetting.PassThroughBodyEnabled) && !moonshotResponsesViaChat {
 		storage, err := common.GetBodyStorage(c)
 		if err != nil {
 			return types.NewError(err, types.ErrorCodeReadRequestBodyFailed, types.ErrOptionWithSkipRetry())
@@ -104,7 +129,7 @@ func ResponsesHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *
 		if len(info.ParamOverride) > 0 {
 			jsonData, err = relaycommon.ApplyParamOverrideWithRelayInfo(jsonData, info)
 			if err != nil {
-				return newAPIErrorFromParamOverride(err)
+				return nbapiErrorFromParamOverride(err)
 			}
 		}
 
@@ -131,18 +156,18 @@ func ResponsesHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *
 		httpResp = resp.(*http.Response)
 
 		if httpResp.StatusCode != http.StatusOK {
-			newAPIError = service.RelayErrorHandler(c.Request.Context(), httpResp, false)
+			nbapiError = service.RelayErrorHandler(c.Request.Context(), httpResp, false)
 			// reset status code 重置状态码
-			service.ResetStatusCode(newAPIError, statusCodeMappingStr)
-			return newAPIError
+			service.ResetStatusCode(nbapiError, statusCodeMappingStr)
+			return nbapiError
 		}
 	}
 
-	usage, newAPIError := adaptor.DoResponse(c, httpResp, info)
-	if newAPIError != nil {
+	usage, nbapiError := adaptor.DoResponse(c, httpResp, info)
+	if nbapiError != nil {
 		// reset status code 重置状态码
-		service.ResetStatusCode(newAPIError, statusCodeMappingStr)
-		return newAPIError
+		service.ResetStatusCode(nbapiError, statusCodeMappingStr)
+		return nbapiError
 	}
 
 	usageDto := usage.(*dto.Usage)

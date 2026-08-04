@@ -9,17 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/setting/system_setting"
+	"github.com/Lorry-San/nbapi/common"
+	"github.com/Lorry-San/nbapi/setting/system_setting"
 
 	"github.com/go-webauthn/webauthn/protocol"
 	webauthn "github.com/go-webauthn/webauthn/webauthn"
-)
-
-const (
-	RegistrationSessionKey = "passkey_registration_session"
-	LoginSessionKey        = "passkey_login_session"
-	VerifySessionKey       = "passkey_verify_session"
 )
 
 // BuildWebAuthn constructs a WebAuthn instance using the current passkey settings and request context.
