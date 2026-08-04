@@ -29,7 +29,7 @@ func newClientIPRouter() *gin.Engine {
 	return router
 }
 
-func TestConfigureTrustedProxiesDefaultsToLoopbackAndPrivateNetworks(t *testing.T) {
+func TestConfigureTrustedProxiesDefaultsToKnownProxyNetworks(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	t.Setenv("TRUSTED_PROXIES", "")
 	router := newClientIPRouter()
@@ -45,6 +45,8 @@ func TestConfigureTrustedProxiesDefaultsToLoopbackAndPrivateNetworks(t *testing.
 		{name: "172 private network", remoteAddr: "172.20.0.2:12345"},
 		{name: "192 private network", remoteAddr: "192.168.10.2:12345"},
 		{name: "IPv6 unique local network", remoteAddr: "[fd12:3456::2]:12345"},
+		{name: "Cloudflare IPv4 network", remoteAddr: "172.68.211.162:12345"},
+		{name: "Cloudflare IPv6 network", remoteAddr: "[2606:4700:10::1]:12345"},
 	}
 
 	for _, testCase := range testCases {

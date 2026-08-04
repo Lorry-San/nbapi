@@ -126,7 +126,7 @@ SESSION_COOKIE_TRUSTED_URL=https://panel.example.com,https://admin.example.com
 
 Gin 默认会信任所有代理提供的客户端 IP 请求头。本项目改为兼顾常见反代拓扑和公网直连安全的三态配置：
 
-- 未配置、空字符串或纯空白的 `TRUSTED_PROXIES` 默认信任 `127.0.0.0/8`、`::1`、`10.0.0.0/8`、`172.16.0.0/12`、`192.168.0.0/16` 和 `fc00::/7`，并输出启动告警。该默认值覆盖同机 Nginx、Docker Compose 和常见内网反代；公网直连地址不在列表中，其伪造的 `X-Forwarded-For` 会被忽略。
+- 未配置、空字符串或纯空白的 `TRUSTED_PROXIES` 默认信任回环、RFC1918、IPv6 ULA 和 [Cloudflare 官方代理网段](https://www.cloudflare.com/ips/)，并输出启动告警。该默认值覆盖同机 Nginx、Docker Compose、常见内网反代和 Cloudflare；其他公网直连地址不在列表中，其伪造的 `X-Forwarded-For` 会被忽略。
 - `TRUSTED_PROXIES=none`（大小写不敏感且必须单独使用）启用严格直连模式，不信任任何代理，`ClientIP()` 只使用 TCP 直连地址。
 - 其他非空值按英文逗号解析为代理 IP/CIDR，并完全替代默认列表。应填写反向代理自身的地址而不是客户端网段；非法 CIDR、空列表或将 `none` 与其他值混用都会阻止服务启动。
 
@@ -167,7 +167,7 @@ Proof 同时绑定用户、登录会话、用户鉴权版本、会话版本和 s
 - 数据库迁移会为 Session 签发计数和分批清理新增索引；已有 `user_sessions` 很大时应为首次启动预留维护窗口。
 - `user_sessions.previous_refresh_hash` 会从定长 `char(64)` 迁移为 `varchar(64)`。应用会兼容读取历史定长字段留下的空格填充；迁移后的目标结构必须保持幂等，连续启动不应反复执行列类型变更。
 - 仅 master 节点定时清理过期登录会话、超过配置保留期的 revoked 会话和已过保留期的 AuthFlow。
-- 未配置 `TRUSTED_PROXIES` 时会兼容信任回环和常见私网代理；使用公网负载均衡器、`100.64.0.0/10`、链路本地地址或自定义 CNI 网段的部署仍需显式配置。需要严格忽略所有转发头时设置为 `none`。
+- 未配置 `TRUSTED_PROXIES` 时会兼容信任回环、常见私网代理和 Cloudflare 官方代理网段；使用其他公网负载均衡器、`100.64.0.0/10`、链路本地地址或自定义 CNI 网段的部署仍需显式配置。需要严格忽略所有转发头时设置为 `none`。
 - Redis 限流从近似滑动窗口改为原子固定窗口，存在明确的边界双倍突发语义。
 - 用户级模型成功请求限流的 UTC 时间戳在滚动升级期间存在一个窗口的混合格式过渡，期间可能临时误放行或误拒绝。
 - 自建客户端应按新的 AuthBundle、`flow_token` 和 Security Proof 契约升级；PAT 客户端可直接移除 `New-Api-User`。

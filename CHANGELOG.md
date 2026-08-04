@@ -3,6 +3,15 @@
 本文件记录 NBAPI 正式版本的重要变化。更细的发布说明见
 [`.github/release-notes`](.github/release-notes)。
 
+## 1.5.2 - 2026-08-02
+
+### 客户端 IP 识别
+
+- 将 Cloudflare 官方 IPv4/IPv6 代理网段加入默认可信代理列表，恢复经 Cloudflare 反代时的真实客户端 IP 记录。
+- 保留公网伪造防护：非 Cloudflare 的公网直连来源仍不能通过 `X-Forwarded-For` 覆盖客户端 IP。
+- 显式配置 `TRUSTED_PROXIES` 时仍会完全替代默认列表，`none` 严格模式行为不变。
+- 修复生产 Compose 未向应用容器传递 `TRUSTED_PROXIES` 的问题。
+
 ## 1.5.1 - 2026-07-27
 
 ### HA 稳定性
