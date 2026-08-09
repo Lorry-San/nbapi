@@ -5229,9 +5229,10 @@
     "https://mofang.example.com": "https://mofang.example.com",
     "https://mofang.example.com/loginAccessToken": "https://mofang.example.com/loginAccessToken",
     "Trusted Proxies": "Proxys de confiance",
-    "Trust Proxy Client IP Headers": "Faire confiance aux en-têtes IP client du proxy",
-    "When disabled, ignore forwarded client IP headers and use only the direct connection address": "Si cette option est désactivée, les en-têtes IP client transférés sont ignorés et seule l’adresse de connexion directe est utilisée",
-    "When enabled, the TRUSTED_PROXIES environment variable still controls which proxy addresses are trusted": "Lorsque cette option est activée, la variable TRUSTED_PROXIES détermine toujours les adresses de proxy approuvées",
+    "Validate Trusted Proxy Sources": "Valider la provenance des proxys de confiance",
+    "When enabled, only client IP headers from proxies allowed by TRUSTED_PROXIES are accepted": "Lorsque cette option est activée, seuls les en-têtes IP client envoyés par les proxys autorisés dans TRUSTED_PROXIES sont acceptés",
+    "When disabled, proxy source validation is skipped and CF-Connecting-IP, X-Forwarded-For, and X-Real-IP are trusted directly": "Lorsque cette option est désactivée, la validation de la source du proxy est ignorée et CF-Connecting-IP, X-Forwarded-For et X-Real-IP sont approuvés directement",
+    "Only disable validation when direct access to NBAPI is blocked or all callers are controlled, because clients can otherwise spoof these headers": "Ne désactivez la validation que si l’accès direct à NBAPI est bloqué ou si tous les appelants sont contrôlés, sinon les clients peuvent usurper ces en-têtes",
     "Save trusted proxy settings": "Enregistrer les paramètres de proxy de confiance"
   }
 }

@@ -5229,9 +5229,10 @@
     "https://mofang.example.com": "https://mofang.example.com",
     "https://mofang.example.com/loginAccessToken": "https://mofang.example.com/loginAccessToken",
     "Trusted Proxies": "Доверенные прокси",
-    "Trust Proxy Client IP Headers": "Доверять заголовкам IP клиента от прокси",
-    "When disabled, ignore forwarded client IP headers and use only the direct connection address": "Если отключено, перенаправленные заголовки IP клиента игнорируются и используется только адрес прямого подключения",
-    "When enabled, the TRUSTED_PROXIES environment variable still controls which proxy addresses are trusted": "Если включено, переменная TRUSTED_PROXIES по-прежнему определяет доверенные адреса прокси",
+    "Validate Trusted Proxy Sources": "Проверять источники доверенных прокси",
+    "When enabled, only client IP headers from proxies allowed by TRUSTED_PROXIES are accepted": "Если включено, принимаются только заголовки IP клиента от прокси, разрешённых в TRUSTED_PROXIES",
+    "When disabled, proxy source validation is skipped and CF-Connecting-IP, X-Forwarded-For, and X-Real-IP are trusted directly": "Если отключено, проверка источника прокси пропускается, а CF-Connecting-IP, X-Forwarded-For и X-Real-IP считаются доверенными напрямую",
+    "Only disable validation when direct access to NBAPI is blocked or all callers are controlled, because clients can otherwise spoof these headers": "Отключайте проверку только если прямой доступ к NBAPI закрыт или все вызывающие стороны контролируются, иначе клиенты смогут подделать эти заголовки",
     "Save trusted proxy settings": "Сохранить настройки доверенных прокси"
   }
 }

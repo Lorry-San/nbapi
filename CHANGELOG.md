@@ -1,5 +1,13 @@
 # NBAPI Changelog
 
+## 1.5.4 - 2026-08-09
+
+### 可信代理校验语义修正
+
+- 修正网页开关含义：关闭的是可信代理来源校验，而不是代理客户端 IP 请求头本身。
+- 开启时继续按 `TRUSTED_PROXIES` 白名单校验代理来源；关闭时直接信任 `CF-Connecting-IP`、`True-Client-IP`、`X-Forwarded-For` 与 `X-Real-IP`。
+- 保留现有 `TrustedProxiesEnabled` 配置值，无需数据库迁移；补充伪造风险提示和对应回归测试。
+
 本文件记录 NBAPI 正式版本的重要变化。更细的发布说明见
 [`.github/release-notes`](.github/release-notes)。
 
