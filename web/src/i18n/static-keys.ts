@@ -143,6 +143,13 @@ export const STATIC_I18N_KEYS = [
   'Quota must be a positive number',
   'Successfully created {{count}} redemption codes',
 
+  // Security settings (registry and save-label keys)
+  'Trusted Proxies',
+  'Trust Proxy Client IP Headers',
+  'When disabled, ignore forwarded client IP headers and use only the direct connection address',
+  'When enabled, the TRUSTED_PROXIES environment variable still controls which proxy addresses are trusted',
+  'Save trusted proxy settings',
+
   // Home page (constants-driven labels)
   'Cost Tracking',
   'Model Access',

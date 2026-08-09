@@ -2823,7 +2823,6 @@
     "New password must be different from current password": "Le nouveau mot de passe doit être différent de l'actuel",
     "New User Quota": "Quota nouvel utilisateur",
     "New version available: {{version}}": "Nouvelle version disponible : {{version}}",
-    "NBAPI": "NBAPI",
     "Newly released": "Récemment publiés",
     "Next": "Suivant",
     "Next branch": "Branche suivante",
@@ -5228,6 +5227,11 @@
     "Mofang Login URL": "Mofang Login URL",
     "Popup login page that posts the JWT back to NBAPI": "Popup login page that posts the JWT back to NBAPI",
     "https://mofang.example.com": "https://mofang.example.com",
-    "https://mofang.example.com/loginAccessToken": "https://mofang.example.com/loginAccessToken"
+    "https://mofang.example.com/loginAccessToken": "https://mofang.example.com/loginAccessToken",
+    "Trusted Proxies": "Proxys de confiance",
+    "Trust Proxy Client IP Headers": "Faire confiance aux en-têtes IP client du proxy",
+    "When disabled, ignore forwarded client IP headers and use only the direct connection address": "Si cette option est désactivée, les en-têtes IP client transférés sont ignorés et seule l’adresse de connexion directe est utilisée",
+    "When enabled, the TRUSTED_PROXIES environment variable still controls which proxy addresses are trusted": "Lorsque cette option est activée, la variable TRUSTED_PROXIES détermine toujours les adresses de proxy approuvées",
+    "Save trusted proxy settings": "Enregistrer les paramètres de proxy de confiance"
   }
 }

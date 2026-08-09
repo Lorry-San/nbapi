@@ -431,7 +431,7 @@ func TokenAuth() func(c *gin.Context) {
 
 		allowIps := token.GetIpLimits()
 		if len(allowIps) > 0 {
-			clientIp := c.ClientIP()
+			clientIp := common.GetClientIP(c)
 			logger.LogDebug(c, "Token has IP restrictions, checking client IP %s", clientIp)
 			ip := net.ParseIP(clientIp)
 			if ip == nil {

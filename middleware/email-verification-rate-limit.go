@@ -18,7 +18,7 @@ const (
 func redisEmailVerificationRateLimiter(c *gin.Context) {
 	allowed, _, ttlSeconds, err := redisFixedWindowTake(
 		c.Request.Context(),
-		redisIPRateLimitKey(EmailVerificationRateLimitMark, c.ClientIP()),
+		redisIPRateLimitKey(EmailVerificationRateLimitMark, common.GetClientIP(c)),
 		EmailVerificationMaxRequests,
 		EmailVerificationDuration,
 	)
@@ -44,7 +44,7 @@ func redisEmailVerificationRateLimiter(c *gin.Context) {
 }
 
 func memoryEmailVerificationRateLimiter(c *gin.Context) {
-	key := EmailVerificationRateLimitMark + ":" + c.ClientIP()
+	key := EmailVerificationRateLimitMark + ":" + common.GetClientIP(c)
 
 	if !inMemoryRateLimiter.Request(key, EmailVerificationMaxRequests, EmailVerificationDuration) {
 		c.JSON(http.StatusTooManyRequests, gin.H{

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Lorry-San/nbapi/common"
 	"github.com/Lorry-San/nbapi/logger"
 	"github.com/Lorry-San/nbapi/middleware"
 	"github.com/Lorry-San/nbapi/model"
@@ -22,7 +23,7 @@ func RefreshAuth(c *gin.Context) {
 		writeAuthSessionError(c, service.ErrRefreshTokenInvalid)
 		return
 	}
-	bundle, user, err := service.RefreshLoginSession(rawRefreshToken, c.GetHeader("X-Auth-Session"), c.ClientIP(), c.Request.UserAgent())
+	bundle, user, err := service.RefreshLoginSession(rawRefreshToken, c.GetHeader("X-Auth-Session"), common.GetClientIP(c), c.Request.UserAgent())
 	if err != nil {
 		if errors.Is(err, service.ErrRefreshTokenInvalid) || errors.Is(err, service.ErrLoginSessionRevoked) {
 			service.ClearRefreshCookie(c)

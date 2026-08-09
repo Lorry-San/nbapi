@@ -2029,7 +2029,7 @@
     "footer.columns.related.links.oneApi": "One API",
     "footer.columns.related.title": "相關項目",
     "footer.defaultCopyright": "版權所有。",
-    "footer.new\u0061pi.projectAttributionSuffix": "版權所有，由項目貢獻者設計與開發。",
+    "footer.newapi.projectAttributionSuffix": "版權所有，由項目貢獻者設計與開發。",
     "For channels added after May 10, 2025, no need to remove \".\" from model names during deployment": "對於 2025 年 5 月 10 日之後新增的渠道，在部署時無需從模型名稱中移除 \".\"",
     "For private deployments, format: https://fastgpt.run/api/openapi": "對於私有部署，格式為：https://fastgpt.run/api/openapi",
     "Force a syntactically valid JSON response": "強制返回語法合法的 JSON",
@@ -2823,7 +2823,6 @@
     "New password must be different from current password": "新密碼必須與目前密碼不同",
     "New User Quota": "新用戶配額",
     "New version available: {{version}}": "有新版本可用：{{version}}",
-    "NBAPI": "NBAPI",
     "Newly released": "最新發佈",
     "Next": "下一步",
     "Next branch": "下一個分支",
@@ -5215,6 +5214,11 @@
     "Zero retention": "零數據保留",
     "Zhipu": "智譜",
     "Zhipu V4": "智譜 V4",
-    "Zoom": "縮放"
+    "Zoom": "縮放",
+    "Trusted Proxies": "可信代理",
+    "Trust Proxy Client IP Headers": "信任代理用戶端 IP 標頭",
+    "When disabled, ignore forwarded client IP headers and use only the direct connection address": "關閉後將忽略轉送的用戶端 IP 標頭，僅使用直連位址",
+    "When enabled, the TRUSTED_PROXIES environment variable still controls which proxy addresses are trusted": "開啟後，仍由 TRUSTED_PROXIES 環境變數決定信任哪些代理位址",
+    "Save trusted proxy settings": "儲存可信代理設定"
   }
 }

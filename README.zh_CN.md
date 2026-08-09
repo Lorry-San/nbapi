@@ -330,7 +330,7 @@ docker run --name nbapi -d --restart always \
 | `SESSION_SECRET` | 鉴权签名密钥；所有节点必须保持一致                                           | - |
 | `SESSION_COOKIE_SECURE` | `false`/未配置时关闭 refresh/logout OriginGuard 以兼容本地 HTTP 开发代理；`true` 时启用 Secure Cookie 和严格 Origin 校验 | `false` |
 | `SESSION_COOKIE_TRUSTED_URL` | Secure 模式必填：允许调用 refresh/logout 的精确 HTTPS Origin，多个用英文逗号分隔；不是 relay CORS 白名单 | - |
-| `TRUSTED_PROXIES` | 未配置/留空时信任回环、RFC1918、IPv6 ULA 和 Cloudflare 官方代理网段并输出启动告警；`none` 不信任任何代理；显式代理 IP/CIDR 列表完全替代默认值 | 回环、私网、IPv6 ULA、Cloudflare |
+| `TRUSTED_PROXIES` | 未配置/留空时信任回环、RFC1918、IPv6 ULA 和 Cloudflare 官方代理网段并输出启动告警；`none` 不信任任何代理；显式代理 IP/CIDR 列表完全替代默认值。可在“安全设置 → 可信代理”中运行时关闭代理头信任 | 回环、私网、IPv6 ULA、Cloudflare |
 | `USER_SESSION_ACTIVE_LIMIT` | 单用户最大活跃登录 Session 数 | `50` |
 | `USER_SESSION_ISSUANCE_LIMIT` | 单用户在签发窗口内可创建的 Session 总数，包含已撤销 Session | `100` |
 | `USER_SESSION_ISSUANCE_WINDOW_SECONDS` | Session 签发计数窗口（秒）；高于 revoked 保留期时自动钳制 | `86400` |

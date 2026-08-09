@@ -176,14 +176,6 @@ export async function bindMofang(jwt: string): Promise<ApiResponse> {
   return res.data
 }
 
-/**
- * Bind Mofang account
- */
-export async function bindMofang(jwt: string): Promise<ApiResponse> {
-  const res = await api.post('/api/oauth/mofang/bind', { jwt })
-  return res.data
-}
-
 // ============================================================================
 // Custom OAuth Binding APIs
 // ============================================================================

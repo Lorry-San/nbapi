@@ -2810,7 +2810,7 @@
     "Never expires": "Không hết hạn",
     "Never used an API Gateway?": "Chưa bao giờ sử dụng API Gateway?",
     "NEW": "MỚI",
-    "NBAPI": "API mới",
+    "NBAPI": "NBAPI",
     "NBAPI &lt;noreply@example.com&gt;": "API mới &lt;noreply@example.com&gt;",
     "NBAPI Project Repository:": "Kho lưu trữ Dự án API Mới:",
     "New Format Template": "Mẫu định dạng mới",
@@ -2823,7 +2823,6 @@
     "New password must be different from current password": "Mật khẩu mới phải khác với mật khẩu hiện tại",
     "New User Quota": "Hạn mức người dùng mới",
     "New version available: {{version}}": "Có phiên bản mới: {{version}}",
-    "NBAPI": "NBAPI",
     "Newly released": "Vừa phát hành",
     "Next": "Tiếp",
     "Next branch": "Nhánh tiếp theo",
@@ -5228,6 +5227,11 @@
     "Mofang Login URL": "Mofang Login URL",
     "Popup login page that posts the JWT back to NBAPI": "Popup login page that posts the JWT back to NBAPI",
     "https://mofang.example.com": "https://mofang.example.com",
-    "https://mofang.example.com/loginAccessToken": "https://mofang.example.com/loginAccessToken"
+    "https://mofang.example.com/loginAccessToken": "https://mofang.example.com/loginAccessToken",
+    "Trusted Proxies": "Proxy tin cậy",
+    "Trust Proxy Client IP Headers": "Tin cậy tiêu đề IP máy khách từ proxy",
+    "When disabled, ignore forwarded client IP headers and use only the direct connection address": "Khi tắt, bỏ qua tiêu đề IP máy khách được chuyển tiếp và chỉ dùng địa chỉ kết nối trực tiếp",
+    "When enabled, the TRUSTED_PROXIES environment variable still controls which proxy addresses are trusted": "Khi bật, biến môi trường TRUSTED_PROXIES vẫn quyết định địa chỉ proxy nào được tin cậy",
+    "Save trusted proxy settings": "Lưu cài đặt proxy tin cậy"
   }
 }
