@@ -144,9 +144,10 @@ export const STATIC_I18N_KEYS = [
 
   // Security settings (registry and save-label keys)
   'Trusted Proxies',
-  'Trust Proxy Client IP Headers',
-  'When disabled, ignore forwarded client IP headers and use only the direct connection address',
-  'When enabled, the TRUSTED_PROXIES environment variable still controls which proxy addresses are trusted',
+  'Validate Trusted Proxy Sources',
+  'When enabled, only client IP headers from proxies allowed by TRUSTED_PROXIES are accepted',
+  'When disabled, proxy source validation is skipped and CF-Connecting-IP, X-Forwarded-For, and X-Real-IP are trusted directly',
+  'Only disable validation when direct access to NBAPI is blocked or all callers are controlled, because clients can otherwise spoof these headers',
   'Save trusted proxy settings',
 
   // Home page (constants-driven labels)

@@ -330,7 +330,7 @@ The production Compose file requires four independent secrets. Keep this file pr
 | `SESSION_SECRET` | Authentication signing secret; must be identical on every node | - |
 | `SESSION_COOKIE_SECURE` | `false`/unset disables the refresh/logout OriginGuard for local HTTP dev proxies; `true` enables the Secure cookie and strict Origin checks | `false` |
 | `SESSION_COOKIE_TRUSTED_URL` | Required with Secure mode: comma-separated exact HTTPS Origins allowed to call refresh/logout; not a relay CORS allowlist | - |
-| `TRUSTED_PROXIES` | Unset/blank trusts loopback, RFC 1918, IPv6 ULA and Cloudflare's official proxy networks with a startup warning; `none` trusts no proxies; an explicit proxy IP/CIDR list replaces the defaults. The Security > Trusted Proxies switch can disable proxy-header trust at runtime | Loopback, private networks, IPv6 ULA, Cloudflare |
+| `TRUSTED_PROXIES` | Unset/blank trusts loopback, RFC 1918, IPv6 ULA and Cloudflare's official proxy networks with a startup warning; `none` trusts no proxies; an explicit proxy IP/CIDR list replaces the defaults. The Security > Trusted Proxies switch controls source validation: disabling it trusts forwarded client IP headers from any peer | Loopback, private networks, IPv6 ULA, Cloudflare |
 | `USER_SESSION_ACTIVE_LIMIT` | Maximum active login Sessions per user | `50` |
 | `USER_SESSION_ISSUANCE_LIMIT` | Maximum Sessions created per user within the issuance window, including revoked Sessions | `100` |
 | `USER_SESSION_ISSUANCE_WINDOW_SECONDS` | Per-user Session issuance window; clamped to the revoked retention period when configured higher | `86400` |

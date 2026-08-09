@@ -5229,9 +5229,10 @@
     "https://mofang.example.com": "https://mofang.example.com",
     "https://mofang.example.com/loginAccessToken": "https://mofang.example.com/loginAccessToken",
     "Trusted Proxies": "信頼済みプロキシ",
-    "Trust Proxy Client IP Headers": "プロキシのクライアント IP ヘッダーを信頼する",
-    "When disabled, ignore forwarded client IP headers and use only the direct connection address": "無効にすると転送されたクライアント IP ヘッダーを無視し、直接接続元のアドレスのみを使用します",
-    "When enabled, the TRUSTED_PROXIES environment variable still controls which proxy addresses are trusted": "有効な場合も、信頼するプロキシアドレスは TRUSTED_PROXIES 環境変数で制御されます",
+    "Validate Trusted Proxy Sources": "信頼済みプロキシの送信元を検証する",
+    "When enabled, only client IP headers from proxies allowed by TRUSTED_PROXIES are accepted": "有効にすると、TRUSTED_PROXIES で許可されたプロキシからのクライアント IP ヘッダーのみを受け入れます",
+    "When disabled, proxy source validation is skipped and CF-Connecting-IP, X-Forwarded-For, and X-Real-IP are trusted directly": "無効にするとプロキシ送信元の検証を省略し、CF-Connecting-IP、X-Forwarded-For、X-Real-IP を直接信頼します",
+    "Only disable validation when direct access to NBAPI is blocked or all callers are controlled, because clients can otherwise spoof these headers": "NBAPI への直接アクセスが遮断されているか、すべての呼び出し元を管理できる場合にのみ無効にしてください。そうでなければヘッダーを偽装される可能性があります",
     "Save trusted proxy settings": "信頼済みプロキシ設定を保存"
   }
 }

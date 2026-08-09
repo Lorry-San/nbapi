@@ -87,10 +87,10 @@ export function TrustedProxySection({
             render={({ field }) => (
               <SettingsSwitchItem>
                 <SettingsSwitchContent>
-                  <FormLabel>{t('Trust Proxy Client IP Headers')}</FormLabel>
+                  <FormLabel>{t('Validate Trusted Proxy Sources')}</FormLabel>
                   <FormDescription>
                     {t(
-                      'When disabled, ignore forwarded client IP headers and use only the direct connection address'
+                      'When enabled, only client IP headers from proxies allowed by TRUSTED_PROXIES are accepted'
                     )}
                   </FormDescription>
                 </SettingsSwitchContent>
@@ -105,7 +105,12 @@ export function TrustedProxySection({
           />
           <FormDescription>
             {t(
-              'When enabled, the TRUSTED_PROXIES environment variable still controls which proxy addresses are trusted'
+              'When disabled, proxy source validation is skipped and CF-Connecting-IP, X-Forwarded-For, and X-Real-IP are trusted directly'
+            )}
+          </FormDescription>
+          <FormDescription>
+            {t(
+              'Only disable validation when direct access to NBAPI is blocked or all callers are controlled, because clients can otherwise spoof these headers'
             )}
           </FormDescription>
         </SettingsForm>

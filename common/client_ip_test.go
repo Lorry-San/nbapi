@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testClientIP(t *testing.T, enabled bool, remoteAddr string, forwardedFor string) string {
+func testClientIP(t *testing.T, enabled bool, remoteAddr string, headers map[string]string) string {
 	t.Helper()
-	previous := IsTrustedProxiesEnabled()
-	SetTrustedProxiesEnabled(enabled)
+	previous := IsTrustedProxyValidationEnabled()
+	SetTrustedProxyValidationEnabled(enabled)
 	t.Cleanup(func() {
-		SetTrustedProxiesEnabled(previous)
+		SetTrustedProxyValidationEnabled(previous)
 	})
 
 	router := gin.New()
@@ -27,19 +27,47 @@ func testClientIP(t *testing.T, enabled bool, remoteAddr string, forwardedFor st
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/client-ip", nil)
 	request.RemoteAddr = remoteAddr
-	request.Header.Set("X-Forwarded-For", forwardedFor)
+	for key, value := range headers {
+		request.Header.Set(key, value)
+	}
 	router.ServeHTTP(recorder, request)
 	return recorder.Body.String()
 }
 
 func TestGetClientIPUsesTrustedProxyHeadersWhenEnabled(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	assert.Equal(t, "203.0.113.10", testClientIP(t, true, "127.0.0.1:12345", "203.0.113.10"))
+	assert.Equal(t, "203.0.113.10", testClientIP(t, true, "127.0.0.1:12345", map[string]string{
+		"X-Forwarded-For": "203.0.113.10",
+	}))
 }
 
-func TestGetClientIPIgnoresTrustedProxyHeadersWhenDisabled(t *testing.T) {
+func TestGetClientIPRejectsUntrustedProxyHeadersWhenValidationEnabled(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	assert.Equal(t, "127.0.0.1", testClientIP(t, false, "127.0.0.1:12345", "203.0.113.10"))
+	assert.Equal(t, "198.51.100.20", testClientIP(t, true, "198.51.100.20:12345", map[string]string{
+		"X-Forwarded-For": "203.0.113.10",
+	}))
+}
+
+func TestGetClientIPTrustsForwardedHeadersWhenValidationDisabled(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	assert.Equal(t, "203.0.113.10", testClientIP(t, false, "198.51.100.20:12345", map[string]string{
+		"X-Forwarded-For": "203.0.113.10, 198.51.100.30",
+	}))
+}
+
+func TestGetClientIPPrefersCloudflareHeaderWhenValidationDisabled(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	assert.Equal(t, "203.0.113.11", testClientIP(t, false, "198.51.100.20:12345", map[string]string{
+		"CF-Connecting-IP": "203.0.113.11",
+		"X-Forwarded-For":  "203.0.113.12",
+	}))
+}
+
+func TestGetClientIPFallsBackToDirectAddressWithoutValidHeaders(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	assert.Equal(t, "198.51.100.20", testClientIP(t, false, "198.51.100.20:12345", map[string]string{
+		"X-Forwarded-For": "unknown, invalid",
+	}))
 }
 
 func TestDirectClientIPSupportsIPv6(t *testing.T) {
