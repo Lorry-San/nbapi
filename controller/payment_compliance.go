@@ -48,7 +48,7 @@ func ConfirmPaymentCompliance(c *gin.Context) {
 
 	now := time.Now().Unix()
 	userId := c.GetInt("id")
-	clientIP := c.ClientIP()
+	clientIP := common.GetClientIP(c)
 
 	updates := map[string]string{
 		"payment_setting.compliance_confirmed":     "true",

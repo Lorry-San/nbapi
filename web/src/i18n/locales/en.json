@@ -2826,7 +2826,6 @@
     "New password must be different from current password": "New password must be different from current password",
     "New User Quota": "New User Quota",
     "New version available: {{version}}": "New version available: {{version}}",
-    "NBAPI": "NBAPI",
     "Newly released": "Newly released",
     "Next": "Next",
     "Next branch": "Next branch",
@@ -5231,6 +5230,11 @@
     "Mofang Login URL": "Mofang Login URL",
     "Popup login page that posts the JWT back to NBAPI": "Popup login page that posts the JWT back to NBAPI",
     "https://mofang.example.com": "https://mofang.example.com",
-    "https://mofang.example.com/loginAccessToken": "https://mofang.example.com/loginAccessToken"
+    "https://mofang.example.com/loginAccessToken": "https://mofang.example.com/loginAccessToken",
+    "Trusted Proxies": "Trusted Proxies",
+    "Trust Proxy Client IP Headers": "Trust Proxy Client IP Headers",
+    "When disabled, ignore forwarded client IP headers and use only the direct connection address": "When disabled, ignore forwarded client IP headers and use only the direct connection address",
+    "When enabled, the TRUSTED_PROXIES environment variable still controls which proxy addresses are trusted": "When enabled, the TRUSTED_PROXIES environment variable still controls which proxy addresses are trusted",
+    "Save trusted proxy settings": "Save trusted proxy settings"
   }
 }

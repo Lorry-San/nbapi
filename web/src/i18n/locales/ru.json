@@ -2810,7 +2810,7 @@
     "Never expires": "Никогда не истекает",
     "Never used an API Gateway?": "Никогда не пользовались API-шлюзом?",
     "NEW": "НОВОЕ",
-    "NBAPI": "Новый API",
+    "NBAPI": "NBAPI",
     "NBAPI &lt;noreply@example.com&gt;": "Новый API &lt;noreply@example.com&gt;",
     "NBAPI Project Repository:": "Репозиторий проекта NBAPI:",
     "New Format Template": "Шаблон нового формата",
@@ -2823,7 +2823,6 @@
     "New password must be different from current password": "Новый пароль должен отличаться от текущего пароля",
     "New User Quota": "Новая квота пользователя",
     "New version available: {{version}}": "Доступна новая версия: {{version}}",
-    "NBAPI": "NBAPI",
     "Newly released": "Новые релизы",
     "Next": "Следующий шаг",
     "Next branch": "Следующая ветка",
@@ -5228,6 +5227,11 @@
     "Mofang Login URL": "Mofang Login URL",
     "Popup login page that posts the JWT back to NBAPI": "Popup login page that posts the JWT back to NBAPI",
     "https://mofang.example.com": "https://mofang.example.com",
-    "https://mofang.example.com/loginAccessToken": "https://mofang.example.com/loginAccessToken"
+    "https://mofang.example.com/loginAccessToken": "https://mofang.example.com/loginAccessToken",
+    "Trusted Proxies": "Доверенные прокси",
+    "Trust Proxy Client IP Headers": "Доверять заголовкам IP клиента от прокси",
+    "When disabled, ignore forwarded client IP headers and use only the direct connection address": "Если отключено, перенаправленные заголовки IP клиента игнорируются и используется только адрес прямого подключения",
+    "When enabled, the TRUSTED_PROXIES environment variable still controls which proxy addresses are trusted": "Если включено, переменная TRUSTED_PROXIES по-прежнему определяет доверенные адреса прокси",
+    "Save trusted proxy settings": "Сохранить настройки доверенных прокси"
   }
 }
