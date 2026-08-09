@@ -26,13 +26,19 @@ func SetUpLogger(server *gin.Engine) {
 		if tag == "" {
 			tag = "web"
 		}
+		clientIP := param.ClientIP
+		if param.Keys != nil {
+			if resolvedIP, ok := param.Keys[common.ResolvedClientIPKey].(string); ok && resolvedIP != "" {
+				clientIP = resolvedIP
+			}
+		}
 		return fmt.Sprintf("[GIN] %s | %s | %s | %3d | %13v | %15s | %7s %s\n",
 			param.TimeStamp.Format("2006/01/02 - 15:04:05"),
 			tag,
 			requestID,
 			param.StatusCode,
 			param.Latency,
-			param.ClientIP,
+			clientIP,
 			param.Method,
 			param.Path,
 		)

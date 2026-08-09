@@ -2810,7 +2810,7 @@
     "Never expires": "無期限",
     "Never used an API Gateway?": "APIゲートウェイを一度も使用したことがありませんか？",
     "NEW": "NEW",
-    "NBAPI": "新しいAPI",
+    "NBAPI": "NBAPI",
     "NBAPI &lt;noreply@example.com&gt;": "新しいAPI __ PH_0 __",
     "NBAPI Project Repository:": "NBAPIプロジェクトリポジトリ:",
     "New Format Template": "新フォーマットテンプレート",
@@ -2823,7 +2823,6 @@
     "New password must be different from current password": "新しいパスワードは現在のものと異なっていなければなりません",
     "New User Quota": "新しいユーザー割り当て",
     "New version available: {{version}}": "新しいバージョンが利用可能です：{{version}}",
-    "NBAPI": "NBAPI",
     "Newly released": "最新リリース",
     "Next": "次へ",
     "Next branch": "次のブランチ",
@@ -5228,6 +5227,11 @@
     "Mofang Login URL": "Mofang Login URL",
     "Popup login page that posts the JWT back to NBAPI": "Popup login page that posts the JWT back to NBAPI",
     "https://mofang.example.com": "https://mofang.example.com",
-    "https://mofang.example.com/loginAccessToken": "https://mofang.example.com/loginAccessToken"
+    "https://mofang.example.com/loginAccessToken": "https://mofang.example.com/loginAccessToken",
+    "Trusted Proxies": "信頼済みプロキシ",
+    "Trust Proxy Client IP Headers": "プロキシのクライアント IP ヘッダーを信頼する",
+    "When disabled, ignore forwarded client IP headers and use only the direct connection address": "無効にすると転送されたクライアント IP ヘッダーを無視し、直接接続元のアドレスのみを使用します",
+    "When enabled, the TRUSTED_PROXIES environment variable still controls which proxy addresses are trusted": "有効な場合も、信頼するプロキシアドレスは TRUSTED_PROXIES 環境変数で制御されます",
+    "Save trusted proxy settings": "信頼済みプロキシ設定を保存"
   }
 }

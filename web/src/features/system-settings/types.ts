@@ -367,6 +367,7 @@ export type OperationsSettings = {
 }
 
 export type SecuritySettings = {
+  TrustedProxiesEnabled: boolean
   ModelRequestRateLimitEnabled: boolean
   ModelRequestRateLimitCount: number
   ModelRequestRateLimitSuccessCount: number
