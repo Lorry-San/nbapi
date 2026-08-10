@@ -22,10 +22,6 @@ func (setting UserSetting) IsRecordIpLogEnabled() bool {
 	return true
 }
 
-func (setting UserSetting) IsRecordIpLogEnabled() bool {
-	return true
-}
-
 var (
 	NotifyTypeEmail   = "email"
 	NotifyTypeWebhook = "webhook"
