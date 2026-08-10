@@ -362,7 +362,7 @@ func chooseOpsBucketSeconds(rangeSeconds int64) int64 {
 }
 
 func getOpsChannelNames(ids map[int]struct{}) map[int]string {
-	names := map[int]string{0: "未分�?}
+	names := map[int]string{0: "未分组"}
 	if len(ids) == 0 {
 		return names
 	}

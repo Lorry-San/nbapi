@@ -106,12 +106,12 @@ func buildOpsAlertEmailContent(event model.OpsAlertEvent) string {
 		Key   string
 		Value string
 	}{
-		{"状�?, statusText},
+		{"状态", statusText},
 		{"级别", event.Level},
 		{"规则", event.RuleName},
 		{"指标", event.Metric},
 		{"条件", fmt.Sprintf("%s %.2f", event.Comparator, event.Threshold)},
-		{"当前�?, fmt.Sprintf("%.2f", event.CurrentValue)},
+		{"当前值", fmt.Sprintf("%.2f", event.CurrentValue)},
 		{"范围", formatOpsAlertEmailScope(event)},
 		{"持续时间", formatOpsAlertEmailDuration(event.DurationSeconds)},
 		{"发生时间", time.Unix(occurredAt, 0).Format("2006-01-02 15:04:05")},
@@ -134,7 +134,7 @@ func buildOpsAlertEmailContent(event model.OpsAlertEvent) string {
 		builder.WriteString("</td></tr>")
 	}
 	builder.WriteString("</table>")
-	builder.WriteString("<p style=\"margin-top:16px;color:#6b7280;font-size:12px\">此邮件发送给已启用的管理员和超级管理员账号�?/p>")
+	builder.WriteString("<p style=\"margin-top:16px;color:#6b7280;font-size:12px\">此邮件发送给已启用告警通知的管理员和超级管理员账号。</p>")
 	builder.WriteString("</div>")
 	return builder.String()
 }
