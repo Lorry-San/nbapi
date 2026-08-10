@@ -1,5 +1,31 @@
 # NBAPI Changelog
 
+## 1.5.5 - 2026-08-10
+
+### Claude Opus 5 缓存计费
+
+- 为 `claude-opus-5` 及 provider 前缀、思考变体补充缓存读取和缓存创建默认倍率，避免稀疏配置回退到普通输入价格。
+- Responses 强制转 ChatCompletions 时，流式请求总是要求上游返回 usage（不再受全局 `FORCE_STREAM_OPTION` 开关影响），保留缓存读取 token 到回程、结算和日志。
+- ChatCompletions 历史记录可依据已记录的缓存 token 审计修正；Responses 历史本地估算记录缺少缓存 token，不能凭空推算，需结合上游账单人工核对。
+
+### Moonshot/Kimi Responses 转换（Codex 客户端）
+
+- 修复 Responses 转 Chat 时把空 `system` 消息（`developer` 角色或空内容项）发给 Kimi 上游导致 400 的问题；该问题会造成 Codex 会话静默中断。
+- 转换时丢弃 reasoning 输入项，不再将其转换为垃圾 user 消息；reasoning 保持默认隐藏。
+- `custom_tool_call_output` 历史项按 `call_id` 转换为配对的 tool 消息，保留 Codex `apply_patch` 类自定义工具的子代理调用历史。
+- Moonshot 的 Responses→Chat 路径现在会请求上游流式 usage，token 与缓存统计不再退化为本地估算。
+
+### 合并清理
+
+- 删除 main 合并遗留的重复 Responses 转换实现，统一为 `oaichat`/`oai_responses` 单一实现。
+- Chat 转 Claude 的工具 schema 转换增加防御，避免非字符串 `type` 导致 panic。
+- 运维监控页恢复接入统一前端，修复告警文案编码损坏。
+- 保持已退役的同步删除日志路由关闭，日志清理请使用异步系统任务。
+
+### 兼容性
+
+- 无需数据库迁移，全部为请求路径或默认配置修复。
+
 ## 1.5.4 - 2026-08-09
 
 ### 可信代理校验语义修正
@@ -7,12 +33,6 @@
 - 修正网页开关含义：关闭的是可信代理来源校验，而不是代理客户端 IP 请求头本身。
 - 开启时继续按 `TRUSTED_PROXIES` 白名单校验代理来源；关闭时直接信任 `CF-Connecting-IP`、`True-Client-IP`、`X-Forwarded-For` 与 `X-Real-IP`。
 - 保留现有 `TrustedProxiesEnabled` 配置值，无需数据库迁移；补充伪造风险提示和对应回归测试。
-
-### Claude Opus 5 缓存计费
-
-- 为 `claude-opus-5` 及 provider 前缀、思考变体补充缓存读取和缓存创建默认倍率，避免稀疏配置回退到普通输入价格。
-- Responses 强制转 ChatCompletions 时，流式请求会要求上游返回 usage，保留缓存读取 token 到回程、结算和日志。
-- ChatCompletions 历史记录可依据已记录的缓存 token 审计修正；Responses 历史本地估算记录缺少缓存 token，不能凭空推算，需结合上游账单人工核对。
 
 本文件记录 NBAPI 正式版本的重要变化。更细的发布说明见
 [`.github/release-notes`](.github/release-notes)。
