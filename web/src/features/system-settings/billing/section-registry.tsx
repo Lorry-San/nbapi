@@ -173,6 +173,15 @@ const BILLING_SECTIONS = [
         }}
         waffoPancakeProvisionedStoreID={settings.WaffoPancakeStoreID ?? ''}
         waffoPancakeProvisionedProductID={settings.WaffoPancakeProductID ?? ''}
+        complianceDefaults={{
+          confirmed: settings['payment_setting.compliance_confirmed'],
+          termsVersion:
+            settings['payment_setting.compliance_terms_version'] ?? '',
+          confirmedAt:
+            settings['payment_setting.compliance_confirmed_at'] ?? 0,
+          confirmedBy:
+            settings['payment_setting.compliance_confirmed_by'] ?? 0,
+        }}
       />
     ),
   },
