@@ -37,8 +37,10 @@ func OpenAIChatRequestToClaudeMessages(c *gin.Context, textRequest dto.GeneralOp
 				Description: tool.Function.Description,
 			}
 			claudeTool.InputSchema = make(map[string]interface{})
-			if params["type"] != nil {
-				claudeTool.InputSchema["type"] = params["type"].(string)
+			if schemaType, ok := params["type"].(string); ok && schemaType != "" {
+				claudeTool.InputSchema["type"] = schemaType
+			} else if params["type"] != nil {
+				claudeTool.InputSchema["type"] = "object"
 			}
 			claudeTool.InputSchema["properties"] = params["properties"]
 			claudeTool.InputSchema["required"] = params["required"]
