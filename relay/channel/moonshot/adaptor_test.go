@@ -314,6 +314,131 @@ func TestConvertOpenAIResponsesRequestKeepsInternalChatToResponsesPathNative(t *
 	require.Equal(t, relayconstant.RelayModeResponses, info.RelayMode)
 }
 
+func TestConvertOpenAIResponsesRequestSkipsEmptyDeveloperSystemMessage(t *testing.T) {
+	request := dto.OpenAIResponsesRequest{
+		Model: "kimi-k3",
+		Input: mustMoonshotRawMessage(t, []map[string]any{
+			{
+				"role":    "developer",
+				"content": "",
+			},
+			{
+				"role":    "user",
+				"content": "hello",
+			},
+		}),
+	}
+	info := &relaycommon.RelayInfo{
+		RelayMode:   relayconstant.RelayModeResponses,
+		RelayFormat: types.RelayFormatOpenAIResponses,
+		ChannelMeta: &relaycommon.ChannelMeta{
+			UpstreamModelName: "kimi-k3",
+		},
+	}
+
+	converted, err := (&Adaptor{}).ConvertOpenAIResponsesRequest(nil, info, request)
+
+	require.NoError(t, err)
+	chatRequest, ok := converted.(*dto.GeneralOpenAIRequest)
+	require.True(t, ok)
+	for _, message := range chatRequest.Messages {
+		require.NotEqual(t, "system", message.Role, "developer 空消息不应转换为 system 消息")
+	}
+	require.Len(t, chatRequest.Messages, 1)
+	require.Equal(t, "user", chatRequest.Messages[0].Role)
+}
+
+func TestConvertOpenAIResponsesRequestDropsReasoningItems(t *testing.T) {
+	request := dto.OpenAIResponsesRequest{
+		Model: "kimi-k3",
+		Input: mustMoonshotRawMessage(t, []map[string]any{
+			{
+				"role":    "user",
+				"content": "hello",
+			},
+			{
+				"type":    "reasoning",
+				"summary": []map[string]any{},
+			},
+			{
+				"role":    "assistant",
+				"content": "answer",
+			},
+		}),
+	}
+	info := &relaycommon.RelayInfo{
+		RelayMode:   relayconstant.RelayModeResponses,
+		RelayFormat: types.RelayFormatOpenAIResponses,
+		ChannelMeta: &relaycommon.ChannelMeta{
+			UpstreamModelName: "kimi-k3",
+		},
+	}
+
+	converted, err := (&Adaptor{}).ConvertOpenAIResponsesRequest(nil, info, request)
+
+	require.NoError(t, err)
+	chatRequest, ok := converted.(*dto.GeneralOpenAIRequest)
+	require.True(t, ok)
+	require.Len(t, chatRequest.Messages, 2)
+	for _, message := range chatRequest.Messages {
+		require.NotContains(t, message.StringContent(), "reasoning")
+	}
+}
+
+func TestConvertOpenAIResponsesRequestForcesStreamUsage(t *testing.T) {
+	request := dto.OpenAIResponsesRequest{
+		Model:  "kimi-k3",
+		Input:  mustMoonshotRawMessage(t, "hello"),
+		Stream: common.GetPointer(true),
+	}
+	info := &relaycommon.RelayInfo{
+		RelayMode:   relayconstant.RelayModeResponses,
+		RelayFormat: types.RelayFormatOpenAIResponses,
+		IsStream:    true,
+		ChannelMeta: &relaycommon.ChannelMeta{
+			UpstreamModelName:    "kimi-k3",
+			SupportStreamOptions: true,
+		},
+	}
+
+	converted, err := (&Adaptor{}).ConvertOpenAIResponsesRequest(nil, info, request)
+
+	require.NoError(t, err)
+	chatRequest, ok := converted.(*dto.GeneralOpenAIRequest)
+	require.True(t, ok)
+	require.NotNil(t, chatRequest.StreamOptions)
+	require.True(t, chatRequest.StreamOptions.IncludeUsage)
+}
+
+func TestConvertOpenAIResponsesRequestForcesStreamUsagePreservesOptions(t *testing.T) {
+	request := dto.OpenAIResponsesRequest{
+		Model:  "kimi-k3",
+		Input:  mustMoonshotRawMessage(t, "hello"),
+		Stream: common.GetPointer(true),
+		StreamOptions: &dto.StreamOptions{
+			IncludeObfuscation: true,
+		},
+	}
+	info := &relaycommon.RelayInfo{
+		RelayMode:   relayconstant.RelayModeResponses,
+		RelayFormat: types.RelayFormatOpenAIResponses,
+		IsStream:    true,
+		ChannelMeta: &relaycommon.ChannelMeta{
+			UpstreamModelName:    "kimi-k3",
+			SupportStreamOptions: true,
+		},
+	}
+
+	converted, err := (&Adaptor{}).ConvertOpenAIResponsesRequest(nil, info, request)
+
+	require.NoError(t, err)
+	chatRequest, ok := converted.(*dto.GeneralOpenAIRequest)
+	require.True(t, ok)
+	require.NotNil(t, chatRequest.StreamOptions)
+	require.True(t, chatRequest.StreamOptions.IncludeUsage)
+	require.True(t, chatRequest.StreamOptions.IncludeObfuscation)
+}
+
 func mustMoonshotRawMessage(t *testing.T, value any) []byte {
 	t.Helper()
 	raw, err := common.Marshal(value)

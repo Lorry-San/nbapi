@@ -133,6 +133,9 @@ func moonshotResponsesInputItemsToChatMessages(items []map[string]any) []dto.Mes
 		item := items[i]
 		itemType := strings.TrimSpace(common.Interface2String(item["type"]))
 		switch itemType {
+		case "reasoning":
+			// reasoning 默认隐藏：历史推理内容不应转换为聊天消息发给上游。
+			continue
 		case "function_call":
 			toolCalls := make([]dto.ToolCallRequest, 0, 1)
 			for ; i < len(items); i++ {
@@ -172,9 +175,16 @@ func moonshotResponsesInputItemsToChatMessages(items []map[string]any) []dto.Mes
 			})
 		case "message", "":
 			role := moonshotResponsesRoleToChatRole(common.Interface2String(item["role"]))
+			content := moonshotResponsesContentToChatContent(item["content"], role)
+			if role == "system" {
+				if text, ok := content.(string); !ok || strings.TrimSpace(text) == "" {
+					// 上游拒绝空 system 消息（400: system must not be empty），跳过而不是原样发送。
+					continue
+				}
+			}
 			messages = append(messages, dto.Message{
 				Role:    role,
-				Content: moonshotResponsesContentToChatContent(item["content"], role),
+				Content: content,
 			})
 		default:
 			messages = append(messages, dto.Message{

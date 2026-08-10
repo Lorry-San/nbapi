@@ -16,6 +16,7 @@ const (
 	responsesInputTypeFunctionCallOutput = "function_call_output"
 	responsesInputTypeCustomToolCall     = "custom_tool_call"
 	responsesInputTypeCustomToolOutput   = "custom_tool_call_output"
+	responsesInputTypeReasoning          = "reasoning"
 	responsesChatToolTypeFunction        = "function"
 	responsesChatToolTypePlugin          = "plugin"
 	responsesToolTypeNamespace           = "namespace"
@@ -186,6 +187,13 @@ func responsesInputItemToChatMessages(item map[string]any, messages []dto.Messag
 		callID := strings.TrimSpace(common.Interface2String(item["call_id"]))
 		content := responseToolOutputToChatContent(item["output"])
 		return append(messages, dto.Message{Role: "tool", ToolCallId: callID, Content: content}), nil
+	case responsesInputTypeCustomToolOutput:
+		callID := strings.TrimSpace(common.Interface2String(item["call_id"]))
+		content := responseToolOutputToChatContent(item["output"])
+		return append(messages, dto.Message{Role: "tool", ToolCallId: callID, Content: content}), nil
+	case responsesInputTypeReasoning:
+		// reasoning 默认隐藏：历史推理内容不应转换为聊天消息发给上游。
+		return messages, nil
 	}
 
 	role := strings.TrimSpace(common.Interface2String(item["role"]))

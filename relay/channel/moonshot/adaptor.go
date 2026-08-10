@@ -145,6 +145,12 @@ func (a *Adaptor) ConvertOpenAIResponsesRequest(c *gin.Context, info *relaycommo
 		chatReq.MaxTokens = chatReq.MaxCompletionTokens
 		chatReq.MaxCompletionTokens = nil
 	}
+	if info != nil && info.SupportStreamOptions && info.IsStream {
+		if chatReq.StreamOptions == nil {
+			chatReq.StreamOptions = &dto.StreamOptions{}
+		}
+		chatReq.StreamOptions.IncludeUsage = true
+	}
 	if info != nil {
 		info.RelayMode = constant.RelayModeChatCompletions
 		info.RequestURLPath = "/v1/chat/completions"
