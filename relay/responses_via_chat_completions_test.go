@@ -47,7 +47,7 @@ func TestResponsesViaChatCompletionsForcesStreamUsage(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	savedForceStreamOption := appconstant.ForceStreamOption
 	savedStreamingTimeout := appconstant.StreamingTimeout
-	appconstant.ForceStreamOption = true
+	appconstant.ForceStreamOption = false
 	appconstant.StreamingTimeout = 60
 	t.Cleanup(func() {
 		appconstant.ForceStreamOption = savedForceStreamOption
