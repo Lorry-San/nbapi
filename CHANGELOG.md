@@ -8,6 +8,12 @@
 - 开启时继续按 `TRUSTED_PROXIES` 白名单校验代理来源；关闭时直接信任 `CF-Connecting-IP`、`True-Client-IP`、`X-Forwarded-For` 与 `X-Real-IP`。
 - 保留现有 `TrustedProxiesEnabled` 配置值，无需数据库迁移；补充伪造风险提示和对应回归测试。
 
+### Claude Opus 5 缓存计费
+
+- 为 `claude-opus-5` 及 provider 前缀、思考变体补充缓存读取和缓存创建默认倍率，避免稀疏配置回退到普通输入价格。
+- Responses 强制转 ChatCompletions 时，流式请求会要求上游返回 usage，保留缓存读取 token 到回程、结算和日志。
+- ChatCompletions 历史记录可依据已记录的缓存 token 审计修正；Responses 历史本地估算记录缺少缓存 token，不能凭空推算，需结合上游账单人工核对。
+
 本文件记录 NBAPI 正式版本的重要变化。更细的发布说明见
 [`.github/release-notes`](.github/release-notes)。
 

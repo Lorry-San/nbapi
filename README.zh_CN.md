@@ -199,6 +199,7 @@ docker run --name nbapi -d --restart always \
 - ✅ 合法授权场景下的内部充值与额度分配（易支付、Stripe）
 - ✅ 组织内按次、按量或缓存命中成本核算
 - ✅ 支持 OpenAI、Azure、DeepSeek、Claude、Qwen 等模型的缓存计费统计
+- ✅ Claude Opus 5 缓存读取与 Responses 用量保留，并提供可审计的历史计费修正指引
 - ✅ 面向内部管理或企业客户的灵活计费策略配置
 
 ### 🔐 授权与安全

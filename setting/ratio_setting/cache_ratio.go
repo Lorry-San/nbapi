@@ -1,7 +1,15 @@
 package ratio_setting
 
 import (
+	"strings"
+
 	"github.com/Lorry-San/nbapi/types"
+)
+
+const (
+	claudeOpus5ModelPrefix      = "claude-opus-5"
+	claudeOpus5CacheRatio       = 0.1
+	claudeOpus5CreateCacheRatio = 1.25
 )
 
 var defaultCacheRatio = map[string]float64{
@@ -78,6 +86,7 @@ var defaultCacheRatio = map[string]float64{
 	"claude-opus-4-8-high":                0.1,
 	"claude-opus-4-8-medium":              0.1,
 	"claude-opus-4-8-low":                 0.1,
+	"claude-opus-5":                       claudeOpus5CacheRatio,
 }
 
 var defaultCreateCacheRatio = map[string]float64{
@@ -123,6 +132,7 @@ var defaultCreateCacheRatio = map[string]float64{
 	"claude-opus-4-8-high":                1.25,
 	"claude-opus-4-8-medium":              1.25,
 	"claude-opus-4-8-low":                 1.25,
+	"claude-opus-5":                       claudeOpus5CreateCacheRatio,
 }
 
 //var defaultCreateCacheRatio = map[string]float64{}
@@ -158,18 +168,55 @@ func UpdateCreateCacheRatioByJSONString(jsonStr string) error {
 // GetCacheRatio returns the cache ratio for a model
 func GetCacheRatio(name string) (float64, bool) {
 	ratio, ok := cacheRatioMap.Get(name)
-	if !ok {
-		return 1, false // Default to 1 if not found
+	if ok {
+		return ratio, true
 	}
-	return ratio, true
+
+	cacheModelName := modelNameWithoutProvider(name)
+	if cacheModelName != name {
+		if ratio, ok = cacheRatioMap.Get(cacheModelName); ok {
+			return ratio, true
+		}
+	}
+	if isClaudeOpus5Model(cacheModelName) {
+		if ratio, ok = cacheRatioMap.Get(claudeOpus5ModelPrefix); ok {
+			return ratio, true
+		}
+		return claudeOpus5CacheRatio, true
+	}
+	return 1, false // Default to 1 if not found
 }
 
 func GetCreateCacheRatio(name string) (float64, bool) {
 	ratio, ok := createCacheRatioMap.Get(name)
-	if !ok {
-		return 1.25, false // Default to 1.25 if not found
+	if ok {
+		return ratio, true
 	}
-	return ratio, true
+
+	cacheModelName := modelNameWithoutProvider(name)
+	if cacheModelName != name {
+		if ratio, ok = createCacheRatioMap.Get(cacheModelName); ok {
+			return ratio, true
+		}
+	}
+	if isClaudeOpus5Model(cacheModelName) {
+		if ratio, ok = createCacheRatioMap.Get(claudeOpus5ModelPrefix); ok {
+			return ratio, true
+		}
+		return claudeOpus5CreateCacheRatio, true
+	}
+	return 1.25, false // Default to 1.25 if not found
+}
+
+func modelNameWithoutProvider(name string) string {
+	if slash := strings.LastIndexByte(name, '/'); slash >= 0 {
+		return name[slash+1:]
+	}
+	return name
+}
+
+func isClaudeOpus5Model(name string) bool {
+	return name == claudeOpus5ModelPrefix || strings.HasPrefix(name, claudeOpus5ModelPrefix+"-")
 }
 
 func GetCacheRatioCopy() map[string]float64 {

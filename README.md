@@ -199,6 +199,7 @@ docker run --name nbapi -d --restart always \
 - ✅ Internal top-up and quota allocation for lawful authorized scenarios (EPay, Stripe)
 - ✅ Organization-level per-request, usage-based, and cache-hit cost accounting
 - ✅ Cache billing statistics for OpenAI, Azure, DeepSeek, Claude, Qwen, and supported models
+- ✅ Claude Opus 5 cache-read and Responses usage preservation with auditable billing correction guidance
 - ✅ Flexible billing policies for internal management or authorized enterprise customers
 
 ### 🔐 Authorization and Security

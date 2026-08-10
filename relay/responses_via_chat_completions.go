@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Lorry-San/nbapi/common"
+	appconstant "github.com/Lorry-San/nbapi/constant"
 	"github.com/Lorry-San/nbapi/dto"
 	"github.com/Lorry-San/nbapi/relay/channel"
 	"github.com/Lorry-San/nbapi/relay/channel/claude"
@@ -28,6 +29,12 @@ func responsesViaChatCompletions(c *gin.Context, info *relaycommon.RelayInfo, ad
 	if chatReq.MaxCompletionTokens != nil && chatReq.MaxTokens == nil {
 		chatReq.MaxTokens = chatReq.MaxCompletionTokens
 		chatReq.MaxCompletionTokens = nil
+	}
+	if info.SupportStreamOptions && info.IsStream && appconstant.ForceStreamOption {
+		if chatReq.StreamOptions == nil {
+			chatReq.StreamOptions = &dto.StreamOptions{}
+		}
+		chatReq.StreamOptions.IncludeUsage = true
 	}
 
 	applySystemPromptIfNeeded(c, info, chatReq)
