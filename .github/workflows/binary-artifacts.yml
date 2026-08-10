@@ -92,16 +92,14 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: frontend-dist
-          path: .
+          path: frontend-dist
 
       - name: Restore frontend asset paths
         run: |
+          rm -rf web/dist
           mkdir -p web
-          if [ -d dist ]; then
-            rm -rf web/dist
-            mv dist web/dist
-          fi
-          test -d web/dist
+          mv frontend-dist web/dist
+          test -f web/dist/index.html
 
       - name: Set up Go
         uses: actions/setup-go@v5
