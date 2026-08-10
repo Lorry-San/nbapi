@@ -40,26 +40,16 @@ jobs:
           CI: ""
           NODE_OPTIONS: "--max-old-space-size=4096"
         run: |
-          cd web/default
+          cd web
           bun install
           DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION="$VERSION" bun run build
-
-      - name: Build frontend (classic)
-        env:
-          CI: ""
-          NODE_OPTIONS: "--max-old-space-size=4096"
-        run: |
-          cd web/classic
-          bun install
-          VITE_REACT_APP_VERSION="$VERSION" bun run build
 
       - name: Upload frontend assets
         uses: actions/upload-artifact@v4
         with:
           name: frontend-dist
           path: |
-            web/default/dist
-            web/classic/dist
+            web/dist
           retention-days: 1
 
   build:
@@ -106,17 +96,12 @@ jobs:
 
       - name: Restore frontend asset paths
         run: |
-          mkdir -p web/default web/classic
-          if [ -d default/dist ]; then
-            rm -rf web/default/dist
-            mv default/dist web/default/dist
+          mkdir -p web
+          if [ -d dist ]; then
+            rm -rf web/dist
+            mv dist web/dist
           fi
-          if [ -d classic/dist ]; then
-            rm -rf web/classic/dist
-            mv classic/dist web/classic/dist
-          fi
-          test -d web/default/dist
-          test -d web/classic/dist
+          test -d web/dist
 
       - name: Set up Go
         uses: actions/setup-go@v5
