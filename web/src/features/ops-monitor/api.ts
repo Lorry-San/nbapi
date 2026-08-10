@@ -14,17 +14,12 @@ export async function getOpsMonitor(params: {
   model_name?: string
   group?: string
 }): Promise<OpsMonitorResponse> {
-  const res = await api.get('/api/ops/monitor', {
-    params,
-    disableDuplicate: true,
-  })
+  const res = await api.get('/api/ops/monitor', { params })
   return res.data
 }
 
 export async function getOpsAlertRules(): Promise<OpsAlertRulesResponse> {
-  const res = await api.get('/api/ops/alerts/rules', {
-    disableDuplicate: true,
-  })
+  const res = await api.get('/api/ops/alerts/rules')
   return res.data
 }
 
@@ -53,10 +48,7 @@ export async function getOpsAlertEvents(params: {
   rule_id?: number
   limit?: number
 }): Promise<OpsAlertEventsResponse> {
-  const res = await api.get('/api/ops/alerts/events', {
-    params,
-    disableDuplicate: true,
-  })
+  const res = await api.get('/api/ops/alerts/events', { params })
   return res.data
 }
 
