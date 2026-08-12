@@ -75,6 +75,7 @@ type ResponseStreamOptions struct {
 	ApplyReasoningOptions bool
 	ThinkingToContent     bool
 	PreserveReasoning     bool
+	ToolMappings          map[string]dto.ResponsesToolMapping
 }
 
 type ResponseStreamState struct {
@@ -801,6 +802,7 @@ func convertOAIChatResponseToOAIResponses(_ *gin.Context, info *relaycommon.Rela
 	if info != nil {
 		return ChatCompletionsResponseToResponsesResponseWithOptions(chatResponse, id, ChatCompletionsToResponsesOptions{
 			ThinkingToContent: info.ChannelSetting.ThinkingToContent,
+			ToolMappings:      info.ResponsesToolMappings,
 		})
 	}
 	return ChatCompletionsResponseToResponsesResponse(chatResponse, id)
@@ -828,6 +830,7 @@ func newOAIChatToOAIResponsesStreamState(options ResponseStreamOptions) any {
 		state = NewChatToResponsesStreamStateWithOptions(id, strings.TrimSpace(options.Model), ChatCompletionsToResponsesOptions{
 			ThinkingToContent: options.ThinkingToContent,
 			PreserveReasoning: options.PreserveReasoning,
+			ToolMappings:      options.ToolMappings,
 		})
 	} else {
 		state = NewChatToResponsesStreamState(id, strings.TrimSpace(options.Model))

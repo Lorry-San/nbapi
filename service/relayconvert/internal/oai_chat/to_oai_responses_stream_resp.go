@@ -22,6 +22,11 @@ type ChatToResponsesStreamState struct {
 
 	status            string
 	incompleteDetails *dto.IncompleteDetails
+	errorDetails      map[string]any
+	sawFinishReason   bool
+	finishReason      string
+	sawToolDelta      bool
+	droppedToolCalls  int
 	sentCreated       bool
 	textOutputIndex   int
 	textStarted       bool
@@ -39,6 +44,7 @@ type ChatToResponsesStreamState struct {
 	thinkingToContent bool
 	preserveReasoning bool
 	visibleReasoning  bool
+	toolMappings      map[string]dto.ResponsesToolMapping
 }
 
 type chatToResponsesStreamTool struct {
@@ -47,7 +53,9 @@ type chatToResponsesStreamTool struct {
 	ID          string
 	Name        string
 	Arguments   strings.Builder
+	Added       bool
 	Done        bool
+	Dropped     bool
 }
 
 type chatToResponsesOutputRef struct {
@@ -63,16 +71,17 @@ func NewChatToResponsesStreamState(id string, model string) *ChatToResponsesStre
 
 func NewChatToResponsesStreamStateWithOptions(id string, model string, options ChatCompletionsToResponsesOptions) *ChatToResponsesStreamState {
 	return &ChatToResponsesStreamState{
-		ID:              id,
-		Model:           model,
-		Created:         time.Now().Unix(),
-		Usage:           &dto.Usage{},
-		status:          "completed",
-		textOutputIndex: -1,
-		reasoningIndex:  -1,
-		toolsByIndex:    make(map[int]*chatToResponsesStreamTool),
+		ID:                id,
+		Model:             model,
+		Created:           time.Now().Unix(),
+		Usage:             &dto.Usage{},
+		status:            "in_progress",
+		textOutputIndex:   -1,
+		reasoningIndex:    -1,
+		toolsByIndex:      make(map[int]*chatToResponsesStreamTool),
 		thinkingToContent: options.ThinkingToContent,
 		preserveReasoning: options.PreserveReasoning,
+		toolMappings:      cloneResponsesToolMappings(options.ToolMappings),
 	}
 }
 
@@ -128,12 +137,29 @@ func FinalizeChatCompletionsStreamToResponses(state *ChatToResponsesStreamState)
 	if state == nil || state.finalized {
 		return nil
 	}
+	if !state.sawFinishReason {
+		if state.hasSubstantiveOutput() {
+			state.status = "incomplete"
+			state.incompleteDetails = &dto.IncompleteDetails{Reason: responsesIncompleteReasonStreamCut}
+		} else {
+			state.setFailed("Upstream Chat Completions stream ended before sending finish_reason", "stream_truncated")
+		}
+	}
 	events := state.doneDeltaEvents()
+	if state.status == "completed" && state.droppedToolCalls > 0 && !state.hasEmittedToolCall() {
+		state.setFailed(
+			fmt.Sprintf("Upstream returned %d tool call(s) without a function name, leaving no usable tool call in this turn", state.droppedToolCalls),
+			"upstream_tool_call_dropped",
+		)
+	}
 	state.finalized = true
 	resp := state.finalResponse()
 	eventType := responsesEventCompleted
-	if state.status == "incomplete" {
+	switch state.status {
+	case "incomplete":
 		eventType = responsesEventIncomplete
+	case "failed":
+		eventType = responsesEventFailed
 	}
 	events = append(events, responsesStreamEvent(eventType, dto.ResponsesStreamResponse{
 		Type:     eventType,
@@ -233,53 +259,40 @@ func (s *ChatToResponsesStreamState) closeVisibleReasoningIfNeeded() []ChatToRes
 }
 
 func (s *ChatToResponsesStreamState) appendToolCallDelta(toolCall dto.ToolCallResponse) ([]ChatToResponsesStreamEvent, error) {
-	chatIndex := 0
-	if toolCall.Index != nil {
-		chatIndex = *toolCall.Index
-	}
+	s.sawToolDelta = true
+	chatIndex := s.resolveToolIndex(toolCall)
 	tool := s.toolsByIndex[chatIndex]
-	events := make([]ChatToResponsesStreamEvent, 0, 2)
 	if tool == nil {
 		tool = &chatToResponsesStreamTool{
 			ChatIndex:   chatIndex,
-			OutputIndex: s.nextIndex("tool", chatIndex),
+			OutputIndex: -1,
 			ID:          strings.TrimSpace(toolCall.ID),
 			Name:        strings.TrimSpace(toolCall.Function.Name),
 		}
-		if tool.ID == "" {
-			tool.ID = fmt.Sprintf("%s_call_%d", s.ID, chatIndex)
-		}
 		s.toolsByIndex[chatIndex] = tool
-		events = append(events, responsesStreamEvent(responsesEventOutputItemAdded, dto.ResponsesStreamResponse{
-			Type:        responsesEventOutputItemAdded,
-			OutputIndex: intPtr(tool.OutputIndex),
-			ItemID:      tool.ID,
-			Item: &dto.ResponsesOutput{
-				Type:      responsesOutputTypeFunctionCall,
-				ID:        tool.ID,
-				Status:    "in_progress",
-				CallId:    tool.ID,
-				Name:      tool.Name,
-				Arguments: []byte(`""`),
-			},
-		}))
 	}
-	if strings.TrimSpace(toolCall.ID) != "" {
-		tool.ID = strings.TrimSpace(toolCall.ID)
+	wasAdded := tool.Added
+	if id := strings.TrimSpace(toolCall.ID); id != "" && (!tool.Added || tool.ID == "") {
+		tool.ID = id
 	}
-	if strings.TrimSpace(toolCall.Function.Name) != "" {
-		tool.Name = strings.TrimSpace(toolCall.Function.Name)
+	if name := strings.TrimSpace(toolCall.Function.Name); name != "" && (!tool.Added || tool.Name == "") {
+		tool.Name = name
 	}
+	events := make([]ChatToResponsesStreamEvent, 0, 3)
 	if toolCall.Function.Arguments != "" {
 		tool.Arguments.WriteString(toolCall.Function.Arguments)
 		s.usageText.WriteString(toolCall.Function.Arguments)
-		events = append(events, responsesStreamEvent(responsesEventFunctionArgsDelta, dto.ResponsesStreamResponse{
-			Type:        responsesEventFunctionArgsDelta,
-			OutputIndex: intPtr(tool.OutputIndex),
-			ItemID:      tool.ID,
-			Delta:       toolCall.Function.Arguments,
-		}))
+		if wasAdded && s.toolMapping(tool).Kind != dto.ResponsesToolKindCustom {
+			itemID := chatToolCallItemID(tool.ID, s.toolMapping(tool))
+			events = append(events, responsesStreamEvent(responsesEventFunctionArgsDelta, dto.ResponsesStreamResponse{
+				Type:        responsesEventFunctionArgsDelta,
+				OutputIndex: intPtr(tool.OutputIndex),
+				ItemID:      itemID,
+				Delta:       toolCall.Function.Arguments,
+			}))
+		}
 	}
+	events = append(events, s.flushReadyTools()...)
 	return events, nil
 }
 
@@ -319,26 +332,13 @@ func (s *ChatToResponsesStreamState) doneDeltaEvents() []ChatToResponsesStreamEv
 			Item:        s.reasoningOutput(status),
 		}))
 	}
-	for _, tool := range s.sortedTools() {
-		if tool.Done {
-			continue
-		}
-		tool.Done = true
-		events = append(events, responsesStreamEvent(responsesEventFunctionArgsDone, dto.ResponsesStreamResponse{
-			Type:        responsesEventFunctionArgsDone,
-			OutputIndex: intPtr(tool.OutputIndex),
-			ItemID:      tool.ID,
-		}))
-		events = append(events, responsesStreamEvent(responsesEventOutputItemDone, dto.ResponsesStreamResponse{
-			Type:        responsesEventOutputItemDone,
-			OutputIndex: intPtr(tool.OutputIndex),
-			Item:        s.toolOutput(tool, status),
-		}))
-	}
+	events = append(events, s.finalizeTools(status)...)
 	return events
 }
 
 func (s *ChatToResponsesStreamState) applyFinishReason(finishReason string) {
+	s.sawFinishReason = true
+	s.finishReason = strings.TrimSpace(finishReason)
 	if status, details := ResponsesStatusFromChatFinishReason(finishReason); status != "" {
 		s.status = status
 		s.incompleteDetails = details
@@ -355,7 +355,7 @@ func (s *ChatToResponsesStreamState) finalResponse() *dto.OpenAIResponsesRespons
 		case "reasoning":
 			output = append(output, *s.reasoningOutput(status))
 		case "tool":
-			if tool := s.toolsByIndex[ref.ToolIndex]; tool != nil {
+			if tool := s.toolsByIndex[ref.ToolIndex]; tool != nil && tool.Added && !tool.Dropped {
 				output = append(output, *s.toolOutput(tool, status))
 			}
 		}
@@ -365,6 +365,7 @@ func (s *ChatToResponsesStreamState) finalResponse() *dto.OpenAIResponsesRespons
 		Object:            "response",
 		CreatedAt:         int(s.Created),
 		Status:            []byte(fmt.Sprintf("%q", s.status)),
+		Error:             s.errorDetails,
 		IncompleteDetails: s.incompleteDetails,
 		Model:             s.Model,
 		Output:            output,
@@ -449,12 +450,191 @@ func (s *ChatToResponsesStreamState) reasoningOutput(status string) *dto.Respons
 }
 
 func (s *ChatToResponsesStreamState) toolOutput(tool *chatToResponsesStreamTool, status string) *dto.ResponsesOutput {
-	return &dto.ResponsesOutput{
-		Type:      responsesOutputTypeFunctionCall,
-		ID:        tool.ID,
-		Status:    status,
-		CallId:    tool.ID,
-		Name:      tool.Name,
-		Arguments: chatArgumentsRawMessage(tool.Arguments.String()),
+	output := chatToolCallOutputFromMapping(tool.ID, tool.Name, tool.Arguments.String(), status, s.toolMapping(tool))
+	return &output
+}
+
+func (s *ChatToResponsesStreamState) resolveToolIndex(toolCall dto.ToolCallResponse) int {
+	if toolCall.Index != nil {
+		return *toolCall.Index
 	}
+	id := strings.TrimSpace(toolCall.ID)
+	if id != "" {
+		for index, tool := range s.toolsByIndex {
+			if tool != nil && tool.ID == id {
+				return index
+			}
+		}
+		if lastIndex, tool, ok := s.lastTool(); ok && tool != nil && tool.ID == "" && !tool.Added && !tool.Done {
+			return lastIndex
+		}
+		return s.nextFreeToolIndex()
+	}
+	if lastIndex, _, ok := s.lastTool(); ok {
+		return lastIndex
+	}
+	return 0
+}
+
+func (s *ChatToResponsesStreamState) nextFreeToolIndex() int {
+	if len(s.toolsByIndex) == 0 {
+		return 0
+	}
+	maxIndex := 0
+	for index := range s.toolsByIndex {
+		if index > maxIndex {
+			maxIndex = index
+		}
+	}
+	return maxIndex + 1
+}
+
+func (s *ChatToResponsesStreamState) lastTool() (int, *chatToResponsesStreamTool, bool) {
+	if len(s.toolsByIndex) == 0 {
+		return 0, nil, false
+	}
+	indexes := make([]int, 0, len(s.toolsByIndex))
+	for index := range s.toolsByIndex {
+		indexes = append(indexes, index)
+	}
+	sort.Ints(indexes)
+	index := indexes[len(indexes)-1]
+	return index, s.toolsByIndex[index], true
+}
+
+func (s *ChatToResponsesStreamState) flushReadyTools() []ChatToResponsesStreamEvent {
+	events := make([]ChatToResponsesStreamEvent, 0)
+	for _, tool := range s.sortedTools() {
+		if tool == nil || tool.Done || tool.Dropped || tool.Added {
+			continue
+		}
+		if strings.TrimSpace(tool.ID) == "" || strings.TrimSpace(tool.Name) == "" {
+			break
+		}
+		tool.OutputIndex = s.nextIndex("tool", tool.ChatIndex)
+		tool.Added = true
+		itemValue := chatToolCallOutputFromMapping(tool.ID, tool.Name, "", "in_progress", s.toolMapping(tool))
+		item := &itemValue
+		itemID := item.ID
+		if itemID == "" {
+			itemID = chatToolCallItemID(tool.ID, s.toolMapping(tool))
+		}
+		events = append(events, responsesStreamEvent(responsesEventOutputItemAdded, dto.ResponsesStreamResponse{
+			Type:        responsesEventOutputItemAdded,
+			OutputIndex: intPtr(tool.OutputIndex),
+			ItemID:      itemID,
+			Item:        item,
+		}))
+		if tool.Arguments.Len() > 0 && s.toolMapping(tool).Kind != dto.ResponsesToolKindCustom {
+			events = append(events, responsesStreamEvent(responsesEventFunctionArgsDelta, dto.ResponsesStreamResponse{
+				Type:        responsesEventFunctionArgsDelta,
+				OutputIndex: intPtr(tool.OutputIndex),
+				ItemID:      itemID,
+				Delta:       tool.Arguments.String(),
+			}))
+		}
+	}
+	return events
+}
+
+func (s *ChatToResponsesStreamState) finalizeTools(status string) []ChatToResponsesStreamEvent {
+	for _, tool := range s.sortedTools() {
+		if tool == nil || tool.Done || tool.Dropped {
+			continue
+		}
+		if strings.TrimSpace(tool.Name) == "" {
+			tool.Dropped = true
+			tool.Done = true
+			s.droppedToolCalls++
+			continue
+		}
+		if strings.TrimSpace(tool.ID) == "" {
+			tool.ID = fmt.Sprintf("%s_call_%d", s.ID, tool.ChatIndex)
+		}
+	}
+
+	events := s.flushReadyTools()
+	for _, tool := range s.sortedTools() {
+		if tool == nil || tool.Done || tool.Dropped || !tool.Added {
+			continue
+		}
+		output := s.toolOutput(tool, status)
+		itemID := output.ID
+		if itemID == "" {
+			itemID = chatToolCallItemID(tool.ID, s.toolMapping(tool))
+		}
+		if s.toolMapping(tool).Kind == dto.ResponsesToolKindCustom {
+			if output.Input != "" {
+				events = append(events, responsesStreamEvent(responsesEventCustomToolInputDelta, dto.ResponsesStreamResponse{
+					Type:        responsesEventCustomToolInputDelta,
+					OutputIndex: intPtr(tool.OutputIndex),
+					ItemID:      itemID,
+					Delta:       output.Input,
+				}))
+			}
+			events = append(events, responsesStreamEvent(responsesEventCustomToolInputDone, dto.ResponsesStreamResponse{
+				Type:        responsesEventCustomToolInputDone,
+				OutputIndex: intPtr(tool.OutputIndex),
+				ItemID:      itemID,
+				Input:       output.Input,
+			}))
+		} else {
+			events = append(events, responsesStreamEvent(responsesEventFunctionArgsDone, dto.ResponsesStreamResponse{
+				Type:        responsesEventFunctionArgsDone,
+				OutputIndex: intPtr(tool.OutputIndex),
+				ItemID:      itemID,
+				Arguments:   tool.Arguments.String(),
+			}))
+		}
+		events = append(events, responsesStreamEvent(responsesEventOutputItemDone, dto.ResponsesStreamResponse{
+			Type:        responsesEventOutputItemDone,
+			OutputIndex: intPtr(tool.OutputIndex),
+			Item:        output,
+		}))
+		tool.Done = true
+	}
+	return events
+}
+
+func (s *ChatToResponsesStreamState) toolMapping(tool *chatToResponsesStreamTool) dto.ResponsesToolMapping {
+	if s == nil || tool == nil || s.toolMappings == nil {
+		return dto.ResponsesToolMapping{}
+	}
+	return s.toolMappings[tool.Name]
+}
+
+func (s *ChatToResponsesStreamState) hasEmittedToolCall() bool {
+	for _, tool := range s.toolsByIndex {
+		if tool != nil && tool.Added && !tool.Dropped {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *ChatToResponsesStreamState) hasSubstantiveOutput() bool {
+	return strings.TrimSpace(s.text.String()) != "" ||
+		strings.TrimSpace(s.reasoning.String()) != "" ||
+		s.sawToolDelta
+}
+
+func (s *ChatToResponsesStreamState) setFailed(message string, code string) {
+	s.status = "failed"
+	s.incompleteDetails = nil
+	s.errorDetails = map[string]any{
+		"message": message,
+		"type":    code,
+		"code":    code,
+	}
+}
+
+func cloneResponsesToolMappings(mappings map[string]dto.ResponsesToolMapping) map[string]dto.ResponsesToolMapping {
+	if len(mappings) == 0 {
+		return nil
+	}
+	out := make(map[string]dto.ResponsesToolMapping, len(mappings))
+	for name, mapping := range mappings {
+		out[name] = mapping
+	}
+	return out
 }

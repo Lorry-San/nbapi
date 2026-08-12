@@ -58,6 +58,9 @@ func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 			return relaycommon.GetFullRequestURL(specialPlan.OpenAIBaseURL, moonshotOpenAIRequestPath(info), info.ChannelType), nil
 		}
 	}
+	if info.UpstreamResponsesViaChatCompletions {
+		return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, "/v1/chat/completions", info.ChannelType), nil
+	}
 
 	switch info.RelayFormat {
 	case types.RelayFormatClaude:
@@ -80,6 +83,9 @@ func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 
 func moonshotOpenAIRequestPath(info *relaycommon.RelayInfo) string {
 	if info == nil {
+		return "/v1/chat/completions"
+	}
+	if info.UpstreamResponsesViaChatCompletions {
 		return "/v1/chat/completions"
 	}
 	switch info.RelayMode {
@@ -137,7 +143,7 @@ func (a *Adaptor) ConvertOpenAIResponsesRequest(c *gin.Context, info *relaycommo
 		return request, nil
 	}
 
-	chatReq, err := convertMoonshotResponsesRequestToChatCompletionsRequest(&request)
+	chatReq, toolMappings, err := convertMoonshotResponsesRequestToChatCompletionsRequest(&request)
 	if err != nil {
 		return nil, err
 	}
@@ -152,8 +158,8 @@ func (a *Adaptor) ConvertOpenAIResponsesRequest(c *gin.Context, info *relaycommo
 		chatReq.StreamOptions.IncludeUsage = true
 	}
 	if info != nil {
-		info.RelayMode = constant.RelayModeChatCompletions
-		info.RequestURLPath = "/v1/chat/completions"
+		info.ResponsesToolMappings = toolMappings
+		info.UpstreamResponsesViaChatCompletions = true
 		info.FinalRequestRelayFormat = types.RelayFormatOpenAI
 		info.AppendRequestConversion(types.RelayFormatOpenAI)
 	}
@@ -210,5 +216,5 @@ func isMoonshotResponsesViaChatResponse(info *relaycommon.RelayInfo) bool {
 		return false
 	}
 	return info.RelayFormat == types.RelayFormatOpenAIResponses &&
-		info.GetFinalRequestRelayFormat() == types.RelayFormatOpenAI
+		info.UpstreamResponsesViaChatCompletions
 }

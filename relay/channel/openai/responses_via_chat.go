@@ -74,6 +74,7 @@ func OaiChatToResponsesStreamHandler(c *gin.Context, info *relaycommon.RelayInfo
 		Model:                 info.UpstreamModelName,
 		ApplyReasoningOptions: true,
 		ThinkingToContent:     info.ChannelSetting.ThinkingToContent,
+		ToolMappings:          info.ResponsesToolMappings,
 	})
 	if err != nil {
 		return nil, types.NewOpenAIError(err, types.ErrorCodeBadResponse, http.StatusInternalServerError)

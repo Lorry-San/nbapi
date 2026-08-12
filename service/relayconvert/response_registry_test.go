@@ -456,7 +456,10 @@ func TestConvertStreamResponseStatefulDirectConverters(t *testing.T) {
 		Id:    "chatcmpl_1",
 		Model: "gpt-test",
 		Choices: []dto.ChatCompletionsStreamResponseChoice{
-			{Delta: dto.ChatCompletionsStreamResponseChoiceDelta{Content: respPtr("hello")}},
+			{
+				Delta:        dto.ChatCompletionsStreamResponseChoiceDelta{Content: respPtr("hello")},
+				FinishReason: respPtr("stop"),
+			},
 		},
 		Usage: &dto.Usage{PromptTokens: 2, CompletionTokens: 3, TotalTokens: 5},
 	})

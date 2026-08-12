@@ -184,6 +184,10 @@ type RelayInfo struct {
 	// UpstreamResponsesViaChatCompletions means the public request is
 	// /v1/responses, but the selected upstream only supports chat completions.
 	UpstreamResponsesViaChatCompletions bool
+	// ResponsesToolMappings is scoped to this request. It restores namespace,
+	// custom and tool-search calls after a Responses request used a Chat-only
+	// upstream representation.
+	ResponsesToolMappings map[string]dto.ResponsesToolMapping
 
 	StreamStatus *StreamStatus
 
@@ -617,6 +621,19 @@ func (info *RelayInfo) InitRequestConversionChain() {
 		return
 	}
 	info.RequestConversionChain = []types.RelayFormat{info.RelayFormat}
+}
+
+// ResetResponsesConversionState clears channel-specific conversion data before
+// a Responses request is attempted on a newly selected channel.
+func (info *RelayInfo) ResetResponsesConversionState() {
+	if info == nil {
+		return
+	}
+	info.FinalRequestRelayFormat = ""
+	info.UpstreamResponsesViaChatCompletions = false
+	info.ResponsesToolMappings = nil
+	info.RequestConversionChain = nil
+	info.InitRequestConversionChain()
 }
 
 func (info *RelayInfo) AppendRequestConversion(format types.RelayFormat) {

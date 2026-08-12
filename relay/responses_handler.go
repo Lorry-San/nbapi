@@ -22,6 +22,7 @@ import (
 
 func ResponsesHelper(c *gin.Context, info *relaycommon.RelayInfo) (nbapiError *types.NBAPIError) {
 	info.InitChannelMeta(c)
+	info.ResetResponsesConversionState()
 	if info.RelayMode == relayconstant.RelayModeResponsesCompact {
 		switch info.ApiType {
 		case appconstant.APITypeOpenAI, appconstant.APITypeCodex:

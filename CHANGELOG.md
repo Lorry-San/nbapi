@@ -1,5 +1,28 @@
 # NBAPI Changelog
 
+## 1.5.6 - 2026-08-12
+
+### Moonshot/Kimi Codex 工具调用
+
+- 重写 Moonshot `Responses -> ChatCompletions` 工具转换，完整支持 Codex 使用的 `namespace`、`custom` 与 `tool_search` 工具；Kimi 现在可进入与 GPT 相同的子代理、命令执行和文件修改工具循环。
+- 将命名空间工具稳定展平为 ChatCompletions 函数名，并在回包时恢复原始 `namespace`、函数名、`call_id` 与参数；无效、超长或重名工具名使用稳定映射，避免 Moonshot 拒绝请求或调用错工具。
+- 支持 `apply_patch` 等自定义工具、动态加载的命名空间工具、`tool_choice`、严格 schema、历史工具调用及输出配对。
+
+### 流式回包与失败语义
+
+- 重构 ChatCompletions 工具流状态机，兼容延迟返回函数名、缺失索引、并行调用、自定义工具输入事件以及分片参数。
+- 修复工具流缺少 `finish_reason`、上游中途截断或非流式 `choices` 为空时被误判为普通文本成功的问题。
+- 无名称且无法执行的工具调用现在会明确返回失败，不再让 Codex 会话只输出一句文字后静默结束；`finish_reason=length` 仍按未完成响应处理。
+
+### 重试隔离
+
+- Moonshot 转换不再修改请求原始 Responses 模式，改用独立上游承载标记选择 `/v1/chat/completions`。
+- 每次换通道重试前都会清理工具映射和转换链，避免上一通道的工具名、协议格式或响应处理状态污染下一次尝试。
+
+### 兼容性
+
+- 无需数据库迁移。Kimi 已具备与 GPT 相同的 Codex 工具协议能力，但具体是否主动调用工具仍受模型自身工具选择能力影响。
+
 ## 1.5.5 - 2026-08-10
 
 ### Claude Opus 5 缓存计费

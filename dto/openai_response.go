@@ -335,20 +335,27 @@ type ResponsesOutput struct {
 	Result    string                   `json:"result,omitempty"`
 	CallId    string                   `json:"call_id,omitempty"`
 	Name      string                   `json:"name,omitempty"`
+	Namespace string                   `json:"namespace,omitempty"`
+	Input     string                   `json:"input,omitempty"`
+	Execution string                   `json:"execution,omitempty"`
 	Arguments json.RawMessage          `json:"arguments,omitempty"`
 }
 
 type responsesOutputAlias ResponsesOutput
 type responsesOutputWithoutArguments struct {
-	Type    string                   `json:"type"`
-	ID      string                   `json:"id"`
-	Status  string                   `json:"status"`
-	Role    string                   `json:"role"`
-	Content []ResponsesOutputContent `json:"content"`
-	Quality string                   `json:"quality"`
-	Size    string                   `json:"size"`
-	CallId  string                   `json:"call_id,omitempty"`
-	Name    string                   `json:"name,omitempty"`
+	Type      string                   `json:"type"`
+	ID        string                   `json:"id"`
+	Status    string                   `json:"status"`
+	Role      string                   `json:"role"`
+	Content   []ResponsesOutputContent `json:"content"`
+	Quality   string                   `json:"quality"`
+	Size      string                   `json:"size"`
+	Result    string                   `json:"result,omitempty"`
+	CallId    string                   `json:"call_id,omitempty"`
+	Name      string                   `json:"name,omitempty"`
+	Namespace string                   `json:"namespace,omitempty"`
+	Input     string                   `json:"input,omitempty"`
+	Execution string                   `json:"execution,omitempty"`
 }
 
 func (r ResponsesOutput) MarshalJSON() ([]byte, error) {
@@ -359,15 +366,19 @@ func (r ResponsesOutput) MarshalJSON() ([]byte, error) {
 	if r.Type == "function_call" {
 		return json.Marshal(responsesOutputWithStringArguments{
 			responsesOutputWithoutArguments: responsesOutputWithoutArguments{
-				Type:    r.Type,
-				ID:      r.ID,
-				Status:  r.Status,
-				Role:    r.Role,
-				Content: r.Content,
-				Quality: r.Quality,
-				Size:    r.Size,
-				CallId:  r.CallId,
-				Name:    r.Name,
+				Type:      r.Type,
+				ID:        r.ID,
+				Status:    r.Status,
+				Role:      r.Role,
+				Content:   r.Content,
+				Quality:   r.Quality,
+				Size:      r.Size,
+				Result:    r.Result,
+				CallId:    r.CallId,
+				Name:      r.Name,
+				Namespace: r.Namespace,
+				Input:     r.Input,
+				Execution: r.Execution,
 			},
 			Arguments: r.ArgumentsString(),
 		})
@@ -421,11 +432,12 @@ const (
 
 // ResponsesStreamResponse 用于处理 /v1/responses 流式响应
 type ResponsesStreamResponse struct {
-	Type     string                   `json:"type"`
-	Response *OpenAIResponsesResponse `json:"response,omitempty"`
-	Delta    string                   `json:"delta,omitempty"`
-	Arguments string                  `json:"arguments,omitempty"`
-	Item     *ResponsesOutput         `json:"item,omitempty"`
+	Type      string                   `json:"type"`
+	Response  *OpenAIResponsesResponse `json:"response,omitempty"`
+	Delta     string                   `json:"delta,omitempty"`
+	Arguments string                   `json:"arguments,omitempty"`
+	Input     string                   `json:"input,omitempty"`
+	Item      *ResponsesOutput         `json:"item,omitempty"`
 	// - response.function_call_arguments.delta
 	// - response.function_call_arguments.done
 	OutputIndex  *int                           `json:"output_index,omitempty"`

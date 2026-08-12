@@ -1,6 +1,7 @@
 package oaichat
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -17,23 +18,30 @@ const (
 	responsesEventCreated                  = "response.created"
 	responsesEventCompleted                = "response.completed"
 	responsesEventIncomplete               = "response.incomplete"
+	responsesEventFailed                   = "response.failed"
 	responsesEventOutputTextDelta          = "response.output_text.delta"
 	responsesEventOutputItemAdded          = "response.output_item.added"
 	responsesEventOutputItemDone           = "response.output_item.done"
 	responsesEventFunctionArgsDelta        = "response.function_call_arguments.delta"
 	responsesEventFunctionArgsDone         = "response.function_call_arguments.done"
+	responsesEventCustomToolInputDelta     = "response.custom_tool_call_input.delta"
+	responsesEventCustomToolInputDone      = "response.custom_tool_call_input.done"
 	responsesEventReasoningSummaryDelta    = "response.reasoning_summary_text.delta"
 	responsesEventReasoningSummaryDone     = "response.reasoning_summary_text.done"
 	responsesOutputTypeFunctionCall        = "function_call"
+	responsesOutputTypeCustomToolCall      = "custom_tool_call"
+	responsesOutputTypeToolSearchCall      = "tool_search_call"
 	responsesOutputTypeMessage             = "message"
 	responsesOutputTypeReasoning           = "reasoning"
 	responsesIncompleteReasonContentFilter = "content_filter"
 	responsesIncompleteReasonMaxTokens     = "max_output_tokens"
+	responsesIncompleteReasonStreamCut     = "stream_truncated"
 )
 
 type ChatCompletionsToResponsesOptions struct {
 	ThinkingToContent bool
 	PreserveReasoning bool
+	ToolMappings      map[string]dto.ResponsesToolMapping
 }
 
 func ChatCompletionsResponseToResponsesResponse(resp *dto.OpenAITextResponse, id string) (*dto.OpenAIResponsesResponse, *dto.Usage, error) {
@@ -59,7 +67,7 @@ func ChatCompletionsResponseToResponsesResponseWithOptions(resp *dto.OpenAITextR
 	}
 
 	if len(resp.Choices) == 0 {
-		return out, usage, nil
+		return nil, usage, errors.New("upstream Chat Completions response has no choices")
 	}
 
 	choice := resp.Choices[0]
@@ -102,12 +110,23 @@ func ChatCompletionsResponseToResponsesResponseWithOptions(resp *dto.OpenAITextR
 		})
 	}
 
-	for i, toolCall := range choice.Message.ParseToolCalls() {
-		toolOutput, err := chatToolCallToResponsesOutput(toolCall, id, i, responseOutputStatus(out))
+	toolCalls := choice.Message.ParseToolCalls()
+	validToolCalls := 0
+	droppedToolCalls := 0
+	for i, toolCall := range toolCalls {
+		toolOutput, ok, err := chatToolCallToResponsesOutput(toolCall, id, i, responseOutputStatus(out), options.ToolMappings)
 		if err != nil {
 			return nil, nil, err
 		}
+		if !ok {
+			droppedToolCalls++
+			continue
+		}
+		validToolCalls++
 		out.Output = append(out.Output, toolOutput)
+	}
+	if responseStatusString(out) == "completed" && droppedToolCalls > 0 && validToolCalls == 0 {
+		return nil, nil, fmt.Errorf("upstream returned %d tool call(s) without a function name, leaving no usable tool call in this turn", droppedToolCalls)
 	}
 
 	return out, usage, nil
@@ -196,20 +215,17 @@ func responseStatusString(resp *dto.OpenAIResponsesResponse) string {
 	return strings.TrimSpace(status)
 }
 
-func chatToolCallToResponsesOutput(toolCall dto.ToolCallRequest, responseID string, index int, status string) (dto.ResponsesOutput, error) {
+func chatToolCallToResponsesOutput(toolCall dto.ToolCallRequest, responseID string, index int, status string, mappings map[string]dto.ResponsesToolMapping) (dto.ResponsesOutput, bool, error) {
 	callID := strings.TrimSpace(toolCall.ID)
 	if callID == "" {
 		callID = fmt.Sprintf("%s_call_%d", responseID, index)
 	}
 	if toolCall.Type == "" || toolCall.Type == "function" {
-		return dto.ResponsesOutput{
-			Type:      responsesOutputTypeFunctionCall,
-			ID:        callID,
-			Status:    status,
-			CallId:    callID,
-			Name:      toolCall.Function.Name,
-			Arguments: chatArgumentsRawMessage(toolCall.Function.Arguments),
-		}, nil
+		chatName := strings.TrimSpace(toolCall.Function.Name)
+		if chatName == "" {
+			return dto.ResponsesOutput{}, false, nil
+		}
+		return chatToolCallOutputFromMapping(callID, chatName, toolCall.Function.Arguments, status, mappings[chatName]), true, nil
 	}
 	return dto.ResponsesOutput{
 		Type:      toolCall.Type,
@@ -217,7 +233,82 @@ func chatToolCallToResponsesOutput(toolCall dto.ToolCallRequest, responseID stri
 		Status:    status,
 		CallId:    callID,
 		Arguments: toolCall.Custom,
-	}, nil
+	}, true, nil
+}
+
+func chatToolCallOutputFromMapping(callID string, chatName string, arguments string, status string, mapping dto.ResponsesToolMapping) dto.ResponsesOutput {
+	itemID := chatToolCallItemID(callID, mapping)
+	switch mapping.Kind {
+	case dto.ResponsesToolKindCustom:
+		return dto.ResponsesOutput{
+			Type:   responsesOutputTypeCustomToolCall,
+			ID:     itemID,
+			Status: status,
+			CallId: callID,
+			Name:   mapping.Name,
+			Input:  customToolInputFromChatArguments(arguments),
+		}
+	case dto.ResponsesToolKindToolSearch:
+		return dto.ResponsesOutput{
+			Type:      responsesOutputTypeToolSearchCall,
+			Status:    status,
+			CallId:    callID,
+			Execution: "client",
+			Arguments: chatToolArgumentsObjectRaw(arguments),
+		}
+	default:
+		name := strings.TrimSpace(mapping.Name)
+		if name == "" {
+			name = chatName
+		}
+		return dto.ResponsesOutput{
+			Type:      responsesOutputTypeFunctionCall,
+			ID:        itemID,
+			Status:    status,
+			CallId:    callID,
+			Name:      name,
+			Namespace: mapping.Namespace,
+			Arguments: chatArgumentsRawMessage(arguments),
+		}
+	}
+}
+
+func chatToolCallItemID(callID string, mapping dto.ResponsesToolMapping) string {
+	if mapping.Kind == "" {
+		return callID
+	}
+	if mapping.Kind == dto.ResponsesToolKindCustom {
+		return "ctc_" + callID
+	}
+	return "fc_" + callID
+}
+
+func customToolInputFromChatArguments(arguments string) string {
+	if strings.TrimSpace(arguments) == "" {
+		return ""
+	}
+	var value map[string]any
+	if err := common.Unmarshal([]byte(arguments), &value); err == nil {
+		if input, ok := value["input"].(string); ok {
+			return input
+		}
+	}
+	return arguments
+}
+
+func chatToolArgumentsObjectRaw(arguments string) json.RawMessage {
+	trimmed := strings.TrimSpace(arguments)
+	if trimmed == "" {
+		return json.RawMessage(`{}`)
+	}
+	var value map[string]any
+	if err := common.Unmarshal([]byte(trimmed), &value); err == nil {
+		if raw, err := common.Marshal(value); err == nil {
+			return raw
+		}
+	}
+	raw, _ := common.Marshal(map[string]any{"query": arguments})
+	return raw
 }
 
 func chatArgumentsRawMessage(arguments string) []byte {

@@ -102,6 +102,25 @@ func TestGetRequestURLUsesVersionedBaseURLForResponses(t *testing.T) {
 	require.Equal(t, "https://api.moonshot.cn/v3/responses", got)
 }
 
+func TestGetRequestURLUsesVersionedChatURLForConvertedResponses(t *testing.T) {
+	info := &relaycommon.RelayInfo{
+		ChannelMeta: &relaycommon.ChannelMeta{
+			ChannelBaseUrl: "https://api.moonshot.cn/v3",
+			ChannelType:    channelconstant.ChannelTypeMoonshot,
+		},
+		RelayFormat:                         types.RelayFormatOpenAIResponses,
+		RelayMode:                           relayconstant.RelayModeResponses,
+		RequestURLPath:                      "/v1/responses",
+		UpstreamResponsesViaChatCompletions: true,
+	}
+
+	got, err := (&Adaptor{}).GetRequestURL(info)
+
+	require.NoError(t, err)
+	require.Equal(t, "https://api.moonshot.cn/v3/chat/completions", got)
+	require.Equal(t, relayconstant.RelayModeResponses, info.RelayMode)
+}
+
 func TestGetRequestURLUsesVersionedBaseURLForChatToResponsesConversion(t *testing.T) {
 	info := &relaycommon.RelayInfo{
 		ChannelMeta: &relaycommon.ChannelMeta{
@@ -170,15 +189,29 @@ func TestConvertOpenAIResponsesRequestUsesMoonshotChatConversion(t *testing.T) {
 			{
 				"type":    "custom_tool_call",
 				"call_id": "custom_1",
-				"name":    "shell_command",
+				"name":    "apply_patch",
 				"input":   "whoami",
+			},
+			{
+				"type":    "custom_tool_call_output",
+				"call_id": "custom_1",
+				"output":  "done",
 			},
 		}),
 		Tools: mustMoonshotRawMessage(t, []map[string]any{
 			{
-				"type":        "namespace",
-				"name":        "shell_command",
-				"description": "must be dropped for moonshot chat",
+				"type": "namespace",
+				"name": "shell_command",
+				"tools": []map[string]any{
+					{
+						"type":        "function",
+						"name":        "run",
+						"description": "Run a command",
+						"parameters": map[string]any{
+							"type": "object",
+						},
+					},
+				},
 			},
 			{
 				"type":        "function",
@@ -189,13 +222,18 @@ func TestConvertOpenAIResponsesRequestUsesMoonshotChatConversion(t *testing.T) {
 				},
 			},
 			{
-				"type": "plugin",
-				"name": "browser",
+				"type":        "custom",
+				"name":        "apply_patch",
+				"description": "Apply a patch",
+			},
+			{
+				"type": "tool_search",
 			},
 		}),
 		ToolChoice: mustMoonshotRawMessage(t, map[string]any{
-			"type": "namespace",
-			"name": "shell_command",
+			"type":      "function",
+			"namespace": "shell_command",
+			"name":      "run",
 		}),
 		Store:                mustMoonshotRawMessage(t, false),
 		Metadata:             mustMoonshotRawMessage(t, map[string]any{"trace": "drop"}),
@@ -205,8 +243,9 @@ func TestConvertOpenAIResponsesRequestUsesMoonshotChatConversion(t *testing.T) {
 		EnableThinking:       mustMoonshotRawMessage(t, false),
 	}
 	info := &relaycommon.RelayInfo{
-		RelayFormat: types.RelayFormatOpenAIResponses,
-		RelayMode:   relayconstant.RelayModeResponses,
+		RelayFormat:    types.RelayFormatOpenAIResponses,
+		RelayMode:      relayconstant.RelayModeResponses,
+		RequestURLPath: "/v1/responses",
 		ChannelMeta: &relaycommon.ChannelMeta{
 			UpstreamModelName: "kimi-k2.7",
 		},
@@ -217,20 +256,41 @@ func TestConvertOpenAIResponsesRequestUsesMoonshotChatConversion(t *testing.T) {
 	require.NoError(t, err)
 	chatReq, ok := converted.(*dto.GeneralOpenAIRequest)
 	require.True(t, ok)
-	require.Equal(t, relayconstant.RelayModeChatCompletions, info.RelayMode)
-	require.Equal(t, "/v1/chat/completions", info.RequestURLPath)
+	require.Equal(t, relayconstant.RelayModeResponses, info.RelayMode)
+	require.Equal(t, "/v1/responses", info.RequestURLPath)
+	require.True(t, info.UpstreamResponsesViaChatCompletions)
 	require.Equal(t, types.RelayFormatOpenAI, info.GetFinalRequestRelayFormat())
-	require.Len(t, chatReq.Messages, 3)
+	require.Len(t, chatReq.Messages, 4)
 	require.Equal(t, "system", chatReq.Messages[0].Role)
 	require.Equal(t, "system rules", chatReq.Messages[0].StringContent())
 	require.Equal(t, "user", chatReq.Messages[1].Role)
 	require.Equal(t, "hello", chatReq.Messages[1].StringContent())
-	require.Equal(t, "user", chatReq.Messages[2].Role)
-	require.Empty(t, chatReq.Messages[2].ParseToolCalls())
-	require.Len(t, chatReq.Tools, 1)
+	require.Equal(t, "assistant", chatReq.Messages[2].Role)
+	historyCalls := chatReq.Messages[2].ParseToolCalls()
+	require.Len(t, historyCalls, 1)
+	require.Equal(t, "apply_patch", historyCalls[0].Function.Name)
+	require.JSONEq(t, `{"input":"whoami"}`, historyCalls[0].Function.Arguments)
+	require.Equal(t, "tool", chatReq.Messages[3].Role)
+	require.Equal(t, "custom_1", chatReq.Messages[3].ToolCallId)
+	require.Len(t, chatReq.Tools, 4)
 	require.Equal(t, "function", chatReq.Tools[0].Type)
-	require.Equal(t, "lookup", chatReq.Tools[0].Function.Name)
-	require.Nil(t, chatReq.ToolChoice)
+	require.Equal(t, "shell_command__run", chatReq.Tools[0].Function.Name)
+	require.Equal(t, "lookup", chatReq.Tools[1].Function.Name)
+	require.Equal(t, "apply_patch", chatReq.Tools[2].Function.Name)
+	require.Equal(t, "tool_search", chatReq.Tools[3].Function.Name)
+	require.Equal(t, map[string]any{
+		"type": "function",
+		"function": map[string]any{
+			"name": "shell_command__run",
+		},
+	}, chatReq.ToolChoice)
+	require.Equal(t, dto.ResponsesToolMapping{
+		Kind:      dto.ResponsesToolKindNamespace,
+		Name:      "run",
+		Namespace: "shell_command",
+	}, info.ResponsesToolMappings["shell_command__run"])
+	require.Equal(t, dto.ResponsesToolKindCustom, info.ResponsesToolMappings["apply_patch"].Kind)
+	require.Equal(t, dto.ResponsesToolKindToolSearch, info.ResponsesToolMappings["tool_search"].Kind)
 	require.Empty(t, chatReq.Store)
 	require.Empty(t, chatReq.Metadata)
 	require.Empty(t, chatReq.PromptCacheKey)
@@ -239,7 +299,7 @@ func TestConvertOpenAIResponsesRequestUsesMoonshotChatConversion(t *testing.T) {
 	require.Empty(t, chatReq.EnableThinking)
 }
 
-func TestConvertOpenAIResponsesRequestKeepsValidFunctionHistoryOnly(t *testing.T) {
+func TestConvertOpenAIResponsesRequestPreservesFunctionHistoryWithSafeNames(t *testing.T) {
 	request := dto.OpenAIResponsesRequest{
 		Model: "kimi-k2.7",
 		Input: mustMoonshotRawMessage(t, []map[string]any{
@@ -280,7 +340,7 @@ func TestConvertOpenAIResponsesRequestKeepsValidFunctionHistoryOnly(t *testing.T
 	require.NoError(t, err)
 	chatReq, ok := converted.(*dto.GeneralOpenAIRequest)
 	require.True(t, ok)
-	require.Len(t, chatReq.Messages, 3)
+	require.Len(t, chatReq.Messages, 4)
 	require.Equal(t, "assistant", chatReq.Messages[0].Role)
 	toolCalls := chatReq.Messages[0].ParseToolCalls()
 	require.Len(t, toolCalls, 1)
@@ -291,6 +351,115 @@ func TestConvertOpenAIResponsesRequestKeepsValidFunctionHistoryOnly(t *testing.T
 	require.Equal(t, "call_1", chatReq.Messages[1].ToolCallId)
 	require.Equal(t, "user", chatReq.Messages[2].Role)
 	require.Empty(t, chatReq.Messages[2].ToolCallId)
+	require.Equal(t, "assistant", chatReq.Messages[3].Role)
+	invalidNameCalls := chatReq.Messages[3].ParseToolCalls()
+	require.Len(t, invalidNameCalls, 1)
+	require.Equal(t, "call_bad", invalidNameCalls[0].ID)
+	require.NotEqual(t, "bad.namespace", invalidNameCalls[0].Function.Name)
+	require.True(t, moonshotValidChatFunctionName(invalidNameCalls[0].Function.Name))
+	require.Equal(t, "bad.namespace", info.ResponsesToolMappings[invalidNameCalls[0].Function.Name].Name)
+}
+
+func TestConvertOpenAIResponsesRequestKeepsToolSearchCatalogInHistory(t *testing.T) {
+	request := dto.OpenAIResponsesRequest{
+		Model: "kimi-k2.7",
+		Tools: mustMoonshotRawMessage(t, []map[string]any{
+			{"type": "tool_search"},
+		}),
+		Input: mustMoonshotRawMessage(t, []map[string]any{
+			{
+				"type":      "tool_search_call",
+				"call_id":   "search_1",
+				"arguments": map[string]any{"query": "load shell tools"},
+			},
+			{
+				"type":    "tool_search_output",
+				"call_id": "search_1",
+				"tools": []map[string]any{
+					{
+						"type": "namespace",
+						"name": "shell_command",
+						"tools": []map[string]any{
+							{
+								"type":       "function",
+								"name":       "run",
+								"parameters": map[string]any{"type": "object"},
+							},
+						},
+					},
+				},
+			},
+			{"type": "message", "role": "user", "content": "run pwd"},
+		}),
+	}
+	info := &relaycommon.RelayInfo{
+		RelayFormat: types.RelayFormatOpenAIResponses,
+		RelayMode:   relayconstant.RelayModeResponses,
+		ChannelMeta: &relaycommon.ChannelMeta{UpstreamModelName: "kimi-k2.7"},
+	}
+
+	converted, err := (&Adaptor{}).ConvertOpenAIResponsesRequest(nil, info, request)
+
+	require.NoError(t, err)
+	chatReq, ok := converted.(*dto.GeneralOpenAIRequest)
+	require.True(t, ok)
+	require.Len(t, chatReq.Tools, 2)
+	require.Equal(t, "tool_search", chatReq.Tools[0].Function.Name)
+	require.Equal(t, "shell_command__run", chatReq.Tools[1].Function.Name)
+	require.Len(t, chatReq.Messages, 3)
+	require.Equal(t, "tool", chatReq.Messages[1].Role)
+	require.Contains(t, chatReq.Messages[1].StringContent(), "shell_command")
+	require.Equal(t, dto.ResponsesToolMapping{
+		Kind:      dto.ResponsesToolKindNamespace,
+		Name:      "run",
+		Namespace: "shell_command",
+	}, info.ResponsesToolMappings["shell_command__run"])
+}
+
+func TestConvertOpenAIResponsesRequestSeparatesSameNameToolKinds(t *testing.T) {
+	request := dto.OpenAIResponsesRequest{
+		Model: "kimi-k2.7",
+		Tools: mustMoonshotRawMessage(t, []map[string]any{
+			{
+				"type":       "function",
+				"name":       "apply_patch",
+				"parameters": map[string]any{"type": "object"},
+			},
+			{
+				"type": "custom",
+				"name": "apply_patch",
+			},
+		}),
+		ToolChoice: mustMoonshotRawMessage(t, map[string]any{
+			"type": "custom",
+			"name": "apply_patch",
+		}),
+	}
+	info := &relaycommon.RelayInfo{
+		RelayFormat: types.RelayFormatOpenAIResponses,
+		RelayMode:   relayconstant.RelayModeResponses,
+		ChannelMeta: &relaycommon.ChannelMeta{UpstreamModelName: "kimi-k2.7"},
+	}
+
+	converted, err := (&Adaptor{}).ConvertOpenAIResponsesRequest(nil, info, request)
+
+	require.NoError(t, err)
+	chatReq, ok := converted.(*dto.GeneralOpenAIRequest)
+	require.True(t, ok)
+	require.Len(t, chatReq.Tools, 2)
+	functionName := chatReq.Tools[0].Function.Name
+	customName := chatReq.Tools[1].Function.Name
+	require.Equal(t, "apply_patch", functionName)
+	require.NotEqual(t, functionName, customName)
+	require.True(t, moonshotValidChatFunctionName(customName))
+	require.Equal(t, dto.ResponsesToolKindFunction, info.ResponsesToolMappings[functionName].Kind)
+	require.Equal(t, dto.ResponsesToolKindCustom, info.ResponsesToolMappings[customName].Kind)
+	require.Equal(t, map[string]any{
+		"type": "function",
+		"function": map[string]any{
+			"name": customName,
+		},
+	}, chatReq.ToolChoice)
 }
 
 func TestConvertOpenAIResponsesRequestKeepsInternalChatToResponsesPathNative(t *testing.T) {

@@ -1,6 +1,7 @@
 package moonshot
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,22 +11,34 @@ import (
 	"github.com/Lorry-San/nbapi/dto"
 )
 
-const moonshotChatToolTypeFunction = "function"
+const (
+	moonshotChatToolTypeFunction  = "function"
+	moonshotToolSearchName        = "tool_search"
+	moonshotCustomInputField      = "input"
+	moonshotChatToolNameMaxLength = 64
+)
 
-func convertMoonshotResponsesRequestToChatCompletionsRequest(req *dto.OpenAIResponsesRequest) (*dto.GeneralOpenAIRequest, error) {
+type moonshotToolContext struct {
+	chatTools          []dto.ToolCallRequest
+	mappings           map[string]dto.ResponsesToolMapping
+	responseNameToChat map[string]string
+}
+
+func convertMoonshotResponsesRequestToChatCompletionsRequest(req *dto.OpenAIResponsesRequest) (*dto.GeneralOpenAIRequest, map[string]dto.ResponsesToolMapping, error) {
 	if req == nil {
-		return nil, errors.New("request is nil")
+		return nil, nil, errors.New("request is nil")
 	}
 	if strings.TrimSpace(req.Model) == "" {
-		return nil, errors.New("model is required")
+		return nil, nil, errors.New("model is required")
 	}
 	if err := validateMoonshotResponsesChatUnsupportedFields(req); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	messages, err := moonshotResponsesInputToChatMessages(req.Input)
+	toolContext := buildMoonshotToolContext(req.Tools, req.Input)
+	messages, err := moonshotResponsesInputToChatMessages(req.Input, toolContext)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if moonshotRawJSONPresent(req.Instructions) {
 		instructions := moonshotRawJSONToString(req.Instructions)
@@ -43,7 +56,7 @@ func convertMoonshotResponsesRequestToChatCompletionsRequest(req *dto.OpenAIResp
 		}}
 	}
 
-	tools := moonshotResponsesToolsToChatTools(req.Tools)
+	tools := toolContext.chatTools
 	out := &dto.GeneralOpenAIRequest{
 		Model:               req.Model,
 		Messages:            messages,
@@ -54,7 +67,7 @@ func convertMoonshotResponsesRequestToChatCompletionsRequest(req *dto.OpenAIResp
 		TopP:                req.TopP,
 		TopLogProbs:         req.TopLogProbs,
 		Tools:               tools,
-		ToolChoice:          moonshotResponsesToolChoiceToChatToolChoice(req.ToolChoice, tools),
+		ToolChoice:          toolContext.toolChoiceToChat(req.ToolChoice),
 		User:                req.User,
 	}
 
@@ -71,7 +84,7 @@ func convertMoonshotResponsesRequestToChatCompletionsRequest(req *dto.OpenAIResp
 		out.ResponseFormat = responseFormat
 	}
 
-	return out, nil
+	return out, toolContext.cloneMappings(), nil
 }
 
 func validateMoonshotResponsesChatUnsupportedFields(req *dto.OpenAIResponsesRequest) error {
@@ -94,7 +107,7 @@ func validateMoonshotResponsesChatUnsupportedFields(req *dto.OpenAIResponsesRequ
 	return nil
 }
 
-func moonshotResponsesInputToChatMessages(raw json.RawMessage) ([]dto.Message, error) {
+func moonshotResponsesInputToChatMessages(raw json.RawMessage, toolContext *moonshotToolContext) ([]dto.Message, error) {
 	if !moonshotRawJSONPresent(raw) {
 		return nil, nil
 	}
@@ -110,13 +123,13 @@ func moonshotResponsesInputToChatMessages(raw json.RawMessage) ([]dto.Message, e
 		if err := common.Unmarshal(raw, &items); err != nil {
 			return nil, fmt.Errorf("invalid responses input: %w", err)
 		}
-		return moonshotResponsesInputItemsToChatMessages(items), nil
+		return moonshotResponsesInputItemsToChatMessages(items, toolContext), nil
 	case "object":
 		var item map[string]any
 		if err := common.Unmarshal(raw, &item); err != nil {
 			return nil, fmt.Errorf("invalid responses input: %w", err)
 		}
-		return moonshotResponsesInputItemsToChatMessages([]map[string]any{item}), nil
+		return moonshotResponsesInputItemsToChatMessages([]map[string]any{item}, toolContext), nil
 	default:
 		return []dto.Message{{
 			Role:    "user",
@@ -125,7 +138,7 @@ func moonshotResponsesInputToChatMessages(raw json.RawMessage) ([]dto.Message, e
 	}
 }
 
-func moonshotResponsesInputItemsToChatMessages(items []map[string]any) []dto.Message {
+func moonshotResponsesInputItemsToChatMessages(items []map[string]any, toolContext *moonshotToolContext) []dto.Message {
 	messages := make([]dto.Message, 0, len(items))
 	knownFunctionCallIDs := make(map[string]struct{})
 
@@ -136,14 +149,15 @@ func moonshotResponsesInputItemsToChatMessages(items []map[string]any) []dto.Mes
 		case "reasoning":
 			// reasoning 默认隐藏：历史推理内容不应转换为聊天消息发给上游。
 			continue
-		case "function_call":
+		case "function_call", "custom_tool_call", "tool_search_call":
 			toolCalls := make([]dto.ToolCallRequest, 0, 1)
 			for ; i < len(items); i++ {
 				nextItem := items[i]
-				if strings.TrimSpace(common.Interface2String(nextItem["type"])) != "function_call" {
+				nextType := strings.TrimSpace(common.Interface2String(nextItem["type"]))
+				if nextType != "function_call" && nextType != "custom_tool_call" && nextType != "tool_search_call" {
 					break
 				}
-				toolCall, ok := moonshotResponsesFunctionCallToChatToolCall(nextItem)
+				toolCall, ok := moonshotResponsesCallToChatToolCall(nextItem, toolContext)
 				if ok {
 					toolCalls = append(toolCalls, toolCall)
 					knownFunctionCallIDs[toolCall.ID] = struct{}{}
@@ -166,6 +180,22 @@ func moonshotResponsesInputItemsToChatMessages(items []map[string]any) []dto.Mes
 					Role:       "tool",
 					ToolCallId: callID,
 					Content:    moonshotRawAnyToString(item["output"]),
+				})
+				continue
+			}
+			messages = append(messages, dto.Message{
+				Role:    "user",
+				Content: moonshotRawAnyToString(item),
+			})
+		case "custom_tool_call_output", "tool_search_output":
+			callID := strings.TrimSpace(common.Interface2String(item["call_id"]))
+			if _, ok := knownFunctionCallIDs[callID]; callID != "" && ok {
+				// These Responses items carry useful data outside `output` (notably
+				// tool_search_output.tools), so preserve the complete item in history.
+				messages = append(messages, dto.Message{
+					Role:       "tool",
+					ToolCallId: callID,
+					Content:    moonshotRawAnyToString(item),
 				})
 				continue
 			}
@@ -197,21 +227,54 @@ func moonshotResponsesInputItemsToChatMessages(items []map[string]any) []dto.Mes
 	return messages
 }
 
-func moonshotResponsesFunctionCallToChatToolCall(item map[string]any) (dto.ToolCallRequest, bool) {
-	name := strings.TrimSpace(common.Interface2String(item["name"]))
+func moonshotResponsesCallToChatToolCall(item map[string]any, toolContext *moonshotToolContext) (dto.ToolCallRequest, bool) {
+	itemType := strings.TrimSpace(common.Interface2String(item["type"]))
 	callID := strings.TrimSpace(common.Interface2String(item["call_id"]))
 	if callID == "" {
 		callID = strings.TrimSpace(common.Interface2String(item["id"]))
 	}
-	if !moonshotValidChatFunctionName(name) || callID == "" {
+	if callID == "" {
 		return dto.ToolCallRequest{}, false
+	}
+
+	name := strings.TrimSpace(common.Interface2String(item["name"]))
+	namespace := strings.TrimSpace(common.Interface2String(item["namespace"]))
+	arguments := ""
+	mapping := dto.ResponsesToolMapping{Kind: dto.ResponsesToolKindFunction, Name: name, Namespace: namespace}
+	if namespace != "" {
+		mapping.Kind = dto.ResponsesToolKindNamespace
+	}
+
+	switch itemType {
+	case "custom_tool_call":
+		mapping.Kind = dto.ResponsesToolKindCustom
+		input := moonshotRawAnyToString(item["input"])
+		rawArguments, _ := common.Marshal(map[string]any{moonshotCustomInputField: input})
+		arguments = string(rawArguments)
+	case "tool_search_call":
+		mapping.Kind = dto.ResponsesToolKindToolSearch
+		mapping.Name = moonshotToolSearchName
+		arguments = moonshotRawAnyToString(item["arguments"])
+		if strings.TrimSpace(arguments) == "" {
+			arguments = "{}"
+		}
+	default:
+		arguments = moonshotRawAnyToString(item["arguments"])
+	}
+
+	if mapping.Name == "" {
+		return dto.ToolCallRequest{}, false
+	}
+	chatName := moonshotMappedChatToolName(mapping.Namespace, mapping.Name)
+	if toolContext != nil {
+		chatName = toolContext.ensureMapping(mapping)
 	}
 	return dto.ToolCallRequest{
 		ID:   callID,
 		Type: moonshotChatToolTypeFunction,
 		Function: dto.FunctionRequest{
-			Name:      name,
-			Arguments: moonshotRawAnyToString(item["arguments"]),
+			Name:      chatName,
+			Arguments: arguments,
 		},
 	}, true
 }
@@ -311,46 +374,195 @@ func moonshotNormalizeResponsesFile(part map[string]any) any {
 	return part
 }
 
-func moonshotResponsesToolsToChatTools(raw json.RawMessage) []dto.ToolCallRequest {
-	if !moonshotRawJSONPresent(raw) {
-		return nil
+func buildMoonshotToolContext(toolsRaw json.RawMessage, inputRaw json.RawMessage) *moonshotToolContext {
+	ctx := &moonshotToolContext{
+		mappings:           make(map[string]dto.ResponsesToolMapping),
+		responseNameToChat: make(map[string]string),
 	}
-	var tools []map[string]any
-	if err := common.Unmarshal(raw, &tools); err != nil {
-		return nil
+	if moonshotRawJSONPresent(toolsRaw) {
+		var tools []any
+		if err := common.Unmarshal(toolsRaw, &tools); err == nil {
+			for _, tool := range tools {
+				ctx.addResponseTool(tool)
+			}
+		}
+	}
+	if moonshotRawJSONPresent(inputRaw) {
+		var input any
+		if err := common.Unmarshal(inputRaw, &input); err == nil {
+			ctx.collectToolSearchOutputTools(input)
+		}
+	}
+	return ctx
+}
+
+func (c *moonshotToolContext) addResponseTool(raw any) {
+	if name, ok := raw.(string); ok {
+		c.addCustomTool(map[string]any{"type": dto.ResponsesToolKindCustom, "name": name})
+		return
+	}
+	tool, ok := raw.(map[string]any)
+	if !ok {
+		return
+	}
+	switch strings.TrimSpace(common.Interface2String(tool["type"])) {
+	case moonshotChatToolTypeFunction:
+		c.addFunctionTool(tool, "")
+	case dto.ResponsesToolKindNamespace:
+		c.addNamespaceTool(tool)
+	case dto.ResponsesToolKindCustom:
+		c.addCustomTool(tool)
+	case dto.ResponsesToolKindToolSearch:
+		c.addToolSearchTool()
+	}
+}
+
+func (c *moonshotToolContext) addFunctionTool(tool map[string]any, namespace string) {
+	name := moonshotResponsesToolName(tool)
+	if name == "" {
+		return
+	}
+	kind := dto.ResponsesToolKindFunction
+	if namespace != "" {
+		kind = dto.ResponsesToolKindNamespace
+	}
+	mapping := dto.ResponsesToolMapping{Kind: kind, Name: name, Namespace: namespace}
+	chatName := moonshotMappedChatToolName(namespace, name)
+	parameters := moonshotNormalizeFunctionParameters(moonshotResponsesToolParameters(tool))
+	c.addChatTool(chatName, mapping, dto.ToolCallRequest{
+		Type: moonshotChatToolTypeFunction,
+		Function: dto.FunctionRequest{
+			Name:        chatName,
+			Description: moonshotResponsesToolDescription(tool),
+			Parameters:  parameters,
+			Strict:      moonshotResponsesToolStrict(tool),
+		},
+	})
+}
+
+func (c *moonshotToolContext) addNamespaceTool(tool map[string]any) {
+	namespace := moonshotResponsesToolName(tool)
+	if namespace == "" {
+		return
+	}
+	nested := moonshotResponsesNestedTools(tool)
+	if len(nested) == 0 {
+		return
 	}
 
-	out := make([]dto.ToolCallRequest, 0, len(tools))
-	for _, tool := range tools {
-		if strings.TrimSpace(common.Interface2String(tool["type"])) != moonshotChatToolTypeFunction {
-			continue
+	before := len(c.chatTools)
+	for _, child := range nested {
+		childType := strings.TrimSpace(common.Interface2String(child["type"]))
+		if childType == "" || childType == moonshotChatToolTypeFunction {
+			c.addFunctionTool(child, namespace)
 		}
-		name := moonshotResponsesToolName(tool)
-		if !moonshotValidChatFunctionName(name) {
-			continue
-		}
-		out = append(out, dto.ToolCallRequest{
-			Type: moonshotChatToolTypeFunction,
-			Function: dto.FunctionRequest{
-				Name:        name,
-				Description: moonshotResponsesToolDescription(tool),
-				Parameters:  moonshotResponsesToolParameters(tool),
+	}
+	if len(c.chatTools) == before+1 {
+		c.responseNameToChat[moonshotResponseToolKey(dto.ResponsesToolKindNamespace, "", namespace)] = c.chatTools[before].Function.Name
+	}
+}
+
+func (c *moonshotToolContext) addCustomTool(tool map[string]any) {
+	name := moonshotResponsesToolName(tool)
+	if name == "" {
+		return
+	}
+	mapping := dto.ResponsesToolMapping{Kind: dto.ResponsesToolKindCustom, Name: name}
+	chatName := moonshotMappedChatToolName("", name)
+	description := "Original tool definition:\n"
+	if raw, err := common.Marshal(tool); err == nil {
+		description += string(raw)
+	}
+	c.addChatTool(chatName, mapping, dto.ToolCallRequest{
+		Type: moonshotChatToolTypeFunction,
+		Function: dto.FunctionRequest{
+			Name:        chatName,
+			Description: description,
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					moonshotCustomInputField: map[string]any{"type": "string"},
+				},
+				"required": []string{moonshotCustomInputField},
 			},
-		})
+		},
+	})
+}
+
+func (c *moonshotToolContext) addToolSearchTool() {
+	mapping := dto.ResponsesToolMapping{Kind: dto.ResponsesToolKindToolSearch, Name: moonshotToolSearchName}
+	c.addChatTool(moonshotToolSearchName, mapping, dto.ToolCallRequest{
+		Type: moonshotChatToolTypeFunction,
+		Function: dto.FunctionRequest{
+			Name:        moonshotToolSearchName,
+			Description: "Search and load tools, plugins, connectors, and namespaces for the current task.",
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"query": map[string]any{"type": "string"},
+					"limit": map[string]any{"type": "integer"},
+				},
+				"required": []string{"query"},
+			},
+		},
+	})
+}
+
+func (c *moonshotToolContext) addChatTool(chatName string, mapping dto.ResponsesToolMapping, tool dto.ToolCallRequest) string {
+	if chatName == "" {
+		return ""
+	}
+	key := moonshotResponseToolKey(mapping.Kind, mapping.Namespace, mapping.Name)
+	if existing := c.responseNameToChat[key]; existing != "" {
+		return existing
+	}
+	chatName = c.uniqueChatToolName(chatName, mapping)
+	tool.Function.Name = chatName
+	c.chatTools = append(c.chatTools, tool)
+	c.mappings[chatName] = mapping
+	c.responseNameToChat[key] = chatName
+	return chatName
+}
+
+func (c *moonshotToolContext) ensureMapping(mapping dto.ResponsesToolMapping) string {
+	key := moonshotResponseToolKey(mapping.Kind, mapping.Namespace, mapping.Name)
+	if chatName := c.responseNameToChat[key]; chatName != "" {
+		return chatName
+	}
+	chatName := c.uniqueChatToolName(moonshotMappedChatToolName(mapping.Namespace, mapping.Name), mapping)
+	c.mappings[chatName] = mapping
+	c.responseNameToChat[key] = chatName
+	return chatName
+}
+
+func (c *moonshotToolContext) uniqueChatToolName(base string, mapping dto.ResponsesToolMapping) string {
+	for attempt := 0; ; attempt++ {
+		candidate := base
+		if attempt > 0 {
+			candidate = moonshotCollisionChatToolName(base, mapping, attempt)
+		}
+		existing, ok := c.mappings[candidate]
+		if !ok || existing == mapping {
+			return candidate
+		}
+	}
+}
+
+func (c *moonshotToolContext) cloneMappings() map[string]dto.ResponsesToolMapping {
+	if c == nil || len(c.mappings) == 0 {
+		return nil
+	}
+	out := make(map[string]dto.ResponsesToolMapping, len(c.mappings))
+	for name, mapping := range c.mappings {
+		out[name] = mapping
 	}
 	return out
 }
 
-func moonshotResponsesToolChoiceToChatToolChoice(raw json.RawMessage, tools []dto.ToolCallRequest) any {
-	if !moonshotRawJSONPresent(raw) || len(tools) == 0 {
+func (c *moonshotToolContext) toolChoiceToChat(raw json.RawMessage) any {
+	if c == nil || !moonshotRawJSONPresent(raw) || len(c.chatTools) == 0 {
 		return nil
 	}
-
-	allowed := make(map[string]struct{}, len(tools))
-	for _, tool := range tools {
-		allowed[tool.Function.Name] = struct{}{}
-	}
-
 	if common.GetJsonType(raw) == "string" {
 		choice := moonshotRawJSONToString(raw)
 		switch choice {
@@ -365,19 +577,146 @@ func moonshotResponsesToolChoiceToChatToolChoice(raw json.RawMessage, tools []dt
 	if err := common.Unmarshal(raw, &choice); err != nil {
 		return nil
 	}
-	if strings.TrimSpace(common.Interface2String(choice["type"])) != moonshotChatToolTypeFunction {
-		return nil
-	}
+	choiceType := strings.TrimSpace(common.Interface2String(choice["type"]))
 	name := moonshotResponsesToolName(choice)
-	if _, ok := allowed[name]; !ok {
+	namespace := strings.TrimSpace(common.Interface2String(choice["namespace"]))
+	kind := dto.ResponsesToolKindFunction
+	if namespace != "" || choiceType == dto.ResponsesToolKindNamespace {
+		kind = dto.ResponsesToolKindNamespace
+	}
+	if choiceType == dto.ResponsesToolKindCustom {
+		kind = dto.ResponsesToolKindCustom
+	}
+	if choiceType == dto.ResponsesToolKindToolSearch {
+		kind = dto.ResponsesToolKindToolSearch
+		name = moonshotToolSearchName
+	}
+	chatName := c.responseNameToChat[moonshotResponseToolKey(kind, namespace, name)]
+	if chatName == "" && choiceType == dto.ResponsesToolKindNamespace {
+		chatName = c.responseNameToChat[moonshotResponseToolKey(dto.ResponsesToolKindNamespace, "", name)]
+	}
+	if chatName == "" {
 		return nil
 	}
 	return map[string]any{
-		"type": moonshotChatToolTypeFunction,
-		"function": map[string]any{
-			"name": name,
-		},
+		"type":     moonshotChatToolTypeFunction,
+		"function": map[string]any{"name": chatName},
 	}
+}
+
+func (c *moonshotToolContext) collectToolSearchOutputTools(value any) {
+	switch typed := value.(type) {
+	case []any:
+		for _, item := range typed {
+			c.collectToolSearchOutputTools(item)
+		}
+	case map[string]any:
+		if strings.TrimSpace(common.Interface2String(typed["type"])) == "tool_search_output" {
+			if tools, ok := typed["tools"].([]any); ok {
+				for _, tool := range tools {
+					c.addResponseTool(tool)
+				}
+			}
+		}
+		for _, child := range typed {
+			c.collectToolSearchOutputTools(child)
+		}
+	}
+}
+
+func moonshotResponsesNestedTools(tool map[string]any) []map[string]any {
+	for _, key := range []string{"tools", "children", "functions"} {
+		if raw, ok := tool[key].([]any); ok {
+			out := make([]map[string]any, 0, len(raw))
+			for _, item := range raw {
+				if child, ok := item.(map[string]any); ok {
+					out = append(out, child)
+				}
+			}
+			if len(out) > 0 {
+				return out
+			}
+		}
+		if raw, ok := tool[key].([]map[string]any); ok && len(raw) > 0 {
+			return raw
+		}
+	}
+	return nil
+}
+
+func moonshotNormalizeFunctionParameters(value any) any {
+	parameters, ok := value.(map[string]any)
+	if !ok {
+		return map[string]any{"type": "object", "properties": map[string]any{}}
+	}
+	copy := make(map[string]any, len(parameters)+1)
+	for key, item := range parameters {
+		copy[key] = item
+	}
+	if strings.TrimSpace(common.Interface2String(copy["type"])) != "object" {
+		copy["type"] = "object"
+	}
+	return copy
+}
+
+func moonshotResponsesToolStrict(tool map[string]any) any {
+	if strict, ok := tool["strict"]; ok {
+		return strict
+	}
+	if function, ok := tool["function"].(map[string]any); ok {
+		return function["strict"]
+	}
+	return nil
+}
+
+func moonshotMappedChatToolName(namespace string, name string) string {
+	fullName := strings.TrimSpace(name)
+	if namespace != "" {
+		fullName = strings.TrimSpace(namespace) + "__" + fullName
+	}
+	if moonshotValidChatFunctionName(fullName) {
+		return fullName
+	}
+
+	var safe strings.Builder
+	for _, r := range fullName {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' {
+			safe.WriteRune(r)
+		} else {
+			safe.WriteByte('_')
+		}
+	}
+	digest := fmt.Sprintf("%x", sha256.Sum256([]byte(fullName)))[:16]
+	suffix := "__" + digest
+	prefix := safe.String()
+	maxPrefix := moonshotChatToolNameMaxLength - len(suffix)
+	if len(prefix) > maxPrefix {
+		prefix = prefix[:maxPrefix]
+	}
+	prefix = strings.Trim(prefix, "_-")
+	if prefix == "" {
+		prefix = "tool"
+	}
+	return prefix + suffix
+}
+
+func moonshotCollisionChatToolName(base string, mapping dto.ResponsesToolMapping, attempt int) string {
+	key := fmt.Sprintf("%s\x00%d", moonshotResponseToolKey(mapping.Kind, mapping.Namespace, mapping.Name), attempt)
+	digest := fmt.Sprintf("%x", sha256.Sum256([]byte(key)))[:16]
+	suffix := "__" + digest
+	prefix := strings.TrimRight(base, "_-")
+	maxPrefix := moonshotChatToolNameMaxLength - len(suffix)
+	if len(prefix) > maxPrefix {
+		prefix = prefix[:maxPrefix]
+	}
+	if prefix == "" {
+		prefix = "tool"
+	}
+	return prefix + suffix
+}
+
+func moonshotResponseToolKey(kind string, namespace string, name string) string {
+	return strings.TrimSpace(kind) + "\x00" + strings.TrimSpace(namespace) + "\x00" + strings.TrimSpace(name)
 }
 
 func moonshotResponsesTextToChatResponseFormat(raw json.RawMessage) *dto.ResponseFormat {
