@@ -554,6 +554,82 @@ func TestConvertOpenAIResponsesRequestDropsReasoningItems(t *testing.T) {
 	}
 }
 
+func TestConvertOpenAIResponsesRequestKeepsAssistantTextAndToolCallsInOneMessage(t *testing.T) {
+	request := dto.OpenAIResponsesRequest{
+		Model: "kimi-k3",
+		Input: mustMoonshotRawMessage(t, []map[string]any{
+			{
+				"type":    "message",
+				"role":    "assistant",
+				"content": "Check the handoff notes, then run the tests.",
+			},
+			{
+				"type":    "reasoning",
+				"summary": []map[string]any{},
+			},
+			{
+				"type":      "function_call",
+				"call_id":   "call_1",
+				"name":      "shell_command",
+				"arguments": map[string]any{"command": "go version"},
+			},
+			{
+				"type":    "reasoning",
+				"summary": []map[string]any{},
+			},
+			{
+				"type":      "function_call",
+				"call_id":   "call_2",
+				"name":      "shell_command",
+				"arguments": map[string]any{"command": "go test ./relay/channel/moonshot"},
+			},
+			{
+				"type":    "function_call_output",
+				"call_id": "call_1",
+				"output":  "go version go1.24.0",
+			},
+			{
+				"type":    "function_call_output",
+				"call_id": "call_2",
+				"output":  "ok",
+			},
+		}),
+	}
+	info := &relaycommon.RelayInfo{
+		RelayMode:   relayconstant.RelayModeResponses,
+		RelayFormat: types.RelayFormatOpenAIResponses,
+		ChannelMeta: &relaycommon.ChannelMeta{
+			UpstreamModelName: "kimi-k3",
+		},
+	}
+
+	converted, err := (&Adaptor{}).ConvertOpenAIResponsesRequest(nil, info, request)
+
+	require.NoError(t, err)
+	chatRequest, ok := converted.(*dto.GeneralOpenAIRequest)
+	require.True(t, ok)
+	require.Len(t, chatRequest.Messages, 3)
+	require.Equal(t, "assistant", chatRequest.Messages[0].Role)
+	require.Equal(t, "Check the handoff notes, then run the tests.", chatRequest.Messages[0].StringContent())
+	toolCalls := chatRequest.Messages[0].ParseToolCalls()
+	require.Len(t, toolCalls, 2)
+	require.Equal(t, "call_1", toolCalls[0].ID)
+	require.Equal(t, "shell_command", toolCalls[0].Function.Name)
+	require.JSONEq(t, `{"command":"go version"}`, toolCalls[0].Function.Arguments)
+	require.Equal(t, "call_2", toolCalls[1].ID)
+	require.Equal(t, "shell_command", toolCalls[1].Function.Name)
+	require.JSONEq(t, `{"command":"go test ./relay/channel/moonshot"}`, toolCalls[1].Function.Arguments)
+	require.Equal(t, "tool", chatRequest.Messages[1].Role)
+	require.Equal(t, "call_1", chatRequest.Messages[1].ToolCallId)
+	require.Equal(t, "go version go1.24.0", chatRequest.Messages[1].StringContent())
+	require.Equal(t, "tool", chatRequest.Messages[2].Role)
+	require.Equal(t, "call_2", chatRequest.Messages[2].ToolCallId)
+	require.Equal(t, "ok", chatRequest.Messages[2].StringContent())
+	for i := 1; i < len(chatRequest.Messages); i++ {
+		require.False(t, chatRequest.Messages[i-1].Role == "assistant" && chatRequest.Messages[i].Role == "assistant")
+	}
+}
+
 func TestConvertOpenAIResponsesRequestForcesStreamUsage(t *testing.T) {
 	request := dto.OpenAIResponsesRequest{
 		Model:  "kimi-k3",

@@ -1,5 +1,18 @@
 # NBAPI Changelog
 
+## 1.5.7 - 2026-08-12
+
+### Moonshot/Kimi 连续工具调用
+
+- 修复 Moonshot `Responses -> ChatCompletions` 历史转换把同一轮 assistant 的计划文字和后续工具调用拆成两条 assistant 消息的问题。
+- 计划文字、被隐藏的 reasoning 项以及随后的一组或多组工具调用现在会合并到同一条 assistant 消息，保留原文字、全部 `tool_calls`、调用顺序和 `call_id`。
+- 避免 Kimi 从畸形历史中学习“先输出计划文字，再等待下一条 assistant 消息发起工具调用”，从而正常结束但不执行工具。
+- 增加覆盖 assistant 文字、reasoning 分隔、多工具调用及配对工具结果的回归测试。
+
+### 兼容性
+
+- 无需数据库迁移或新增配置；仅修正 Moonshot/Kimi Responses 专用转换历史的消息结构。
+
 ## 1.5.6 - 2026-08-12
 
 ### Moonshot/Kimi Codex 工具调用

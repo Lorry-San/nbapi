@@ -167,12 +167,12 @@ func moonshotResponsesInputItemsToChatMessages(items []map[string]any, toolConte
 			if len(toolCalls) == 0 {
 				continue
 			}
-			msg := dto.Message{
-				Role:    "assistant",
-				Content: nil,
+			if len(messages) == 0 || messages[len(messages)-1].Role != "assistant" {
+				messages = append(messages, dto.Message{Role: "assistant"})
 			}
-			msg.SetToolCalls(toolCalls)
-			messages = append(messages, msg)
+			assistantIndex := len(messages) - 1
+			existingToolCalls := messages[assistantIndex].ParseToolCalls()
+			messages[assistantIndex].SetToolCalls(append(existingToolCalls, toolCalls...))
 		case "function_call_output":
 			callID := strings.TrimSpace(common.Interface2String(item["call_id"]))
 			if _, ok := knownFunctionCallIDs[callID]; callID != "" && ok {
