@@ -649,6 +649,19 @@ func moonshotNormalizeFunctionParameters(value any) any {
 	if !ok {
 		return map[string]any{"type": "object", "properties": map[string]any{}}
 	}
+	
+	// If the schema uses $ref, return as-is without forcing type at the parent level.
+	// The $ref target should define its own type in the referenced schema.
+	// Moonshot will reject schemas with both $ref and type at the same level with error:
+	// "parameters is not a valid moonshot flavored json schema, details: when using $ref, type should be defined in the referenced schema"
+	if _, hasRef := parameters["$ref"]; hasRef {
+		return parameters
+	}
+	// If the schema has $defs, it likely uses references internally, preserve structure
+	if _, hasDefs := parameters["$defs"]; hasDefs {
+		return parameters
+	}
+	
 	copy := make(map[string]any, len(parameters)+1)
 	for key, item := range parameters {
 		copy[key] = item
