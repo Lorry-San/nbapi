@@ -38,6 +38,7 @@ Transitive dependencies should be audited before a final external release.
 | backend     | production  | Go        | `github.com/jinzhu/copier`                            | `v0.4.0`                             | MIT                                                |
 | backend     | production  | Go        | `github.com/joho/godotenv`                            | `v1.5.1`                             | MIT                                                |
 | backend     | production  | Go        | `github.com/mewkiz/flac`                              | `v1.0.13`                            | Unlicense                                          |
+| backend     | production  | Go        | `github.com/moonshotai/walle`                         | `v0.1.15`                            | MIT                                                |
 | backend     | production  | Go        | `github.com/nicksnyder/go-i18n/v2`                    | `v2.6.1`                             | MIT                                                |
 | backend     | production  | Go        | `github.com/pkg/errors`                               | `v0.9.1`                             | BSD-2-Clause                                       |
 | backend     | production  | Go        | `github.com/pquerna/otp`                              | `v1.5.0`                             | Apache-2.0                                         |
@@ -183,6 +184,10 @@ License for the specific language governing permissions and limitations under
 the License.
 
 MIT License
+
+For `github.com/moonshotai/walle` v0.1.15:
+
+Copyright (c) 2025 Moonshot AI
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

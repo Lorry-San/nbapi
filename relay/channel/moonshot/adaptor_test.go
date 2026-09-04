@@ -9,6 +9,7 @@ import (
 	relaycommon "github.com/Lorry-San/nbapi/relay/common"
 	relayconstant "github.com/Lorry-San/nbapi/relay/constant"
 	"github.com/Lorry-San/nbapi/types"
+	"github.com/moonshotai/walle"
 	"github.com/stretchr/testify/require"
 )
 
@@ -682,6 +683,103 @@ func TestConvertOpenAIResponsesRequestForcesStreamUsagePreservesOptions(t *testi
 	require.NotNil(t, chatRequest.StreamOptions)
 	require.True(t, chatRequest.StreamOptions.IncludeUsage)
 	require.True(t, chatRequest.StreamOptions.IncludeObfuscation)
+}
+
+func TestMoonshotNormalizeFunctionParametersCanonicalizesCodexSchema(t *testing.T) {
+	parameters := map[string]any{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type":    "object",
+		"properties": map[string]any{
+			"mode": map[string]any{
+				"$ref": "#/$defs/__schema20",
+			},
+		},
+		"$defs": map[string]any{
+			"__schema20": map[string]any{
+				"type":        "string",
+				"minLength":   1,
+				"format":      "uuid",
+				"description": "Target thread UUID for heartbeat automations.",
+				"$ref":        "#/$defs/__schema2",
+			},
+			"__schema2": map[string]any{
+				"type":      "string",
+				"minLength": 1,
+			},
+		},
+	}
+
+	normalized := moonshotNormalizeFunctionParameters(parameters)
+	raw, err := common.Marshal(normalized)
+	require.NoError(t, err)
+	require.NotContains(t, string(raw), `"$schema"`)
+	normalizedMap, ok := normalized.(map[string]any)
+	require.True(t, ok)
+	defs, ok := normalizedMap["$defs"].(map[string]any)
+	require.True(t, ok)
+	schema20, ok := defs["__schema20"].(map[string]any)
+	require.True(t, ok)
+	require.NotContains(t, schema20, "$ref")
+	require.Equal(t, "string", schema20["type"])
+	require.EqualValues(t, 1, schema20["minLength"])
+	require.NotContains(t, schema20, "format")
+	require.Equal(t, "Target thread UUID for heartbeat automations.", schema20["description"])
+
+	schema, err := walle.ParseSchema(string(raw))
+	require.NoError(t, err)
+	require.NoError(t, schema.Validate(walle.WithValidateLevel(walle.ValidateLevelUltra)))
+}
+
+func TestConvertOpenAIResponsesRequestCanonicalizesCodexToolSchema(t *testing.T) {
+	request := dto.OpenAIResponsesRequest{
+		Model: "kimi-k3",
+		Input: mustMoonshotRawMessage(t, "hello"),
+		Tools: mustMoonshotRawMessage(t, []map[string]any{
+			{
+				"type": "function",
+				"name": "automation_update",
+				"parameters": map[string]any{
+					"$schema": "https://json-schema.org/draft/2020-12/schema",
+					"type":    "object",
+					"properties": map[string]any{
+						"mode": map[string]any{
+							"$ref": "#/$defs/__schema20",
+						},
+					},
+					"$defs": map[string]any{
+						"__schema20": map[string]any{
+							"type":        "string",
+							"minLength":   1,
+							"format":      "uuid",
+							"description": "Target thread UUID for heartbeat automations.",
+							"$ref":        "#/$defs/__schema2",
+						},
+						"__schema2": map[string]any{
+							"type":      "string",
+							"minLength": 1,
+						},
+					},
+				},
+			},
+		}),
+	}
+	info := &relaycommon.RelayInfo{
+		RelayMode:   relayconstant.RelayModeResponses,
+		RelayFormat: types.RelayFormatOpenAIResponses,
+		ChannelMeta: &relaycommon.ChannelMeta{UpstreamModelName: "kimi-k3"},
+	}
+
+	converted, err := (&Adaptor{}).ConvertOpenAIResponsesRequest(nil, info, request)
+	require.NoError(t, err)
+	chatRequest, ok := converted.(*dto.GeneralOpenAIRequest)
+	require.True(t, ok)
+	require.Len(t, chatRequest.Tools, 1)
+
+	raw, err := common.Marshal(chatRequest.Tools[0].Function.Parameters)
+	require.NoError(t, err)
+	schema, err := walle.ParseSchema(string(raw))
+	require.NoError(t, err)
+	require.NoError(t, schema.Validate(walle.WithValidateLevel(walle.ValidateLevelUltra)))
 }
 
 func mustMoonshotRawMessage(t *testing.T, value any) []byte {

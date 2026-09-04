@@ -1,4 +1,3 @@
-// Cache buster: 2026-09-03-20:30
 package moonshot
 
 import (
@@ -10,6 +9,7 @@ import (
 
 	"github.com/Lorry-San/nbapi/common"
 	"github.com/Lorry-San/nbapi/dto"
+	"github.com/moonshotai/walle"
 )
 
 const (
@@ -650,24 +650,28 @@ func moonshotNormalizeFunctionParameters(value any) any {
 	if !ok {
 		return map[string]any{"type": "object", "properties": map[string]any{}}
 	}
-	
-	// If the schema uses $ref, return as-is without forcing type at the parent level.
-	// The $ref target should define its own type in the referenced schema.
-	// Moonshot will reject schemas with both $ref and type at the same level with error:
-	// "parameters is not a valid moonshot flavored json schema, details: when using $ref, type should be defined in the referenced schema"
-	if _, hasRef := parameters["$ref"]; hasRef {
-		return parameters
+
+	raw, err := common.Marshal(parameters)
+	if err == nil {
+		schema, parseErr := walle.ParseSchema(string(raw))
+		if parseErr == nil {
+			// Canonical rewrites standard JSON Schema into Moonshot's accepted dialect.
+			canonical, _ := schema.Canonical()
+			var normalized map[string]any
+			if canonical != "" && common.Unmarshal([]byte(canonical), &normalized) == nil {
+				if len(normalized) == 0 {
+					return map[string]any{"type": "object", "properties": map[string]any{}}
+				}
+				return normalized
+			}
+		}
 	}
-	// If the schema has $defs, it likely uses references internally, preserve structure
-	if _, hasDefs := parameters["$defs"]; hasDefs {
-		return parameters
-	}
-	
+
 	copy := make(map[string]any, len(parameters)+1)
 	for key, item := range parameters {
 		copy[key] = item
 	}
-	if strings.TrimSpace(common.Interface2String(copy["type"])) != "object" {
+	if strings.TrimSpace(common.Interface2String(copy["type"])) == "" {
 		copy["type"] = "object"
 	}
 	return copy
