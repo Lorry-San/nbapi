@@ -17,6 +17,7 @@ const (
 	responsesEventFailed                   = "response.failed"
 	responsesEventError                    = "response.error"
 	responsesEventOutputTextDelta          = "response.output_text.delta"
+	responsesEventOutputTextDone           = "response.output_text.done"
 	responsesEventOutputItemAdded          = "response.output_item.added"
 	responsesEventOutputItemDone           = "response.output_item.done"
 	responsesEventFunctionArgsDelta        = "response.function_call_arguments.delta"
@@ -219,9 +220,16 @@ func ExtractReasoningTextFromResponses(resp *dto.OpenAIResponsesResponse) string
 		if out.Type != responsesOutputTypeReasoning {
 			continue
 		}
-		for _, c := range out.Content {
-			if c.Text != "" {
-				sb.WriteString(c.Text)
+		for _, part := range out.Summary {
+			if part.Text != "" {
+				sb.WriteString(part.Text)
+			}
+		}
+		if len(out.Summary) == 0 {
+			for _, c := range out.Content {
+				if c.Text != "" {
+					sb.WriteString(c.Text)
+				}
 			}
 		}
 	}

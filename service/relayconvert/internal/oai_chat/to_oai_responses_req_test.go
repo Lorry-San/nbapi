@@ -60,3 +60,53 @@ func assistantMessageWithTool(content string, id string, name string, args strin
 	})
 	return msg
 }
+
+func TestChatCompletionsRequestToResponsesRejectsMissingToolCallID(t *testing.T) {
+	_, err := ChatCompletionsRequestToResponsesRequest(&dto.GeneralOpenAIRequest{
+		Model:    "gpt-test",
+		Messages: []dto.Message{{Role: "tool", Content: "untrusted tool output"}},
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "tool_call_id")
+}
+
+func TestChatCompletionsRequestToResponsesRejectsMalformedAssistantToolCall(t *testing.T) {
+	message := dto.Message{Role: "assistant"}
+	message.SetToolCalls([]dto.ToolCallRequest{{
+		Type:     "function",
+		Function: dto.FunctionRequest{Name: "lookup", Arguments: `{}`},
+	}})
+
+	_, err := ChatCompletionsRequestToResponsesRequest(&dto.GeneralOpenAIRequest{
+		Model:    "gpt-test",
+		Messages: []dto.Message{message},
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "missing id")
+}
+
+func TestChatCompletionsRequestToResponsesPreservesNonLeadingInstructions(t *testing.T) {
+	got, err := ChatCompletionsRequestToResponsesRequest(&dto.GeneralOpenAIRequest{
+		Model: "gpt-test",
+		Messages: []dto.Message{
+			{Role: "user", Content: "before"},
+			{Role: "system", Content: "middle constraint"},
+			{Role: "user", Content: "after"},
+		},
+	})
+	require.NoError(t, err)
+	assert.Empty(t, got.Instructions)
+	assert.Equal(t, "system", gjson.GetBytes(got.Input, "1.role").String())
+	assert.Equal(t, "middle constraint", gjson.GetBytes(got.Input, "1.content").String())
+}
+
+func TestChatCompletionsRequestToResponsesDoesNotForwardChatStreamOptions(t *testing.T) {
+	includeUsage := true
+	got, err := ChatCompletionsRequestToResponsesRequest(&dto.GeneralOpenAIRequest{
+		Model:         "gpt-test",
+		Messages:      []dto.Message{{Role: "user", Content: "hello"}},
+		StreamOptions: &dto.StreamOptions{IncludeUsage: includeUsage},
+	})
+	require.NoError(t, err)
+	assert.Nil(t, got.StreamOptions)
+}

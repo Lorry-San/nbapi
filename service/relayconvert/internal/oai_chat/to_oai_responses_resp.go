@@ -20,6 +20,7 @@ const (
 	responsesEventIncomplete               = "response.incomplete"
 	responsesEventFailed                   = "response.failed"
 	responsesEventOutputTextDelta          = "response.output_text.delta"
+	responsesEventOutputTextDone           = "response.output_text.done"
 	responsesEventOutputItemAdded          = "response.output_item.added"
 	responsesEventOutputItemDone           = "response.output_item.done"
 	responsesEventFunctionArgsDelta        = "response.function_call_arguments.delta"
@@ -101,7 +102,7 @@ func ChatCompletionsResponseToResponsesResponseWithOptions(resp *dto.OpenAITextR
 			Type:   responsesOutputTypeReasoning,
 			ID:     fmt.Sprintf("%s_reasoning_0", id),
 			Status: responseOutputStatus(out),
-			Content: []dto.ResponsesOutputContent{
+			Summary: []dto.ResponsesReasoningSummaryPart{
 				{
 					Type: "summary_text",
 					Text: reasoning,
@@ -337,8 +338,10 @@ func chatCreatedAt(created any) int {
 	return int(time.Now().Unix())
 }
 
-func responsesStreamEvent(eventType string, payload dto.ResponsesStreamResponse) ChatToResponsesStreamEvent {
+func (s *ChatToResponsesStreamState) responsesStreamEvent(eventType string, payload dto.ResponsesStreamResponse) ChatToResponsesStreamEvent {
 	payload.Type = eventType
+	s.nextSequenceNumber++
+	payload.SequenceNumber = s.nextSequenceNumber
 	return ChatToResponsesStreamEvent{
 		Type:    eventType,
 		Payload: payload,

@@ -80,12 +80,20 @@ func ResponsesStreamEventToChatChunks(event *dto.ResponsesStreamResponse, state 
 	case responsesEventReasoningSummaryDelta, responsesEventReasoningTextDelta:
 		return state.reasoningDelta(event.Delta), nil
 	case responsesEventReasoningSummaryDone, responsesEventReasoningTextDone:
+		if !state.hasSentReasoning && event.Text != "" {
+			return state.reasoningDelta(event.Text), nil
+		}
 		if state.hasSentReasoning {
 			state.needsReasoningSummaryBreak = true
 		}
 		return nil, nil
 	case responsesEventOutputTextDelta:
 		return state.textDelta(event.Delta), nil
+	case responsesEventOutputTextDone:
+		if !state.hasSentText && event.Text != "" {
+			return state.textDelta(event.Text), nil
+		}
+		return nil, nil
 	case responsesEventOutputItemAdded, responsesEventOutputItemDone:
 		if event.Item == nil || !isResponsesToolOutputType(event.Item.Type) {
 			return nil, nil
@@ -179,9 +187,16 @@ func (s *ResponsesToChatStreamState) terminalOutputChunks(response *dto.OpenAIRe
 			chunks = append(chunks, s.textDelta(text.String())...)
 		case out.Type == responsesOutputTypeReasoning && !s.hasSentReasoning:
 			var reasoning strings.Builder
-			for _, c := range out.Content {
-				if c.Text != "" {
-					reasoning.WriteString(c.Text)
+			for _, part := range out.Summary {
+				if part.Text != "" {
+					reasoning.WriteString(part.Text)
+				}
+			}
+			if len(out.Summary) == 0 {
+				for _, c := range out.Content {
+					if c.Text != "" {
+						reasoning.WriteString(c.Text)
+					}
 				}
 			}
 			chunks = append(chunks, s.reasoningDelta(reasoning.String())...)
@@ -586,8 +601,16 @@ func (a *ResponsesBufferedAccumulator) ProcessEvent(event *dto.ResponsesStreamRe
 	switch event.Type {
 	case responsesEventOutputTextDelta:
 		a.text.WriteString(event.Delta)
+	case responsesEventOutputTextDone:
+		if a.text.Len() == 0 {
+			a.text.WriteString(event.Text)
+		}
 	case responsesEventReasoningSummaryDelta, responsesEventReasoningTextDelta:
 		a.reasoning.WriteString(event.Delta)
+	case responsesEventReasoningSummaryDone, responsesEventReasoningTextDone:
+		if a.reasoning.Len() == 0 {
+			a.reasoning.WriteString(event.Text)
+		}
 	case responsesEventOutputItemAdded, responsesEventOutputItemDone:
 		if event.Item != nil && isResponsesToolOutputType(event.Item.Type) {
 			tool := a.ensureTool(event)
@@ -605,6 +628,24 @@ func (a *ResponsesBufferedAccumulator) ProcessEvent(event *dto.ResponsesStreamRe
 			a.pendingByOutputIndex[*event.OutputIndex] += event.Delta
 		} else if itemID := strings.TrimSpace(event.ItemID); itemID != "" {
 			a.pendingByItemID[itemID] += event.Delta
+		}
+	case responsesEventFunctionArgsDone, responsesEventCustomToolInputDone:
+		if idx, ok := a.findToolIndex(event); ok && a.tools[idx].Arguments.Len() == 0 {
+			if event.Type == responsesEventFunctionArgsDone {
+				a.tools[idx].Arguments.WriteString(event.Arguments)
+			} else {
+				a.tools[idx].Arguments.WriteString(event.Input)
+			}
+			return
+		}
+		argumentText := event.Arguments
+		if event.Type == responsesEventCustomToolInputDone {
+			argumentText = event.Input
+		}
+		if event.OutputIndex != nil {
+			a.pendingByOutputIndex[*event.OutputIndex] += argumentText
+		} else if itemID := strings.TrimSpace(event.ItemID); itemID != "" {
+			a.pendingByItemID[itemID] += argumentText
 		}
 	}
 }
@@ -624,7 +665,7 @@ func (a *ResponsesBufferedAccumulator) BuildOutput() []dto.ResponsesOutput {
 	if a.reasoning.Len() > 0 {
 		out = append(out, dto.ResponsesOutput{
 			Type: responsesOutputTypeReasoning,
-			Content: []dto.ResponsesOutputContent{
+			Summary: []dto.ResponsesReasoningSummaryPart{
 				{Type: "summary_text", Text: a.reasoning.String()},
 			},
 		})

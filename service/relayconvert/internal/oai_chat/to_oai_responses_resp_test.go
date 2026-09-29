@@ -522,3 +522,51 @@ func mustResponsesEventsFromChatChunk(t *testing.T, state *ChatToResponsesStream
 	require.NoError(t, err)
 	return events
 }
+
+func TestChatCompletionsResponseToResponsesUsesReasoningSummary(t *testing.T) {
+	reasoning := "reasoning summary"
+	resp, _, err := ChatCompletionsResponseToResponsesResponse(&dto.OpenAITextResponse{
+		Model: "gpt-test",
+		Choices: []dto.OpenAITextResponseChoice{{
+			Message: dto.Message{Role: "assistant", ReasoningContent: &reasoning},
+		}},
+	}, "resp_reasoning")
+	require.NoError(t, err)
+	require.Len(t, resp.Output, 1)
+	assert.Equal(t, responsesOutputTypeReasoning, resp.Output[0].Type)
+	require.Len(t, resp.Output[0].Summary, 1)
+	assert.Equal(t, "summary_text", resp.Output[0].Summary[0].Type)
+	assert.Equal(t, reasoning, resp.Output[0].Summary[0].Text)
+	assert.Empty(t, resp.Output[0].Content)
+}
+
+func TestChatCompletionsStreamToResponsesUsesStandardEventFields(t *testing.T) {
+	state := NewChatToResponsesStreamState("resp_stream", "gpt-test")
+	content := "hello"
+	events := mustResponsesEventsFromChatChunk(t, state, &dto.ChatCompletionsStreamResponse{
+		Choices: []dto.ChatCompletionsStreamResponseChoice{{
+			Delta: dto.ChatCompletionsStreamResponseChoiceDelta{Content: &content},
+		}},
+	})
+	finishReason := "stop"
+	events = append(events, mustResponsesEventsFromChatChunk(t, state, &dto.ChatCompletionsStreamResponse{
+		Choices: []dto.ChatCompletionsStreamResponseChoice{{FinishReason: &finishReason}},
+	})...)
+	for i, event := range events {
+		assert.Equal(t, i+1, event.Payload.SequenceNumber)
+	}
+	var done *dto.ResponsesStreamResponse
+	for i := range events {
+		if events[i].Type == "response.output_text.done" {
+			done = &events[i].Payload
+		}
+	}
+	require.NotNil(t, done)
+	assert.Equal(t, content, done.Text)
+
+	final := FinalizeChatCompletionsStreamToResponses(state)
+	require.Len(t, final, 1)
+	assert.Equal(t, len(events)+1, final[0].Payload.SequenceNumber)
+	require.Len(t, final[0].Payload.Response.Output, 1)
+	assert.Equal(t, responsesOutputTypeMessage, final[0].Payload.Response.Output[0].Type)
+}
