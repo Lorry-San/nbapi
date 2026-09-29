@@ -226,6 +226,7 @@ export const channelFormSchema = z
       .refine(isOptionalProxyURL, ERROR_MESSAGES.INVALID_PROXY),
     pass_through_body_enabled: z.boolean().optional(),
     force_responses_to_chat_completions: z.boolean().optional(),
+    responses_to_chat_tool_mode: z.enum(['', 'loose', 'strict']).optional(),
     system_prompt: z.string().optional(),
     system_prompt_override: z.boolean().optional(),
     // Type-specific settings (stored in settings JSON)
@@ -377,6 +378,7 @@ export const CHANNEL_FORM_DEFAULT_VALUES: ChannelFormValues = {
   proxy: '',
   pass_through_body_enabled: false,
   force_responses_to_chat_completions: false,
+  responses_to_chat_tool_mode: '',
   system_prompt: '',
   system_prompt_override: false,
   // Type-specific settings
@@ -444,6 +446,7 @@ export function transformChannelToFormDefaults(
   let azureResponsesVersion = ''
   let isEnterpriseAccount = false
   let awsKeyType: 'ak_sk' | 'api_key' = 'ak_sk'
+  let responsesToChatToolMode: '' | 'loose' | 'strict' = ''
   let allowServiceTier = false
   let disableStore = false
   let allowSafetyIdentifier = false
@@ -464,6 +467,11 @@ export function transformChannelToFormDefaults(
       azureResponsesVersion = parsed.azure_responses_version || ''
       isEnterpriseAccount = parsed.openrouter_enterprise === true
       awsKeyType = parsed.aws_key_type || 'ak_sk'
+      responsesToChatToolMode =
+        parsed.responses_to_chat_tool_mode === 'loose' ||
+        parsed.responses_to_chat_tool_mode === 'strict'
+          ? parsed.responses_to_chat_tool_mode
+          : ''
       allowServiceTier = parsed.allow_service_tier === true
       disableStore = parsed.disable_store === true
       allowSafetyIdentifier = parsed.allow_safety_identifier === true
@@ -523,6 +531,7 @@ export function transformChannelToFormDefaults(
     vertex_key_type: vertexKeyType,
     azure_responses_version: azureResponsesVersion,
     aws_key_type: awsKeyType,
+    responses_to_chat_tool_mode: responsesToChatToolMode,
     allow_service_tier: allowServiceTier,
     disable_store: disableStore,
     allow_include_obfuscation: allowIncludeObfuscation,
@@ -569,6 +578,17 @@ function buildSettingsJSON(formData: ChannelFormValues): string {
       // eslint-disable-next-line no-console
       console.error('Failed to parse existing settings:', error)
     }
+  }
+
+  if (
+    formData.force_responses_to_chat_completions &&
+    (formData.responses_to_chat_tool_mode === 'loose' ||
+      formData.responses_to_chat_tool_mode === 'strict')
+  ) {
+    settingsObj.responses_to_chat_tool_mode =
+      formData.responses_to_chat_tool_mode
+  } else if ('responses_to_chat_tool_mode' in settingsObj) {
+    delete settingsObj.responses_to_chat_tool_mode
   }
 
   // Add vertex_key_type for Vertex AI channels (type 41)

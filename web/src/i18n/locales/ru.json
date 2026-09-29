@@ -5233,6 +5233,11 @@
     "When enabled, only client IP headers from proxies allowed by TRUSTED_PROXIES are accepted": "Если включено, принимаются только заголовки IP клиента от прокси, разрешённых в TRUSTED_PROXIES",
     "When disabled, proxy source validation is skipped and CF-Connecting-IP, X-Forwarded-For, and X-Real-IP are trusted directly": "Если отключено, проверка источника прокси пропускается, а CF-Connecting-IP, X-Forwarded-For и X-Real-IP считаются доверенными напрямую",
     "Only disable validation when direct access to NBAPI is blocked or all callers are controlled, because clients can otherwise spoof these headers": "Отключайте проверку только если прямой доступ к NBAPI закрыт или все вызывающие стороны контролируются, иначе клиенты смогут подделать эти заголовки",
-    "Save trusted proxy settings": "Сохранить настройки доверенных прокси"
+    "Save trusted proxy settings": "Сохранить настройки доверенных прокси",
+    "Responses tool conversion mode": "Режим преобразования инструментов Responses",
+    "Override namespace tool handling for this channel; empty inherits the global setting": "Переопределяет обработку инструментов namespace для этого канала; пустое значение наследует глобальную настройку",
+    "Inherit global": "Наследовать глобальную настройку",
+    "Loose compatibility": "Нестрогая совместимость",
+    "Strict whitelist": "Строгий список разрешённых"
   }
 }

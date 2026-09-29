@@ -14,13 +14,19 @@ import (
 	relaycommon "github.com/Lorry-San/nbapi/relay/common"
 	relayconstant "github.com/Lorry-San/nbapi/relay/constant"
 	"github.com/Lorry-San/nbapi/service"
+	"github.com/Lorry-San/nbapi/setting/model_setting"
 	"github.com/Lorry-San/nbapi/types"
 
 	"github.com/gin-gonic/gin"
 )
 
 func responsesViaChatCompletions(c *gin.Context, info *relaycommon.RelayInfo, adaptor channel.Adaptor, request *dto.OpenAIResponsesRequest) (*dto.Usage, *types.NBAPIError) {
-	chatReq, err := service.ResponsesRequestToChatCompletionsRequest(request)
+	toolMode := model_setting.GetResponsesToChatToolMode()
+	if info != nil && (info.ChannelOtherSettings.ResponsesToChatToolMode == model_setting.ResponsesToChatToolModeLoose ||
+		info.ChannelOtherSettings.ResponsesToChatToolMode == model_setting.ResponsesToChatToolModeStrict) {
+		toolMode = info.ChannelOtherSettings.ResponsesToChatToolMode
+	}
+	chatReq, err := service.ResponsesRequestToChatCompletionsRequestWithToolMode(request, toolMode)
 	if err != nil {
 		return nil, types.NewErrorWithStatusCode(err, types.ErrorCodeInvalidRequest, http.StatusBadRequest, types.ErrOptionWithSkipRetry())
 	}

@@ -13,6 +13,10 @@ func ResponsesRequestToChatCompletionsRequest(req *dto.OpenAIResponsesRequest) (
 	return relayconvert.ResponsesRequestToChatCompletionsRequest(req)
 }
 
+func ResponsesRequestToChatCompletionsRequestWithToolMode(req *dto.OpenAIResponsesRequest, toolMode string) (*dto.GeneralOpenAIRequest, error) {
+	return relayconvert.ResponsesRequestToChatCompletionsRequestWithToolMode(req, toolMode)
+}
+
 func ChatCompletionsResponseToResponsesResponse(resp *dto.OpenAITextResponse, id string) (*dto.OpenAIResponsesResponse, *dto.Usage, error) {
 	return relayconvert.ChatCompletionsResponseToResponsesResponse(resp, id)
 }

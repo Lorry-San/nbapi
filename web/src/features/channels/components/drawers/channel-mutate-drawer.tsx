@@ -286,6 +286,7 @@ const SENSITIVE_FORM_FIELDS = [
   'proxy',
   'pass_through_body_enabled',
   'force_responses_to_chat_completions',
+  'responses_to_chat_tool_mode',
   'system_prompt',
   'system_prompt_override',
   'allow_service_tier',
@@ -340,6 +341,7 @@ function hasAdvancedSettingsValues(values: ChannelFormValues): boolean {
     values.thinking_to_content ||
     values.pass_through_body_enabled ||
     values.force_responses_to_chat_completions ||
+    Boolean(values.responses_to_chat_tool_mode) ||
     values.system_prompt_override ||
     values.claude_beta_query ||
     values.upstream_model_update_check_enabled ||
@@ -746,6 +748,9 @@ export function ChannelMutateDrawer({
   const currentForceResponsesToChatCompletions = form.watch(
     'force_responses_to_chat_completions'
   )
+  const currentResponsesToChatToolMode = form.watch(
+    'responses_to_chat_tool_mode'
+  )
   const currentDisableTaskPollingSleep = form.watch(
     'disable_task_polling_sleep'
   )
@@ -1017,6 +1022,7 @@ export function ChannelMutateDrawer({
     currentThinkingToContent ||
     currentPassThroughBodyEnabled ||
     currentForceResponsesToChatCompletions ||
+    currentResponsesToChatToolMode ||
     currentDisableTaskPollingSleep ||
     currentProxy?.trim() ||
     currentSystemPrompt?.trim() ||
@@ -4165,6 +4171,56 @@ export function ChannelMutateDrawer({
                                   </FormItem>
                                 )}
                               />
+
+                              {currentForceResponsesToChatCompletions && (
+                                <FormField
+                                  control={form.control}
+                                  name='responses_to_chat_tool_mode'
+                                  render={({ field }) => (
+                                    <FormItem className='flex items-center justify-between gap-3 px-4 py-3'>
+                                      <div className='space-y-0.5'>
+                                        <FormLabel className='text-sm'>
+                                          {t('Responses tool conversion mode')}
+                                        </FormLabel>
+                                        <FormDescription>
+                                          {t(
+                                            'Override namespace tool handling for this channel; empty inherits the global setting'
+                                          )}
+                                        </FormDescription>
+                                      </div>
+                                      <FormControl>
+                                        <Select
+                                          value={field.value || 'inherit'}
+                                          onValueChange={(value) =>
+                                            field.onChange(
+                                              value === 'inherit' ? '' : value
+                                            )
+                                          }
+                                        >
+                                          <SelectTrigger className='w-36'>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent
+                                            alignItemWithTrigger={false}
+                                          >
+                                            <SelectGroup>
+                                              <SelectItem value='inherit'>
+                                                {t('Inherit global')}
+                                              </SelectItem>
+                                              <SelectItem value='loose'>
+                                                {t('Loose compatibility')}
+                                              </SelectItem>
+                                              <SelectItem value='strict'>
+                                                {t('Strict whitelist')}
+                                              </SelectItem>
+                                            </SelectGroup>
+                                          </SelectContent>
+                                        </Select>
+                                      </FormControl>
+                                    </FormItem>
+                                  )}
+                                />
+                              )}
 
                               <FormField
                                 control={form.control}

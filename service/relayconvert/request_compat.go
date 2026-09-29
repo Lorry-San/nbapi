@@ -40,6 +40,10 @@ func ResponsesRequestToChatCompletionsRequest(req *dto.OpenAIResponsesRequest) (
 	return oairesponses.ResponsesRequestToChatCompletionsRequest(req)
 }
 
+func ResponsesRequestToChatCompletionsRequestWithToolMode(req *dto.OpenAIResponsesRequest, toolMode string) (*dto.GeneralOpenAIRequest, error) {
+	return oairesponses.ResponsesRequestToChatCompletionsRequestWithToolMode(req, toolMode)
+}
+
 func OpenAIResponsesRequestToClaudeMessages(c *gin.Context, req *dto.OpenAIResponsesRequest) (*dto.ClaudeRequest, error) {
 	return oairesponses.OpenAIResponsesRequestToClaudeMessages(c, req)
 }
