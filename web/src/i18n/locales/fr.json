@@ -5233,6 +5233,11 @@
     "When enabled, only client IP headers from proxies allowed by TRUSTED_PROXIES are accepted": "Lorsque cette option est activée, seuls les en-têtes IP client envoyés par les proxys autorisés dans TRUSTED_PROXIES sont acceptés",
     "When disabled, proxy source validation is skipped and CF-Connecting-IP, X-Forwarded-For, and X-Real-IP are trusted directly": "Lorsque cette option est désactivée, la validation de la source du proxy est ignorée et CF-Connecting-IP, X-Forwarded-For et X-Real-IP sont approuvés directement",
     "Only disable validation when direct access to NBAPI is blocked or all callers are controlled, because clients can otherwise spoof these headers": "Ne désactivez la validation que si l’accès direct à NBAPI est bloqué ou si tous les appelants sont contrôlés, sinon les clients peuvent usurper ces en-têtes",
-    "Save trusted proxy settings": "Enregistrer les paramètres de proxy de confiance"
+    "Save trusted proxy settings": "Enregistrer les paramètres de proxy de confiance",
+    "Responses tool conversion mode": "Mode de conversion des outils Responses",
+    "Override namespace tool handling for this channel; empty inherits the global setting": "Remplace la gestion des outils namespace pour ce canal ; vide pour hériter du réglage global",
+    "Inherit global": "Hériter du réglage global",
+    "Loose compatibility": "Compatibilité souple",
+    "Strict whitelist": "Liste blanche stricte"
   }
 }

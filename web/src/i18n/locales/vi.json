@@ -5233,6 +5233,11 @@
     "When enabled, only client IP headers from proxies allowed by TRUSTED_PROXIES are accepted": "Khi bật, chỉ chấp nhận tiêu đề IP máy khách từ các proxy được cho phép trong TRUSTED_PROXIES",
     "When disabled, proxy source validation is skipped and CF-Connecting-IP, X-Forwarded-For, and X-Real-IP are trusted directly": "Khi tắt, bỏ qua xác thực nguồn proxy và tin cậy trực tiếp CF-Connecting-IP, X-Forwarded-For và X-Real-IP",
     "Only disable validation when direct access to NBAPI is blocked or all callers are controlled, because clients can otherwise spoof these headers": "Chỉ tắt xác thực khi truy cập trực tiếp vào NBAPI đã bị chặn hoặc mọi bên gọi đều được kiểm soát, nếu không máy khách có thể giả mạo các tiêu đề này",
-    "Save trusted proxy settings": "Lưu cài đặt proxy tin cậy"
+    "Save trusted proxy settings": "Lưu cài đặt proxy tin cậy",
+    "Responses tool conversion mode": "Chế độ chuyển đổi công cụ Responses",
+    "Override namespace tool handling for this channel; empty inherits the global setting": "Ghi đè cách xử lý công cụ namespace cho kênh này; để trống để kế thừa thiết lập toàn cục",
+    "Inherit global": "Kế thừa thiết lập toàn cục",
+    "Loose compatibility": "Tương thích linh hoạt",
+    "Strict whitelist": "Danh sách cho phép nghiêm ngặt"
   }
 }

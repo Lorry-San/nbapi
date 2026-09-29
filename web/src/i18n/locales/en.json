@@ -5236,6 +5236,11 @@
     "When enabled, only client IP headers from proxies allowed by TRUSTED_PROXIES are accepted": "When enabled, only client IP headers from proxies allowed by TRUSTED_PROXIES are accepted",
     "When disabled, proxy source validation is skipped and CF-Connecting-IP, X-Forwarded-For, and X-Real-IP are trusted directly": "When disabled, proxy source validation is skipped and CF-Connecting-IP, X-Forwarded-For, and X-Real-IP are trusted directly",
     "Only disable validation when direct access to NBAPI is blocked or all callers are controlled, because clients can otherwise spoof these headers": "Only disable validation when direct access to NBAPI is blocked or all callers are controlled, because clients can otherwise spoof these headers",
-    "Save trusted proxy settings": "Save trusted proxy settings"
+    "Save trusted proxy settings": "Save trusted proxy settings",
+    "Responses tool conversion mode": "Responses tool conversion mode",
+    "Override namespace tool handling for this channel; empty inherits the global setting": "Override namespace tool handling for this channel; empty inherits the global setting",
+    "Inherit global": "Inherit global",
+    "Loose compatibility": "Loose compatibility",
+    "Strict whitelist": "Strict whitelist"
   }
 }

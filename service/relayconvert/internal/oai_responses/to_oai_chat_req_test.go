@@ -432,3 +432,33 @@ func setResponsesToChatToolModeForTest(t *testing.T, mode string) {
 	})
 	settings.ResponsesToChatToolMode = mode
 }
+
+func TestResponsesRequestToChatCompletionsRequestChannelToolModeOverride(t *testing.T) {
+	req := &dto.OpenAIResponsesRequest{
+		Model: "gpt-test",
+		Tools: mustRawMessage(t, []map[string]any{{
+			"type": "namespace",
+			"name": "shell_command",
+			"tools": []map[string]any{{
+				"type":        "function",
+				"name":        "run",
+				"description": "Run a command",
+				"parameters":  map[string]any{"type": "object"},
+			}},
+		}}),
+	}
+
+	loose, err := ResponsesRequestToChatCompletionsRequestWithToolMode(req, model_setting.ResponsesToChatToolModeLoose)
+	require.NoError(t, err)
+	require.Len(t, loose.Tools, 1)
+	assert.Equal(t, "run", loose.Tools[0].Function.Name)
+
+	req.ToolChoice = mustRawMessage(t, map[string]any{
+		"type": "namespace",
+		"name": "shell_command",
+	})
+	strict, err := ResponsesRequestToChatCompletionsRequestWithToolMode(req, model_setting.ResponsesToChatToolModeStrict)
+	require.NoError(t, err)
+	assert.Empty(t, strict.Tools)
+	assert.Nil(t, strict.ToolChoice)
+}

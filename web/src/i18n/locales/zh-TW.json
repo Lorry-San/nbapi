@@ -5220,6 +5220,11 @@
     "When enabled, only client IP headers from proxies allowed by TRUSTED_PROXIES are accepted": "開啟後，僅接受 TRUSTED_PROXIES 白名單內代理提交的用戶端 IP 標頭",
     "When disabled, proxy source validation is skipped and CF-Connecting-IP, X-Forwarded-For, and X-Real-IP are trusted directly": "關閉後將略過代理來源驗證，直接信任 CF-Connecting-IP、X-Forwarded-For 與 X-Real-IP",
     "Only disable validation when direct access to NBAPI is blocked or all callers are controlled, because clients can otherwise spoof these headers": "僅在 NBAPI 無法被繞過代理直接存取，或所有呼叫端均受控時關閉驗證，否則用戶端可偽造這些標頭",
-    "Save trusted proxy settings": "儲存可信代理設定"
+    "Save trusted proxy settings": "儲存可信代理設定",
+    "Responses tool conversion mode": "Responses 工具轉換模式",
+    "Override namespace tool handling for this channel; empty inherits the global setting": "覆寫此渠道的 namespace 工具處理方式；留空則繼承全域設定",
+    "Inherit global": "繼承全域設定",
+    "Loose compatibility": "寬鬆相容",
+    "Strict whitelist": "嚴格白名單"
   }
 }

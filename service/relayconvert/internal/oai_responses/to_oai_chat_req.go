@@ -30,6 +30,10 @@ const (
 )
 
 func ResponsesRequestToChatCompletionsRequest(req *dto.OpenAIResponsesRequest) (*dto.GeneralOpenAIRequest, error) {
+	return ResponsesRequestToChatCompletionsRequestWithToolMode(req, model_setting.GetResponsesToChatToolMode())
+}
+
+func ResponsesRequestToChatCompletionsRequestWithToolMode(req *dto.OpenAIResponsesRequest, toolMode string) (*dto.GeneralOpenAIRequest, error) {
 	if req == nil {
 		return nil, errors.New("request is nil")
 	}
@@ -45,12 +49,13 @@ func ResponsesRequestToChatCompletionsRequest(req *dto.OpenAIResponsesRequest) (
 		return nil, err
 	}
 
-	tools, err := responsesRequestToolsToChat(req.Tools)
+	toolMode = normalizeResponsesToChatToolMode(toolMode)
+	tools, err := responsesRequestToolsToChat(req.Tools, toolMode)
 	if err != nil {
 		return nil, err
 	}
 
-	toolChoice, err := responsesRequestToolChoiceToChat(req.ToolChoice)
+	toolChoice, err := responsesRequestToolChoiceToChat(req.ToolChoice, toolMode)
 	if err != nil {
 		return nil, err
 	}
@@ -330,7 +335,14 @@ func appendToolCallToLastAssistant(messages []dto.Message, toolCall dto.ToolCall
 	return messages
 }
 
-func responsesRequestToolsToChat(raw json.RawMessage) ([]dto.ToolCallRequest, error) {
+func normalizeResponsesToChatToolMode(mode string) string {
+	if strings.TrimSpace(mode) == model_setting.ResponsesToChatToolModeStrict {
+		return model_setting.ResponsesToChatToolModeStrict
+	}
+	return model_setting.ResponsesToChatToolModeLoose
+}
+
+func responsesRequestToolsToChat(raw json.RawMessage, mode string) ([]dto.ToolCallRequest, error) {
 	if !rawJSONPresent(raw) {
 		return nil, nil
 	}
@@ -341,7 +353,6 @@ func responsesRequestToolsToChat(raw json.RawMessage) ([]dto.ToolCallRequest, er
 	}
 
 	out := make([]dto.ToolCallRequest, 0, len(tools))
-	mode := model_setting.GetResponsesToChatToolMode()
 	for _, tool := range tools {
 		converted, err := responsesRequestToolToChat(tool, mode)
 		if err != nil {
@@ -472,7 +483,7 @@ func responsesRequestToolParameters(tool map[string]any) any {
 	return nil
 }
 
-func responsesRequestToolChoiceToChat(raw json.RawMessage) (any, error) {
+func responsesRequestToolChoiceToChat(raw json.RawMessage, mode string) (any, error) {
 	if !rawJSONPresent(raw) {
 		return nil, nil
 	}
@@ -503,7 +514,7 @@ func responsesRequestToolChoiceToChat(raw json.RawMessage) (any, error) {
 	if choiceType == responsesChatToolTypePlugin {
 		return choice, nil
 	}
-	if model_setting.GetResponsesToChatToolMode() == model_setting.ResponsesToChatToolModeLoose {
+	if mode == model_setting.ResponsesToChatToolModeLoose {
 		if name := responsesRequestToolName(choice); name != "" {
 			return map[string]any{
 				"type": responsesChatToolTypeFunction,
@@ -521,7 +532,11 @@ func responsesRequestToolChoiceToChat(raw json.RawMessage) (any, error) {
 }
 
 func RequestToolChoiceToChat(raw json.RawMessage) (any, error) {
-	return responsesRequestToolChoiceToChat(raw)
+	return responsesRequestToolChoiceToChat(raw, model_setting.GetResponsesToChatToolMode())
+}
+
+func RequestToolChoiceToChatWithToolMode(raw json.RawMessage, mode string) (any, error) {
+	return responsesRequestToolChoiceToChat(raw, normalizeResponsesToChatToolMode(mode))
 }
 
 func responsesRequestTextToChatResponseFormat(raw json.RawMessage) (*dto.ResponseFormat, error) {
