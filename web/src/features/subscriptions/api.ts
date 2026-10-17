@@ -30,6 +30,8 @@ import type {
   SubscriptionPayResponse,
   SubscriptionPayRequest,
   SelfSubscriptionData,
+  LightcodeGroupModel,
+  LightcodeGroupModelRecord,
 } from './types'
 
 // ============================================================================
@@ -188,6 +190,21 @@ export async function listWaffoPancakeSubscriptionProductOptions(): Promise<
   const res = await api.get(
     '/api/option/waffo-pancake/subscription-product-options'
   )
+  return res.data
+}
+
+export async function getLightcodeModels(): Promise<
+  ApiResponse<LightcodeGroupModelRecord[]>
+> {
+  const res = await api.get('/api/lightcode/models')
+  return res.data
+}
+
+export async function saveLightcodeModels(
+  group: string,
+  models: LightcodeGroupModel[]
+): Promise<ApiResponse> {
+  const res = await api.put('/api/lightcode/models', { group, models })
   return res.data
 }
 

@@ -68,6 +68,8 @@ func (w *WalletFunding) Refund() error {
 // ---------------------------------------------------------------------------
 
 type SubscriptionFunding struct {
+	pool string
+	admittedSubscriptionId int
 	requestId      string
 	userId         int
 	modelName      string
@@ -85,7 +87,9 @@ func (s *SubscriptionFunding) Source() string { return BillingSourceSubscription
 
 func (s *SubscriptionFunding) PreConsume(_ int) error {
 	// amount 参数被忽略，使用内部 s.amount（已在构造时根据 preConsumedQuota 计算）
-	res, err := model.PreConsumeUserSubscription(s.requestId, s.userId, s.modelName, 0, s.amount)
+	pool := s.pool
+	if pool == "" { pool = model.SubscriptionPoolAPI }
+	res, err := model.PreConsumeSubscriptionPool(s.requestId, s.userId, s.modelName, s.amount, pool, s.admittedSubscriptionId)
 	if err != nil {
 		return err
 	}

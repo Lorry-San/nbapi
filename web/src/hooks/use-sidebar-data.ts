@@ -23,6 +23,7 @@ import {
   FileText,
   FlaskConical,
   Key,
+  Laptop,
   LayoutDashboard,
   ListTodo,
   MessageSquare,
@@ -113,6 +114,11 @@ export function useSidebarData(): SidebarData {
             url: '/profile',
             icon: User,
           },
+          {
+            title: t('Lightcode devices'),
+            url: '/lightcode/devices',
+            icon: Laptop,
+          },
         ],
       },
       {
@@ -143,6 +149,11 @@ export function useSidebarData(): SidebarData {
             title: t('Subscriptions'),
             url: '/subscriptions',
             icon: CreditCard,
+          },
+          {
+            title: t('Lightcode models'),
+            url: '/lightcode/models',
+            icon: Box,
           },
           {
             title: t('System Info'),

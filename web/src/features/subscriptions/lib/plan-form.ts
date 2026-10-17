@@ -50,6 +50,17 @@ export function getPlanFormSchema(t: TFunction) {
     stripe_price_id: z.string().optional(),
     creem_product_id: z.string().optional(),
     waffo_pancake_product_id: z.string().optional(),
+    pool: z.enum(['api', 'lightcode']),
+    routing_group: z.string().optional(),
+    allowed_models: z.array(z.string()),
+  }).superRefine((value, ctx) => {
+    if (value.pool !== 'lightcode') return
+    if (!value.routing_group) {
+      ctx.addIssue({ code: 'custom', path: ['routing_group'], message: t('Select a Lightcode model group') })
+    }
+    if (value.allowed_models.length === 0) {
+      ctx.addIssue({ code: 'custom', path: ['allowed_models'], message: t('Select at least one supported model') })
+    }
   })
 }
 
@@ -75,6 +86,9 @@ export const PLAN_FORM_DEFAULTS: PlanFormValues = {
   stripe_price_id: '',
   creem_product_id: '',
   waffo_pancake_product_id: '',
+  pool: 'api',
+  routing_group: '',
+  allowed_models: [],
 }
 
 export function planToFormValues(plan: SubscriptionPlan): PlanFormValues {
@@ -98,6 +112,9 @@ export function planToFormValues(plan: SubscriptionPlan): PlanFormValues {
     stripe_price_id: plan.stripe_price_id || '',
     creem_product_id: plan.creem_product_id || '',
     waffo_pancake_product_id: plan.waffo_pancake_product_id || '',
+    pool: plan.pool === 'lightcode' ? 'lightcode' : 'api',
+    routing_group: plan.routing_group || '',
+    allowed_models: plan.allowed_models ?? [],
   }
 }
 
@@ -117,8 +134,12 @@ export function formValuesToPlanPayload(values: PlanFormValues): PlanPayload {
       sort_order: Number(values.sort_order || 0),
       max_purchase_per_user: Number(values.max_purchase_per_user || 0),
       total_amount: parseQuotaFromDollars(Number(values.total_amount || 0)),
-      upgrade_group: values.upgrade_group || '',
-      downgrade_group: values.downgrade_group || '',
+      // A Lightcode entitlement never changes the API user group or spills into the wallet.
+      upgrade_group: values.pool === 'lightcode' ? '' : values.upgrade_group || '',
+      downgrade_group: values.pool === 'lightcode' ? '' : values.downgrade_group || '',
+      allow_wallet_overflow: values.pool === 'lightcode' ? false : values.allow_wallet_overflow,
+      routing_group: values.pool === 'lightcode' ? values.routing_group || '' : '',
+      allowed_models: values.pool === 'lightcode' ? values.allowed_models : [],
     },
   }
 }

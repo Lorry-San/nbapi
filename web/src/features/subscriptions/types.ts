@@ -44,6 +44,9 @@ export const subscriptionPlanSchema = z.object({
   stripe_price_id: z.string().optional(),
   creem_product_id: z.string().optional(),
   waffo_pancake_product_id: z.string().optional(),
+  pool: z.enum(['api', 'lightcode']).optional().default('api'),
+  routing_group: z.string().optional(),
+  allowed_models: z.array(z.string()).nullable().optional(),
 })
 
 export type SubscriptionPlan = z.infer<typeof subscriptionPlanSchema>
@@ -67,7 +70,22 @@ export const userSubscriptionSchema = z.object({
   amount_total: z.number(),
   amount_used: z.number(),
   next_reset_time: z.number().optional(),
+  pool: z.enum(['api', 'lightcode']).optional(),
 })
+
+export interface LightcodeGroupModel {
+  model: string
+  display_name: string
+  efforts: string[]
+  default_effort: string
+  context_window: number
+  max_output_tokens: number
+  vision: boolean
+}
+
+export interface LightcodeGroupModelRecord extends LightcodeGroupModel {
+  routing_group: string
+}
 
 export type UserSubscription = z.infer<typeof userSubscriptionSchema>
 

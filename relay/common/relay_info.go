@@ -86,6 +86,8 @@ type TokenCountMeta struct {
 }
 
 type RelayInfo struct {
+	IsLightcode bool
+	LightcodeSubscriptionId int
 	TokenId           int
 	TokenKey          string
 	TokenGroup        string
@@ -476,6 +478,8 @@ func genBaseRelayInfo(c *gin.Context, request dto.Request) *RelayInfo {
 		reqId = common.NewRequestId()
 	}
 	info := &RelayInfo{
+		IsLightcode: c.GetBool("lightcode_request"),
+		LightcodeSubscriptionId: c.GetInt("lightcode_subscription_id"),
 		Request: request,
 
 		RequestId:  reqId,

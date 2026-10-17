@@ -204,6 +204,7 @@ func AdminCreateSubscriptionPlan(c *gin.Context) {
 		common.ApiErrorMsg(c, "自定义重置周期需大于0秒")
 		return
 	}
+	if err := model.ValidateLightcodePlan(&req.Plan); err != nil { common.ApiError(c, err); return }
 	err := model.DB.Create(&req.Plan).Error
 	if err != nil {
 		common.ApiError(c, err)
@@ -279,9 +280,12 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 		return
 	}
 
+	if err := model.ValidateLightcodePlan(&req.Plan); err != nil { common.ApiError(c, err); return }
 	err := model.DB.Transaction(func(tx *gorm.DB) error {
 		// update plan (allow zero values updates with map)
 		updateMap := map[string]interface{}{
+			"pool": req.Plan.Pool,
+			"routing_group": req.Plan.RoutingGroup,
 			"title":                      req.Plan.Title,
 			"subtitle":                   req.Plan.Subtitle,
 			"price_amount":               req.Plan.PriceAmount,
@@ -302,6 +306,9 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 			"quota_reset_custom_seconds": req.Plan.QuotaResetCustomSeconds,
 			"updated_at":                 common.GetTimestamp(),
 		}
+		modelsJSON, err := common.Marshal(req.Plan.AllowedModels)
+		if err != nil { return err }
+		updateMap["allowed_models"] = string(modelsJSON)
 		if req.Plan.AllowBalancePay != nil {
 			updateMap["allow_balance_pay"] = *req.Plan.AllowBalancePay
 		}

@@ -294,6 +294,10 @@ func migrateDB() error {
 		&SubscriptionOrder{},
 		&UserSubscription{},
 		&SubscriptionPreConsumeRecord{},
+		&LightcodeGroupModel{},
+		&LightcodeAuthCode{},
+		&LightcodeSession{},
+		&LightcodeRefreshToken{},
 		&CustomOAuthProvider{},
 		&UserOAuthBinding{},
 		&PerfMetric{},
@@ -357,6 +361,10 @@ func migrateDBFast() error {
 		{&SubscriptionOrder{}, "SubscriptionOrder"},
 		{&UserSubscription{}, "UserSubscription"},
 		{&SubscriptionPreConsumeRecord{}, "SubscriptionPreConsumeRecord"},
+		{&LightcodeGroupModel{}, "LightcodeGroupModel"},
+		{&LightcodeAuthCode{}, "LightcodeAuthCode"},
+		{&LightcodeSession{}, "LightcodeSession"},
+		{&LightcodeRefreshToken{}, "LightcodeRefreshToken"},
 		{&CustomOAuthProvider{}, "CustomOAuthProvider"},
 		{&UserOAuthBinding{}, "UserOAuthBinding"},
 		{&PerfMetric{}, "PerfMetric"},
@@ -552,6 +560,9 @@ PRIMARY KEY (` + "`id`" + `)
 		existing[c.Name] = struct{}{}
 	}
 	required := []sqliteColumnDef{
+		{Name: "pool", DDL: "`pool` varchar(16) NOT NULL DEFAULT 'api'"},
+		{Name: "routing_group", DDL: "`routing_group` varchar(64) DEFAULT ''"},
+		{Name: "allowed_models", DDL: "`allowed_models` text"},
 		{Name: "title", DDL: "`title` varchar(128) NOT NULL"},
 		{Name: "subtitle", DDL: "`subtitle` varchar(255) DEFAULT ''"},
 		{Name: "price_amount", DDL: "`price_amount` decimal(10,6) NOT NULL"},

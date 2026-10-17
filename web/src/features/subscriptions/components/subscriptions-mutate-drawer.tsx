@@ -67,6 +67,7 @@ import {
   createPlan,
   updatePlan,
   getGroups,
+  getLightcodeModels,
   createWaffoPancakeSubscriptionProduct,
   listWaffoPancakeSubscriptionProductOptions,
 } from '../api'
@@ -78,7 +79,7 @@ import {
   formValuesToPlanPayload,
   type PlanFormValues,
 } from '../lib'
-import type { PlanRecord } from '../types'
+import type { LightcodeGroupModelRecord, PlanRecord } from '../types'
 import { useSubscriptions } from './subscriptions-provider'
 
 interface Props {
@@ -100,6 +101,9 @@ export function SubscriptionsMutateDrawer({
   const currencyLabel = getCurrencyLabel()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [groupOptions, setGroupOptions] = useState<string[]>([])
+  const [lightcodeModels, setLightcodeModels] = useState<
+    LightcodeGroupModelRecord[]
+  >([])
   const [creatingPancakeProduct, setCreatingPancakeProduct] = useState(false)
   const [pancakeProducts, setPancakeProducts] = useState<
     { id: string; name: string; status: string }[]
@@ -123,6 +127,11 @@ export function SubscriptionsMutateDrawer({
           if (res.success) setGroupOptions(res.data || [])
         })
         .catch(() => {})
+      getLightcodeModels()
+        .then((res) => {
+          if (res.success) setLightcodeModels(res.data || [])
+        })
+        .catch(() => setLightcodeModels([]))
       // Best-effort — empty list still lets the operator use "+ Create".
       listWaffoPancakeSubscriptionProductOptions()
         .then((res) => {
@@ -145,6 +154,16 @@ export function SubscriptionsMutateDrawer({
 
   const durationUnit = form.watch('duration_unit')
   const resetPeriod = form.watch('quota_reset_period')
+  const pool = form.watch('pool')
+  const routingGroup = form.watch('routing_group')
+  const allowedModels = form.watch('allowed_models')
+  const isLightcode = pool === 'lightcode'
+  const lightcodeGroups = [
+    ...new Set(lightcodeModels.map((m) => m.routing_group)),
+  ]
+  const groupModels = lightcodeModels.filter(
+    (m) => m.routing_group === routingGroup
+  )
   // Gate "+ Create on Pancake" on the same checks the mint handler runs.
   const watchedTitle = form.watch('title')
   const watchedPrice = form.watch('price_amount')
@@ -386,7 +405,142 @@ export function SubscriptionsMutateDrawer({
                 />
               </div>
 
+              <FormField
+                control={form.control}
+                name='pool'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Quota pool')}</FormLabel>
+                    <Select
+                      items={[
+                        { value: 'api', label: t('API usage') },
+                        { value: 'lightcode', label: 'Lightcode' },
+                      ]}
+                      onValueChange={(v) => {
+                        field.onChange(v)
+                        form.setValue('routing_group', '')
+                        form.setValue('allowed_models', [])
+                      }}
+                      value={field.value}
+                      disabled={isEdit}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent alignItemWithTrigger={false}>
+                        <SelectGroup>
+                          <SelectItem value='api'>{t('API usage')}</SelectItem>
+                          <SelectItem value='lightcode'>Lightcode</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      {t(
+                        'Lightcode quota is only spent by Lightcode and never by API keys. One user can hold one active and one pending Lightcode plan.'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {isLightcode ? (
+                <>
+                  <FormField
+                    control={form.control}
+                    name='routing_group'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('Lightcode model group')}</FormLabel>
+                        <Select
+                          items={lightcodeGroups.map((g) => ({
+                            value: g,
+                            label: g,
+                          }))}
+                          onValueChange={(v) => {
+                            field.onChange(v)
+                            form.setValue('allowed_models', [])
+                          }}
+                          value={field.value || ''}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue
+                                placeholder={t('Select a Lightcode model group')}
+                              />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent alignItemWithTrigger={false}>
+                            <SelectGroup>
+                              {lightcodeGroups.map((g) => (
+                                <SelectItem key={g} value={g}>
+                                  {g}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          {t(
+                            'Configure groups, display names and reasoning efforts on the Lightcode Models page.'
+                          )}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name='allowed_models'
+                    render={() => (
+                      <FormItem>
+                        <FormLabel>{t('Supported models')}</FormLabel>
+                        <div className='flex flex-col gap-2'>
+                          {groupModels.map((m) => (
+                            <label
+                              key={m.model}
+                              className={sideDrawerSwitchItemClassName()}
+                            >
+                              <span>
+                                {m.display_name}
+                                <span className='text-muted-foreground ml-2 text-xs'>
+                                  {m.model}
+                                </span>
+                              </span>
+                              <Switch
+                                checked={allowedModels.includes(m.model)}
+                                onCheckedChange={(checked) =>
+                                  form.setValue(
+                                    'allowed_models',
+                                    checked
+                                      ? [...allowedModels, m.model]
+                                      : allowedModels.filter(
+                                          (x) => x !== m.model
+                                        ),
+                                    { shouldValidate: true }
+                                  )
+                                }
+                                aria-label={m.display_name}
+                              />
+                            </label>
+                          ))}
+                        </div>
+                        <FormDescription>
+                          {t(
+                            'Group models left off are shown in Lightcode as not supported by this subscription.'
+                          )}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              ) : null}
+
               <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+                {isLightcode ? null : (<>
                 <FormField
                   control={form.control}
                   name='upgrade_group'
@@ -474,6 +628,7 @@ export function SubscriptionsMutateDrawer({
                     </FormItem>
                   )}
                 />
+                </>)}
 
                 <FormField
                   control={form.control}
@@ -561,7 +716,7 @@ export function SubscriptionsMutateDrawer({
                   )}
                 />
 
-                <FormField
+                {isLightcode ? null : <FormField
                   control={form.control}
                   name='allow_wallet_overflow'
                   render={({ field }) => (
@@ -577,7 +732,7 @@ export function SubscriptionsMutateDrawer({
                       </FormControl>
                     </FormItem>
                   )}
-                />
+                />}
               </div>
             </SideDrawerSection>
 

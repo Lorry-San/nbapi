@@ -12,6 +12,11 @@ import (
 )
 
 func SetApiRouter(router *gin.Engine) {
+	oauthServer := router.Group("/oauth", middleware.CriticalRateLimit(), middleware.DisableCache(), middleware.AnonymousRequestBodyLimit())
+	oauthServer.GET("/authorize", controller.LightcodeAuthorizePage)
+	oauthServer.POST("/authorize", middleware.UserAuth(), controller.LightcodeAuthorize)
+	oauthServer.POST("/token", controller.LightcodeToken)
+	oauthServer.POST("/revoke", controller.LightcodeRevoke)
 	apiRouter := router.Group("/api")
 	apiRouter.Use(middleware.RouteTag("api"))
 	apiRouter.Use(gzip.Gzip(gzip.DefaultCompression))
@@ -20,6 +25,10 @@ func SetApiRouter(router *gin.Engine) {
 	anonymousRequestBodyLimit := middleware.AnonymousRequestBodyLimit()
 	{
 		apiRouter.GET("/setup", controller.GetSetup)
+		apiRouter.GET("/lightcode/models", middleware.AdminAuth(), controller.AdminLightcodeModels)
+		apiRouter.PUT("/lightcode/models", middleware.AdminAuth(), controller.AdminLightcodeModels)
+		apiRouter.GET("/lightcode/devices", middleware.UserAuth(), controller.LightcodeDevices)
+		apiRouter.DELETE("/lightcode/devices/:id", middleware.UserAuth(), controller.LightcodeDevices)
 		apiRouter.POST("/setup", anonymousRequestBodyLimit, controller.PostSetup)
 		apiRouter.GET("/status", controller.GetStatus)
 		apiRouter.GET("/ha/health", controller.HAHealth)

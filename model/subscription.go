@@ -3,6 +3,8 @@ package model
 import (
 	"errors"
 	"fmt"
+	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -145,6 +147,9 @@ func InvalidateSubscriptionPlanCache(planId int) {
 // Subscription plan
 type SubscriptionPlan struct {
 	Id int `json:"id"`
+	Pool string `json:"pool" gorm:"type:varchar(16);not null;default:'api';index"`
+	RoutingGroup string `json:"routing_group" gorm:"type:varchar(64);default:''"`
+	AllowedModels []string `json:"allowed_models" gorm:"serializer:json;type:text"`
 
 	Title    string `json:"title" gorm:"type:varchar(128);not null"`
 	Subtitle string `json:"subtitle" gorm:"type:varchar(255);default:''"`
@@ -190,6 +195,7 @@ type SubscriptionPlan struct {
 }
 
 func (p *SubscriptionPlan) BeforeCreate(tx *gorm.DB) error {
+	p.NormalizeDefaults()
 	now := common.GetTimestamp()
 	p.CreatedAt = now
 	p.UpdatedAt = now
@@ -202,11 +208,12 @@ func (p *SubscriptionPlan) BeforeUpdate(tx *gorm.DB) error {
 }
 
 func (p *SubscriptionPlan) NormalizeDefaults() {
+	if p.Pool == "" { p.Pool = SubscriptionPoolAPI }
 	if p.AllowBalancePay == nil {
 		p.AllowBalancePay = common.GetPointer(true)
 	}
 	if p.AllowWalletOverflow == nil {
-		p.AllowWalletOverflow = common.GetPointer(true)
+		p.AllowWalletOverflow = common.GetPointer(p.Pool != SubscriptionPoolLightcode)
 	}
 }
 
@@ -225,6 +232,17 @@ type SubscriptionOrder struct {
 	CompleteTime    int64  `json:"complete_time"`
 
 	ProviderPayload string `json:"provider_payload" gorm:"type:text"`
+	PlanSnapshot string `json:"-" gorm:"type:text"`
+}
+
+func (o *SubscriptionOrder) BeforeCreate(tx *gorm.DB) error {
+	if o.PlanSnapshot != "" { return nil }
+	var plan SubscriptionPlan
+	if err := tx.First(&plan, o.PlanId).Error; err != nil { return err }
+	data, err := common.Marshal(plan)
+	if err != nil { return err }
+	o.PlanSnapshot = string(data)
+	return nil
 }
 
 func (o *SubscriptionOrder) Insert() error {
@@ -254,6 +272,10 @@ type UserSubscription struct {
 	Id     int `json:"id"`
 	UserId int `json:"user_id" gorm:"index;index:idx_user_sub_active,priority:1"`
 	PlanId int `json:"plan_id" gorm:"index"`
+	Pool string `json:"pool" gorm:"type:varchar(16);not null;default:'api';index"`
+	RoutingGroup string `json:"routing_group" gorm:"type:varchar(64);default:''"`
+	AllowedModels []string `json:"allowed_models" gorm:"serializer:json;type:text"`
+	PlanSnapshot string `json:"-" gorm:"type:text"`
 
 	AmountTotal int64 `json:"amount_total" gorm:"type:bigint;not null;default:0"`
 	AmountUsed  int64 `json:"amount_used" gorm:"type:bigint;not null;default:0"`
@@ -441,6 +463,7 @@ func downgradeUserGroupForSubscriptionTx(tx *gorm.DB, sub *UserSubscription, now
 	if tx == nil || sub == nil {
 		return "", errors.New("invalid downgrade args")
 	}
+	if sub.Pool == SubscriptionPoolLightcode { return "", nil }
 	downgradeGroup := strings.TrimSpace(sub.DowngradeGroup)
 	upgradeGroup := strings.TrimSpace(sub.UpgradeGroup)
 	// Nothing to do if neither an explicit downgrade target nor an upgrade snapshot exists.
@@ -491,6 +514,9 @@ func CreateUserSubscriptionFromPlanTx(tx *gorm.DB, userId int, plan *Subscriptio
 	if userId <= 0 {
 		return nil, errors.New("invalid user id")
 	}
+	if plan.Pool == SubscriptionPoolLightcode {
+		return createLightcodeSubscriptionTx(tx, userId, plan, source)
+	}
 	if plan.MaxPurchasePerUser > 0 {
 		var count int64
 		if err := tx.Model(&UserSubscription{}).
@@ -502,7 +528,7 @@ func CreateUserSubscriptionFromPlanTx(tx *gorm.DB, userId int, plan *Subscriptio
 			return nil, errors.New("已达到该套餐购买上限")
 		}
 	}
-	nowUnix := GetDBTimestamp()
+	nowUnix := getDBTimestampTx(tx)
 	now := time.Unix(nowUnix, 0)
 	endUnix, err := calcPlanEndTime(now, plan)
 	if err != nil {
@@ -587,20 +613,25 @@ func CompleteSubscriptionOrder(tradeNo string, providerPayload string, expectedP
 		if expectedPaymentProvider != "" && order.PaymentProvider != expectedPaymentProvider {
 			return ErrPaymentMethodMismatch
 		}
-		if order.Status == common.TopUpStatusSuccess {
+		if order.Status == common.TopUpStatusSuccess || order.Status == "refund_required" {
 			return nil
 		}
 		if order.Status != common.TopUpStatusPending {
 			return ErrSubscriptionOrderStatusInvalid
 		}
-		plan, err := GetSubscriptionPlanById(order.PlanId)
-		if err != nil {
-			return err
-		}
-		if !plan.Enabled {
-			// still allow completion for already purchased orders
+		// Paid orders complete under the entitlements captured at checkout.
+		plan := &SubscriptionPlan{}
+		if order.PlanSnapshot != "" {
+			if err := common.UnmarshalJsonStr(order.PlanSnapshot, plan); err != nil { return err }
+			plan.NormalizeDefaults()
+		} else {
+			var err error
+			if plan, err = getSubscriptionPlanByIdTx(tx, order.PlanId); err != nil { return err }
 		}
 		subscription, err := CreateUserSubscriptionFromPlanTx(tx, order.UserId, plan, "order")
+		if errors.Is(err, ErrLightcodePendingSubscription) {
+			return tx.Model(&order).Updates(map[string]interface{}{"status": "refund_required", "complete_time": common.GetTimestamp(), "provider_payload": providerPayload}).Error
+		}
 		if err != nil {
 			return err
 		}
@@ -860,6 +891,7 @@ func HasActiveUserSubscription(userId int) (bool, error) {
 	var count int64
 	if err := DB.Model(&UserSubscription{}).
 		Where("user_id = ? AND status = ? AND end_time > ?", userId, "active", now).
+		Where("pool = ?", SubscriptionPoolAPI).
 		Count(&count).Error; err != nil {
 		return false, err
 	}
@@ -876,6 +908,7 @@ func UserActiveSubscriptionsAllowWalletOverflow(userId int) (bool, error) {
 	now := common.GetTimestamp()
 	var strictCount int64
 	if err := DB.Model(&UserSubscription{}).
+		Where("pool = ?", SubscriptionPoolAPI).
 		Where("user_id = ? AND status = ? AND end_time > ? AND allow_wallet_overflow = ?",
 			userId, "active", now, false).
 		Count(&strictCount).Error; err != nil {
@@ -1131,9 +1164,10 @@ func ExpireDueSubscriptions(limit int) (int, error) {
 	if limit <= 0 {
 		limit = 200
 	}
+	if err := ActivateDueLightcodeRenewals(limit); err != nil { return 0, err }
 	now := GetDBTimestamp()
 	var subs []UserSubscription
-	if err := DB.Where("status = ? AND end_time > 0 AND end_time <= ?", "active", now).
+	if err := DB.Where("pool = ? AND status = ? AND end_time > 0 AND end_time <= ?", SubscriptionPoolAPI, "active", now).
 		Order("end_time asc, id asc").
 		Limit(limit).
 		Find(&subs).Error; err != nil {
@@ -1153,7 +1187,7 @@ func ExpireDueSubscriptions(limit int) (int, error) {
 		cacheGroup := ""
 		err := DB.Transaction(func(tx *gorm.DB) error {
 			res := tx.Model(&UserSubscription{}).
-				Where("user_id = ? AND status = ? AND end_time > 0 AND end_time <= ?", userId, "active", now).
+				Where("pool = ? AND user_id = ? AND status = ? AND end_time > 0 AND end_time <= ?", SubscriptionPoolAPI, userId, "active", now).
 				Updates(map[string]interface{}{
 					"status":     "expired",
 					"updated_at": common.GetTimestamp(),
@@ -1226,6 +1260,7 @@ func ExpireDueSubscriptions(limit int) (int, error) {
 
 // SubscriptionPreConsumeRecord stores idempotent pre-consume operations per request.
 type SubscriptionPreConsumeRecord struct {
+	Pool string `json:"pool" gorm:"type:varchar(16);not null;default:'api'"`
 	Id                 int    `json:"id"`
 	RequestId          string `json:"request_id" gorm:"type:varchar(64);uniqueIndex"`
 	UserId             int    `json:"user_id" gorm:"index"`
@@ -1251,6 +1286,16 @@ func (r *SubscriptionPreConsumeRecord) BeforeUpdate(tx *gorm.DB) error {
 func maybeResetUserSubscriptionWithPlanTx(tx *gorm.DB, sub *UserSubscription, plan *SubscriptionPlan, now int64) error {
 	if tx == nil || sub == nil || plan == nil {
 		return errors.New("invalid reset args")
+	}
+	if sub.Pool == SubscriptionPoolLightcode {
+		var snapshot SubscriptionPlan
+		if err := common.UnmarshalJsonStr(sub.PlanSnapshot, &snapshot); err != nil { return err }
+		plan = &snapshot
+	}
+	if sub.Pool == SubscriptionPoolLightcode {
+		var snapshot SubscriptionPlan
+		if err := common.UnmarshalJsonStr(sub.PlanSnapshot, &snapshot); err != nil { return err }
+		plan = &snapshot
 	}
 	if sub.NextResetTime > 0 && sub.NextResetTime > now {
 		return nil
@@ -1286,6 +1331,13 @@ func maybeResetUserSubscriptionWithPlanTx(tx *gorm.DB, sub *UserSubscription, pl
 
 // PreConsumeUserSubscription pre-consumes from any active subscription total quota.
 func PreConsumeUserSubscription(requestId string, userId int, modelName string, quotaType int, amount int64) (*SubscriptionPreConsumeResult, error) {
+	return PreConsumeSubscriptionPool(requestId, userId, modelName, amount, SubscriptionPoolAPI, 0)
+}
+
+// PreConsumeSubscriptionPool pins Lightcode requests to the admitted subscription.
+func PreConsumeSubscriptionPool(requestId string, userId int, modelName string, amount int64, pool string, subscriptionId int) (*SubscriptionPreConsumeResult, error) {
+	if pool != SubscriptionPoolAPI && pool != SubscriptionPoolLightcode { return nil, errors.New("invalid subscription pool") }
+	if pool == SubscriptionPoolLightcode && subscriptionId <= 0 { return nil, errors.New("no active subscription") }
 	if userId <= 0 {
 		return nil, errors.New("invalid userId")
 	}
@@ -1306,6 +1358,7 @@ func PreConsumeUserSubscription(requestId string, userId int, modelName string, 
 			return query.Error
 		}
 		if query.RowsAffected > 0 {
+			if existing.UserId != userId || existing.Pool != pool || (subscriptionId > 0 && existing.UserSubscriptionId != subscriptionId) { return errors.New("subscription request identity conflict") }
 			if existing.Status == "refunded" {
 				return errors.New("subscription pre-consume already refunded")
 			}
@@ -1322,7 +1375,9 @@ func PreConsumeUserSubscription(requestId string, userId int, modelName string, 
 		}
 
 		var subs []UserSubscription
-		if err := lockForUpdate(tx).
+		candidateQuery := lockForUpdate(tx).Where("pool = ?", pool)
+		if subscriptionId > 0 { candidateQuery = candidateQuery.Where("id = ?", subscriptionId) }
+		if err := candidateQuery.
 			Where("user_id = ? AND status = ? AND end_time > ?", userId, "active", now).
 			Order("end_time asc, id asc").
 			Find(&subs).Error; err != nil {
@@ -1333,6 +1388,7 @@ func PreConsumeUserSubscription(requestId string, userId int, modelName string, 
 		}
 		for _, candidate := range subs {
 			sub := candidate
+			if pool == SubscriptionPoolLightcode && !slices.Contains(sub.AllowedModels, modelName) { return errors.New("subscription does not support this model") }
 			plan, err := getSubscriptionPlanByIdTx(tx, sub.PlanId)
 			if err != nil {
 				return err
@@ -1348,6 +1404,7 @@ func PreConsumeUserSubscription(requestId string, userId int, modelName string, 
 				}
 			}
 			record := &SubscriptionPreConsumeRecord{
+				Pool: pool,
 				RequestId:          requestId,
 				UserId:             userId,
 				UserSubscriptionId: sub.Id,
@@ -1369,6 +1426,7 @@ func PreConsumeUserSubscription(requestId string, userId int, modelName string, 
 				}
 				return err
 			}
+			if sub.AmountUsed > math.MaxInt64-amount { return errors.New("subscription quota overflow") }
 			sub.AmountUsed += amount
 			if err := tx.Save(&sub).Error; err != nil {
 				return err
@@ -1406,7 +1464,7 @@ func RefundSubscriptionPreConsume(requestId string) error {
 			record.Status = "refunded"
 			return tx.Save(&record).Error
 		}
-		if err := PostConsumeUserSubscriptionDelta(record.UserSubscriptionId, -record.PreConsumed); err != nil {
+		if err := postConsumeUserSubscriptionDeltaTx(tx, record.UserSubscriptionId, -record.PreConsumed); err != nil {
 			return err
 		}
 		record.Status = "refunded"
@@ -1504,13 +1562,17 @@ func PostConsumeUserSubscriptionDelta(userSubscriptionId int, delta int64) error
 	if delta == 0 {
 		return nil
 	}
-	return DB.Transaction(func(tx *gorm.DB) error {
+	return DB.Transaction(func(tx *gorm.DB) error { return postConsumeUserSubscriptionDeltaTx(tx, userSubscriptionId, delta) })
+}
+
+func postConsumeUserSubscriptionDeltaTx(tx *gorm.DB, userSubscriptionId int, delta int64) error {
 		var sub UserSubscription
 		if err := lockForUpdate(tx).
 			Where("id = ?", userSubscriptionId).
 			First(&sub).Error; err != nil {
 			return err
 		}
+		if delta > 0 && sub.AmountUsed > math.MaxInt64-delta { return errors.New("subscription quota overflow") }
 		newUsed := sub.AmountUsed + delta
 		if newUsed < 0 {
 			newUsed = 0
@@ -1520,5 +1582,4 @@ func PostConsumeUserSubscriptionDelta(userSubscriptionId int, delta int64) error
 		}
 		sub.AmountUsed = newUsed
 		return tx.Save(&sub).Error
-	})
 }
