@@ -190,6 +190,13 @@ type SubscriptionPlan struct {
 	QuotaResetPeriod        string `json:"quota_reset_period" gorm:"type:varchar(16);default:'never'"`
 	QuotaResetCustomSeconds int64  `json:"quota_reset_custom_seconds" gorm:"type:bigint;default:0"`
 
+	// Lightcode usage windows (quota units; 0 disables a window). Each window
+	// opens at the first charge after it lapses and clears when it ends.
+	WindowShortSeconds int64 `json:"window_short_seconds" gorm:"type:bigint;default:0"`
+	WindowShortAmount  int64 `json:"window_short_amount" gorm:"type:bigint;default:0"`
+	WindowLongSeconds  int64 `json:"window_long_seconds" gorm:"type:bigint;default:0"`
+	WindowLongAmount   int64 `json:"window_long_amount" gorm:"type:bigint;default:0"`
+
 	CreatedAt int64 `json:"created_at" gorm:"bigint"`
 	UpdatedAt int64 `json:"updated_at" gorm:"bigint"`
 }
@@ -288,6 +295,12 @@ type UserSubscription struct {
 
 	LastResetTime int64 `json:"last_reset_time" gorm:"type:bigint;default:0"`
 	NextResetTime int64 `json:"next_reset_time" gorm:"type:bigint;default:0;index"`
+
+	// Lightcode window state; start 0 means the window has not opened yet.
+	WindowShortStart int64 `json:"window_short_start" gorm:"type:bigint;default:0"`
+	WindowShortUsed  int64 `json:"window_short_used" gorm:"type:bigint;default:0"`
+	WindowLongStart  int64 `json:"window_long_start" gorm:"type:bigint;default:0"`
+	WindowLongUsed   int64 `json:"window_long_used" gorm:"type:bigint;default:0"`
 
 	UpgradeGroup  string `json:"upgrade_group" gorm:"type:varchar(64);default:''"`
 	PrevUserGroup string `json:"prev_user_group" gorm:"type:varchar(64);default:''"`
@@ -1403,6 +1416,9 @@ func PreConsumeSubscriptionPool(requestId string, userId int, modelName string, 
 					continue
 				}
 			}
+			if err := applyLightcodeWindows(&sub, amount, now, true); err != nil {
+				return err
+			}
 			record := &SubscriptionPreConsumeRecord{
 				Pool: pool,
 				RequestId:          requestId,
@@ -1579,6 +1595,9 @@ func postConsumeUserSubscriptionDeltaTx(tx *gorm.DB, userSubscriptionId int, del
 		}
 		if sub.AmountTotal > 0 && newUsed > sub.AmountTotal {
 			return fmt.Errorf("subscription used exceeds total, used=%d total=%d", newUsed, sub.AmountTotal)
+		}
+		if err := applyLightcodeWindows(&sub, delta, getDBTimestampTx(tx), false); err != nil {
+			return err
 		}
 		sub.AmountUsed = newUsed
 		return tx.Save(&sub).Error

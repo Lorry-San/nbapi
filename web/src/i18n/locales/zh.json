@@ -5267,6 +5267,11 @@
     "Sign in to Lightcode with {{name}}": "使用 {{name}} 登录 Lightcode",
     "Lightcode on this computer will use your Lightcode subscription. It cannot use your API keys or wallet balance.": "这台电脑上的 Lightcode 将使用你的 Lightcode 订阅，无法使用你的 API 密钥或钱包余额。",
     "Returns to this computer on port {{port}}.": "授权后将返回本机端口 {{port}}。",
-    "Authorization failed. Restart sign-in from Lightcode.": "授权失败，请在 Lightcode 中重新登录。"
+    "Authorization failed. Restart sign-in from Lightcode.": "授权失败，请在 Lightcode 中重新登录。",
+    "Short window (hours)": "短周期时长（小时）",
+    "Short window quota ({{currency}})": "短周期额度（{{currency}}）",
+    "Long window (days)": "长周期时长（天）",
+    "Long window quota ({{currency}})": "长周期额度（{{currency}}）",
+    "Each window opens at the first request after it lapses and resets when it ends. Requests stop while either window is used up. 0 quota disables a window.": "每个周期从上次结束后的第一次请求开始计时，到期自动重置。任一周期额度用完时暂停使用。额度填 0 表示不启用该周期。"
   }
 }

@@ -47,6 +47,14 @@ func ValidateLightcodePlan(plan *SubscriptionPlan) error {
 	plan.AllowWalletOverflow = common.GetPointer(false)
 	if strings.TrimSpace(plan.RoutingGroup) == "" || plan.RoutingGroup == "auto" { return errors.New("Lightcode requires one explicit routing group") }
 	if len(plan.AllowedModels) == 0 { return errors.New("select at least one Lightcode model") }
+	for _, w := range [][2]int64{{plan.WindowShortSeconds, plan.WindowShortAmount}, {plan.WindowLongSeconds, plan.WindowLongAmount}} {
+		if w[0] < 0 || w[1] < 0 || (w[0] == 0) != (w[1] == 0) {
+			return errors.New("each usage window needs both a positive length and a positive quota, or neither")
+		}
+	}
+	if plan.WindowShortSeconds > 0 && plan.WindowLongSeconds > 0 && plan.WindowShortSeconds >= plan.WindowLongSeconds {
+		return errors.New("the short usage window must be shorter than the long one")
+	}
 	var models []LightcodeGroupModel
 	if err := DB.Where("routing_group = ?", plan.RoutingGroup).Find(&models).Error; err != nil { return err }
 	for _, name := range plan.AllowedModels {
@@ -94,6 +102,92 @@ func createLightcodeSubscriptionTx(tx *gorm.DB, userId int, plan *SubscriptionPl
 		NextResetTime: calcNextResetTime(time.Unix(start, 0), plan, end), AllowWalletOverflow: false,
 	}
 	return sub, tx.Create(sub).Error
+}
+
+// ErrLightcodeWindowExhausted reports that a usage window has no room left for the request.
+var ErrLightcodeWindowExhausted = errors.New("Lightcode usage window exhausted")
+
+// lightcodeWindows reads the window limits frozen into the subscription at purchase.
+func lightcodeWindows(sub *UserSubscription) (shortSec, shortCap, longSec, longCap int64) {
+	var plan SubscriptionPlan
+	if sub.PlanSnapshot == "" || common.UnmarshalJsonStr(sub.PlanSnapshot, &plan) != nil {
+		return 0, 0, 0, 0
+	}
+	return plan.WindowShortSeconds, plan.WindowShortAmount, plan.WindowLongSeconds, plan.WindowLongAmount
+}
+
+// rollLightcodeWindows clears windows whose period ended; it never opens one.
+func rollLightcodeWindows(sub *UserSubscription, now int64) {
+	shortSec, _, longSec, _ := lightcodeWindows(sub)
+	if sub.WindowShortStart > 0 && (shortSec <= 0 || now >= sub.WindowShortStart+shortSec) {
+		sub.WindowShortStart, sub.WindowShortUsed = 0, 0
+	}
+	if sub.WindowLongStart > 0 && (longSec <= 0 || now >= sub.WindowLongStart+longSec) {
+		sub.WindowLongStart, sub.WindowLongUsed = 0, 0
+	}
+}
+
+// applyLightcodeWindows charges delta (negative refunds) against both windows,
+// opening a lapsed window at the first positive charge. Admission (enforce)
+// rejects a charge that would overrun a window; settlement records the real
+// usage even past the cap, because the response was already delivered, and the
+// overrun blocks the next admission instead.
+func applyLightcodeWindows(sub *UserSubscription, delta int64, now int64, enforce bool) error {
+	if sub.Pool != SubscriptionPoolLightcode {
+		return nil
+	}
+	rollLightcodeWindows(sub, now)
+	shortSec, shortCap, longSec, longCap := lightcodeWindows(sub)
+	if delta > 0 && enforce {
+		if shortCap > 0 && sub.WindowShortUsed > shortCap-delta {
+			return ErrLightcodeWindowExhausted
+		}
+		if longCap > 0 && sub.WindowLongUsed > longCap-delta {
+			return ErrLightcodeWindowExhausted
+		}
+	}
+	if delta > 0 {
+		if shortSec > 0 && shortCap > 0 && sub.WindowShortStart == 0 {
+			sub.WindowShortStart = now
+		}
+		if longSec > 0 && longCap > 0 && sub.WindowLongStart == 0 {
+			sub.WindowLongStart = now
+		}
+	}
+	if sub.WindowShortStart > 0 {
+		sub.WindowShortUsed = max(sub.WindowShortUsed+delta, 0)
+	}
+	if sub.WindowLongStart > 0 {
+		sub.WindowLongUsed = max(sub.WindowLongUsed+delta, 0)
+	}
+	return nil
+}
+
+// LightcodeWindowView is the client-facing state of one usage window.
+type LightcodeWindowView struct {
+	Limit   int64 `json:"limit"`
+	Used    int64 `json:"used"`
+	ResetAt int64 `json:"reset_at"`
+}
+
+// LightcodeWindowStatus projects both windows without mutating state; a lapsed window reads as empty.
+func LightcodeWindowStatus(sub *UserSubscription, now int64) (short, long *LightcodeWindowView) {
+	view := *sub
+	rollLightcodeWindows(&view, now)
+	shortSec, shortCap, longSec, longCap := lightcodeWindows(&view)
+	if shortCap > 0 && shortSec > 0 {
+		short = &LightcodeWindowView{Limit: shortCap, Used: view.WindowShortUsed}
+		if view.WindowShortStart > 0 {
+			short.ResetAt = view.WindowShortStart + shortSec
+		}
+	}
+	if longCap > 0 && longSec > 0 {
+		long = &LightcodeWindowView{Limit: longCap, Used: view.WindowLongUsed}
+		if view.WindowLongStart > 0 {
+			long.ResetAt = view.WindowLongStart + longSec
+		}
+	}
+	return short, long
 }
 
 // LightcodeSubscriptions advances due renewals before exposing current entitlements.

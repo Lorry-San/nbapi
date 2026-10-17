@@ -47,6 +47,10 @@ export const subscriptionPlanSchema = z.object({
   pool: z.enum(['api', 'lightcode']).optional().default('api'),
   routing_group: z.string().optional(),
   allowed_models: z.array(z.string()).nullable().optional(),
+  window_short_seconds: z.number().optional(),
+  window_short_amount: z.number().optional(),
+  window_long_seconds: z.number().optional(),
+  window_long_amount: z.number().optional(),
 })
 
 export type SubscriptionPlan = z.infer<typeof subscriptionPlanSchema>

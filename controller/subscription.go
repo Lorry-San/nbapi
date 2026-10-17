@@ -205,7 +205,14 @@ func AdminCreateSubscriptionPlan(c *gin.Context) {
 		return
 	}
 	if err := model.ValidateLightcodePlan(&req.Plan); err != nil { common.ApiError(c, err); return }
+	// The column defaults to true and GORM omits a false bool on insert, so a
+	// plan created as disabled would otherwise go on sale immediately.
+	enabled := req.Plan.Enabled
 	err := model.DB.Create(&req.Plan).Error
+	if err == nil && !enabled {
+		err = model.DB.Model(&model.SubscriptionPlan{}).Where("id = ?", req.Plan.Id).Update("enabled", false).Error
+		req.Plan.Enabled = false
+	}
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -304,6 +311,10 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 			"downgrade_group":            req.Plan.DowngradeGroup,
 			"quota_reset_period":         req.Plan.QuotaResetPeriod,
 			"quota_reset_custom_seconds": req.Plan.QuotaResetCustomSeconds,
+			"window_short_seconds":       req.Plan.WindowShortSeconds,
+			"window_short_amount":        req.Plan.WindowShortAmount,
+			"window_long_seconds":        req.Plan.WindowLongSeconds,
+			"window_long_amount":         req.Plan.WindowLongAmount,
 			"updated_at":                 common.GetTimestamp(),
 		}
 		modelsJSON, err := common.Marshal(req.Plan.AllowedModels)

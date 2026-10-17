@@ -5270,6 +5270,11 @@
     "Sign in to Lightcode with {{name}}": "Sign in to Lightcode with {{name}}",
     "Lightcode on this computer will use your Lightcode subscription. It cannot use your API keys or wallet balance.": "Lightcode on this computer will use your Lightcode subscription. It cannot use your API keys or wallet balance.",
     "Returns to this computer on port {{port}}.": "Returns to this computer on port {{port}}.",
-    "Authorization failed. Restart sign-in from Lightcode.": "Authorization failed. Restart sign-in from Lightcode."
+    "Authorization failed. Restart sign-in from Lightcode.": "Authorization failed. Restart sign-in from Lightcode.",
+    "Short window (hours)": "Short window (hours)",
+    "Short window quota ({{currency}})": "Short window quota ({{currency}})",
+    "Long window (days)": "Long window (days)",
+    "Long window quota ({{currency}})": "Long window quota ({{currency}})",
+    "Each window opens at the first request after it lapses and resets when it ends. Requests stop while either window is used up. 0 quota disables a window.": "Each window opens at the first request after it lapses and resets when it ends. Requests stop while either window is used up. 0 quota disables a window."
   }
 }

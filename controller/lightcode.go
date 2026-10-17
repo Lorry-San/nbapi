@@ -60,9 +60,20 @@ func LightcodeAccount(c *gin.Context) {
 		if sub.AmountTotal > 0 && common.QuotaPerUnit > 0 {
 			remaining = strconv.FormatFloat(float64(max(sub.AmountTotal-sub.AmountUsed, 0))/common.QuotaPerUnit, 'f', 2, 64)
 		}
-		views = append(views, gin.H{"id": sub.Id, "status": sub.Status, "plan": plan.Title, "start_time": sub.StartTime, "end_time": sub.EndTime, "next_reset_time": sub.NextResetTime, "remaining_usd": remaining, "unlimited": sub.AmountTotal == 0})
+		short, long := model.LightcodeWindowStatus(&sub, time.Now().Unix())
+		views = append(views, gin.H{"id": sub.Id, "status": sub.Status, "plan": plan.Title, "start_time": sub.StartTime, "end_time": sub.EndTime, "next_reset_time": sub.NextResetTime, "remaining_usd": remaining, "unlimited": sub.AmountTotal == 0,
+			"window_short": lightcodeWindowJSON(short, plan.WindowShortSeconds), "window_long": lightcodeWindowJSON(long, plan.WindowLongSeconds)})
 	}
 	c.JSON(200, gin.H{"user": gin.H{"id": user.Id, "name": user.Username}, "subscriptions": views})
+}
+
+// lightcodeWindowJSON renders a usage window in USD for the client; nil means the plan has none.
+func lightcodeWindowJSON(view *model.LightcodeWindowView, seconds int64) gin.H {
+	if view == nil || common.QuotaPerUnit <= 0 {
+		return nil
+	}
+	usd := func(q int64) string { return strconv.FormatFloat(float64(q)/common.QuotaPerUnit, 'f', 2, 64) }
+	return gin.H{"seconds": seconds, "limit_usd": usd(view.Limit), "used_usd": usd(view.Used), "remaining_usd": usd(max(view.Limit-view.Used, 0)), "reset_at": view.ResetAt}
 }
 
 func LightcodeCatalog(c *gin.Context) {

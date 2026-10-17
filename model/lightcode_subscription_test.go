@@ -38,7 +38,7 @@ func TestLightcodeRenewalAndIsolatedBilling(t *testing.T) {
 	_, err = PreConsumeSubscriptionPool("lc-charge", user.Id, "model-a", 100, SubscriptionPoolLightcode, active.Id)
 	require.NoError(t, err)
 	_, err = PreConsumeSubscriptionPool("lc-charge", user.Id, "model-a", 100, SubscriptionPoolLightcode, active.Id)
-	require.NoError(t, err)
+	require.NoError(t, err, "a repeated request id is idempotent")
 	require.NoError(t, DB.First(active, active.Id).Error); assert.EqualValues(t, 100, active.AmountUsed)
 	require.NoError(t, RefundSubscriptionPreConsume("lc-charge"))
 	require.NoError(t, RefundSubscriptionPreConsume("lc-charge"))

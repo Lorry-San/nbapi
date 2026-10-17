@@ -536,6 +536,48 @@ export function SubscriptionsMutateDrawer({
                       </FormItem>
                     )}
                   />
+                  <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+                    {(
+                      [
+                        ['window_short_hours', 'Short window (hours)'],
+                        ['window_short_amount', 'Short window quota ({{currency}})'],
+                        ['window_long_days', 'Long window (days)'],
+                        ['window_long_amount', 'Long window quota ({{currency}})'],
+                      ] as const
+                    ).map(([name, label]) => (
+                      <FormField
+                        key={name}
+                        control={form.control}
+                        name={name}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              {t(label, { currency: currencyLabel })}
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                type='number'
+                                min={0}
+                                step={0.01}
+                                onChange={(e) =>
+                                  field.onChange(
+                                    Number.parseFloat(e.target.value) || 0
+                                  )
+                                }
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    ))}
+                  </div>
+                  <FormDescription>
+                    {t(
+                      'Each window opens at the first request after it lapses and resets when it ends. Requests stop while either window is used up. 0 quota disables a window.'
+                    )}
+                  </FormDescription>
                 </>
               ) : null}
 

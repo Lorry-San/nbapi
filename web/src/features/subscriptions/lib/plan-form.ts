@@ -53,6 +53,10 @@ export function getPlanFormSchema(t: TFunction) {
     pool: z.enum(['api', 'lightcode']),
     routing_group: z.string().optional(),
     allowed_models: z.array(z.string()),
+    window_short_hours: z.coerce.number().min(0),
+    window_short_amount: z.coerce.number().min(0),
+    window_long_days: z.coerce.number().min(0),
+    window_long_amount: z.coerce.number().min(0),
   }).superRefine((value, ctx) => {
     if (value.pool !== 'lightcode') return
     if (!value.routing_group) {
@@ -89,6 +93,10 @@ export const PLAN_FORM_DEFAULTS: PlanFormValues = {
   pool: 'api',
   routing_group: '',
   allowed_models: [],
+  window_short_hours: 5,
+  window_short_amount: 0,
+  window_long_days: 7,
+  window_long_amount: 0,
 }
 
 export function planToFormValues(plan: SubscriptionPlan): PlanFormValues {
@@ -115,6 +123,10 @@ export function planToFormValues(plan: SubscriptionPlan): PlanFormValues {
     pool: plan.pool === 'lightcode' ? 'lightcode' : 'api',
     routing_group: plan.routing_group || '',
     allowed_models: plan.allowed_models ?? [],
+    window_short_hours: plan.window_short_seconds ? plan.window_short_seconds / 3600 : 5,
+    window_short_amount: quotaUnitsToDollars(Number(plan.window_short_amount || 0)),
+    window_long_days: plan.window_long_seconds ? plan.window_long_seconds / 86400 : 7,
+    window_long_amount: quotaUnitsToDollars(Number(plan.window_long_amount || 0)),
   }
 }
 
@@ -140,6 +152,20 @@ export function formValuesToPlanPayload(values: PlanFormValues): PlanPayload {
       allow_wallet_overflow: values.pool === 'lightcode' ? false : values.allow_wallet_overflow,
       routing_group: values.pool === 'lightcode' ? values.routing_group || '' : '',
       allowed_models: values.pool === 'lightcode' ? values.allowed_models : [],
+      ...lightcodeWindowPayload(values),
     },
+  }
+}
+
+/** A window with no amount is disabled; the server rejects a half-configured window. */
+function lightcodeWindowPayload(values: PlanFormValues) {
+  const lightcode = values.pool === 'lightcode'
+  const short = lightcode ? parseQuotaFromDollars(Number(values.window_short_amount || 0)) : 0
+  const long = lightcode ? parseQuotaFromDollars(Number(values.window_long_amount || 0)) : 0
+  return {
+    window_short_amount: short,
+    window_short_seconds: short > 0 ? Math.round(Number(values.window_short_hours) * 3600) : 0,
+    window_long_amount: long,
+    window_long_seconds: long > 0 ? Math.round(Number(values.window_long_days) * 86400) : 0,
   }
 }
