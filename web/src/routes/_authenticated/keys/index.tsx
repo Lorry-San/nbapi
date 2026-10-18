@@ -21,6 +21,7 @@ import z from 'zod'
 
 import { ApiKeys } from '@/features/keys'
 import { API_KEY_STATUS_OPTIONS } from '@/features/keys/constants'
+import { redirectNonAdminToUsage } from '@/lib/route-guards'
 
 const apiKeySearchSchema = z.object({
   page: z.number().optional().catch(1),
@@ -34,6 +35,7 @@ const apiKeySearchSchema = z.object({
 })
 
 export const Route = createFileRoute('/_authenticated/keys/')({
+  beforeLoad: redirectNonAdminToUsage,
   validateSearch: apiKeySearchSchema,
   component: ApiKeys,
 })

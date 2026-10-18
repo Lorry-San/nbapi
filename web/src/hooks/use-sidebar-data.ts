@@ -18,8 +18,10 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import {
   Activity,
+  BarChart3,
   Box,
   CreditCard,
+  Crown,
   FileText,
   FlaskConical,
   Key,
@@ -39,6 +41,7 @@ import { useTranslation } from 'react-i18next'
 
 import { type SidebarData } from '@/components/layout/types'
 import { ROLE } from '@/lib/roles'
+import { useAuthStore } from '@/stores/auth-store'
 
 /**
  * Root navigation groups for the application sidebar.
@@ -48,6 +51,7 @@ import { ROLE } from '@/lib/roles'
  */
 export function useSidebarData(): SidebarData {
   const { t } = useTranslation()
+  const isAdmin = useAuthStore((s) => (s.auth.user?.role ?? 0) >= ROLE.ADMIN)
 
   return {
     navGroups: [
@@ -59,11 +63,13 @@ export function useSidebarData(): SidebarData {
             title: t('Playground'),
             url: '/playground',
             icon: FlaskConical,
+            requiredRole: ROLE.ADMIN,
           },
           {
             title: t('Chat'),
             icon: MessageSquare,
             type: 'chat-presets',
+            requiredRole: ROLE.ADMIN,
           },
         ],
       },
@@ -75,16 +81,29 @@ export function useSidebarData(): SidebarData {
             title: t('Overview'),
             url: '/dashboard/overview',
             icon: Activity,
+            requiredRole: ROLE.ADMIN,
           },
           {
             title: t('Dashboard'),
             url: '/dashboard/models',
             icon: LayoutDashboard,
+            requiredRole: ROLE.ADMIN,
+          },
+          {
+            title: isAdmin ? t('Usage Dashboard') : t('Dashboard'),
+            url: '/lightcode/usage',
+            icon: BarChart3,
+          },
+          {
+            title: t('Subscription'),
+            url: '/lightcode/subscription',
+            icon: Crown,
           },
           {
             title: t('API Keys'),
             url: '/keys',
             icon: Key,
+            requiredRole: ROLE.ADMIN,
           },
           {
             title: t('Usage Logs'),
@@ -97,6 +116,7 @@ export function useSidebarData(): SidebarData {
             activeUrls: ['/usage-logs/drawing'],
             configUrls: ['/usage-logs/drawing', '/usage-logs/task'],
             icon: ListTodo,
+            requiredRole: ROLE.ADMIN,
           },
         ],
       },

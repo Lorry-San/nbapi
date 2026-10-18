@@ -54,7 +54,7 @@ export function useSubscriptionsColumns(): ColumnDef<PlanRecord>[] {
             <div className='max-w-full min-w-0'>
               <div className='truncate font-medium'>{plan.title}</div>
               {plan.subtitle && (
-                <div className='text-muted-foreground truncate text-xs'>
+                <div className='text-muted-foreground line-clamp-2 text-xs whitespace-pre-line'>
                   {plan.subtitle}
                 </div>
               )}

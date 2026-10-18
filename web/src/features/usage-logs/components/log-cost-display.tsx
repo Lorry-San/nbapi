@@ -36,6 +36,8 @@ import type { LogOtherData } from '../types'
 interface LogCostDisplayProps {
   quota: number
   other: LogOtherData | null
+  /** Lightcode logs show a plain subscription badge without amounts. */
+  lightcode?: boolean
 }
 
 function splitQuotaDisplay(value: string): { prefix: string; amount: string } {
@@ -92,8 +94,19 @@ function QuotaBadge(props: { quota: number }) {
   )
 }
 
-function SubscriptionBadge(props: { quota: number }) {
+function SubscriptionBadge(props: { quota: number; hideAmount?: boolean }) {
   const { t } = useTranslation()
+
+  if (props.hideAmount) {
+    return (
+      <StatusBadge
+        label={t('Subscription')}
+        variant='success'
+        size='sm'
+        copyable={false}
+      />
+    )
+  }
 
   return (
     <Tooltip>
@@ -118,7 +131,8 @@ function SubscriptionBadge(props: { quota: number }) {
 }
 
 export function LogCostDisplay(props: LogCostDisplayProps) {
-  const isSubscription = props.other?.billing_source === 'subscription'
+  const isSubscription =
+    props.lightcode || props.other?.billing_source === 'subscription'
   const showToolSurcharge = hasToolSurcharge(props.other)
 
   if (!isSubscription && !showToolSurcharge) {
@@ -133,7 +147,10 @@ export function LogCostDisplay(props: LogCostDisplayProps) {
     <TooltipProvider>
       <div className='inline-flex items-center gap-1'>
         {isSubscription ? (
-          <SubscriptionBadge quota={props.quota} />
+          <SubscriptionBadge
+            quota={props.quota}
+            hideAmount={props.lightcode}
+          />
         ) : (
           <QuotaBadge quota={props.quota} />
         )}

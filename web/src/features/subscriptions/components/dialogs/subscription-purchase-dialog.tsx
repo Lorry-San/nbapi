@@ -297,15 +297,32 @@ export function SubscriptionPurchaseDialog(props: Props) {
               <span className='text-sm'>{formatResetPeriod(plan, t)}</span>
             </div>
           )}
-          <div className='flex items-center justify-between'>
-            <span className='text-muted-foreground text-sm'>
-              {t('Plan Quota')}
-            </span>
-            <span className='flex items-center gap-1 text-sm'>
-              <Package className='h-3.5 w-3.5' />
-              {totalAmount > 0 ? formatQuota(totalAmount) : t('Unlimited')}
-            </span>
-          </div>
+          {plan.pool === 'lightcode' ? (
+            [
+              [t('5-Hour Window'), plan.window_short_seconds],
+              [t('7-day window'), plan.window_long_seconds],
+            ].map(([label, amount]) =>
+              amount ? (
+                <div key={label as string} className='flex items-center justify-between'>
+                  <span className='text-muted-foreground text-sm'>{label}</span>
+                  <span className='flex items-center gap-1 text-sm'>
+                    <Package className='h-3.5 w-3.5' />
+                    {t('Included')}
+                  </span>
+                </div>
+              ) : null
+            )
+          ) : (
+            <div className='flex items-center justify-between'>
+              <span className='text-muted-foreground text-sm'>
+                {t('Plan Quota')}
+              </span>
+              <span className='flex items-center gap-1 text-sm'>
+                <Package className='h-3.5 w-3.5' />
+                {totalAmount > 0 ? formatQuota(totalAmount) : t('Unlimited')}
+              </span>
+            </div>
+          )}
           {plan.upgrade_group && (
             <div className='flex items-center justify-between'>
               <span className='text-muted-foreground text-sm'>
@@ -405,12 +422,10 @@ export function SubscriptionPurchaseDialog(props: Props) {
             {hasEpay && (
               <div className='grid grid-cols-[minmax(0,1fr)_auto] gap-2'>
                 <Select
-                  items={[
-                    ...(props.epayMethods || []).map((m) => ({
+                  items={(props.epayMethods || []).map((m) => ({
                       value: m.type,
                       label: m.name || m.type,
-                    })),
-                  ]}
+                    }))}
                   value={selectedEpayMethod}
                   onValueChange={(v) => v !== null && setSelectedEpayMethod(v)}
                   disabled={limitReached}

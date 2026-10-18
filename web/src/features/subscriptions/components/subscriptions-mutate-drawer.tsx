@@ -43,6 +43,7 @@ import {
 } from '@/components/ui/form'
 import { IconBadge } from '@/components/ui/icon-badge'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -326,8 +327,10 @@ export function SubscriptionsMutateDrawer({
                   <FormItem>
                     <FormLabel>{t('Plan Subtitle')}</FormLabel>
                     <FormControl>
-                      <Input
+                      <Textarea
                         {...field}
+                        rows={2}
+                        maxLength={255}
                         placeholder={t('e.g. Suitable for light usage')}
                       />
                     </FormControl>

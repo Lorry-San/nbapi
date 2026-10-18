@@ -109,6 +109,18 @@ function hasLegacySearchSurcharge(
 }
 
 /**
+ * Lightcode logs hide group multiplier and deducted amounts. Legacy logs
+ * (before the `lightcode` marker) are matched by subscription + token name.
+ */
+export function isLightcodeLog(
+  other: LogOtherData | null,
+  tokenName?: string | null
+): boolean {
+  if (other?.lightcode === true) return true
+  return other?.billing_source === 'subscription' && tokenName === 'Lightcode'
+}
+
+/**
  * Check whether a consume log includes an actual tool-call surcharge.
  * Structured surcharge items cover current logs, while the legacy fields keep
  * historical Web Search, File Search, and Image Generation logs visible.

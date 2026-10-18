@@ -43,6 +43,8 @@ import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenti
 import { Route as AuthenticatedKeysIndexRouteImport } from './routes/_authenticated/keys/index'
 import { Route as AuthenticatedLightcodeDevicesRouteImport } from './routes/_authenticated/lightcode/devices'
 import { Route as AuthenticatedLightcodeModelsRouteImport } from './routes/_authenticated/lightcode/models'
+import { Route as AuthenticatedLightcodeSubscriptionRouteImport } from './routes/_authenticated/lightcode/subscription'
+import { Route as AuthenticatedLightcodeUsageRouteImport } from './routes/_authenticated/lightcode/usage'
 import { Route as AuthenticatedModelsIndexRouteImport } from './routes/_authenticated/models/index'
 import { Route as AuthenticatedModelsSectionRouteImport } from './routes/_authenticated/models/$section'
 import { Route as AuthenticatedOpsMonitorIndexRouteImport } from './routes/_authenticated/ops-monitor/index'
@@ -247,6 +249,18 @@ const AuthenticatedLightcodeModelsRoute =
     path: '/lightcode/models',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedLightcodeSubscriptionRoute =
+  AuthenticatedLightcodeSubscriptionRouteImport.update({
+    id: '/lightcode/subscription',
+    path: '/lightcode/subscription',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedLightcodeUsageRoute =
+  AuthenticatedLightcodeUsageRouteImport.update({
+    id: '/lightcode/usage',
+    path: '/lightcode/usage',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedModelsIndexRoute =
   AuthenticatedModelsIndexRouteImport.update({
     id: '/models/',
@@ -444,6 +458,8 @@ export interface FileRoutesByFullPath {
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/lightcode/devices': typeof AuthenticatedLightcodeDevicesRoute
   '/lightcode/models': typeof AuthenticatedLightcodeModelsRoute
+  '/lightcode/subscription': typeof AuthenticatedLightcodeSubscriptionRoute
+  '/lightcode/usage': typeof AuthenticatedLightcodeUsageRoute
   '/models/$section': typeof AuthenticatedModelsSectionRoute
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/channels/': typeof AuthenticatedChannelsIndexRoute
@@ -505,6 +521,8 @@ export interface FileRoutesByTo {
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/lightcode/devices': typeof AuthenticatedLightcodeDevicesRoute
   '/lightcode/models': typeof AuthenticatedLightcodeModelsRoute
+  '/lightcode/subscription': typeof AuthenticatedLightcodeSubscriptionRoute
+  '/lightcode/usage': typeof AuthenticatedLightcodeUsageRoute
   '/models/$section': typeof AuthenticatedModelsSectionRoute
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/channels': typeof AuthenticatedChannelsIndexRoute
@@ -570,6 +588,8 @@ export interface FileRoutesById {
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/_authenticated/lightcode/devices': typeof AuthenticatedLightcodeDevicesRoute
   '/_authenticated/lightcode/models': typeof AuthenticatedLightcodeModelsRoute
+  '/_authenticated/lightcode/subscription': typeof AuthenticatedLightcodeSubscriptionRoute
+  '/_authenticated/lightcode/usage': typeof AuthenticatedLightcodeUsageRoute
   '/_authenticated/models/$section': typeof AuthenticatedModelsSectionRoute
   '/_authenticated/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/_authenticated/channels/': typeof AuthenticatedChannelsIndexRoute
@@ -634,6 +654,8 @@ export interface FileRouteTypes {
     | '/errors/$error'
     | '/lightcode/devices'
     | '/lightcode/models'
+    | '/lightcode/subscription'
+    | '/lightcode/usage'
     | '/models/$section'
     | '/usage-logs/$section'
     | '/channels/'
@@ -695,6 +717,8 @@ export interface FileRouteTypes {
     | '/errors/$error'
     | '/lightcode/devices'
     | '/lightcode/models'
+    | '/lightcode/subscription'
+    | '/lightcode/usage'
     | '/models/$section'
     | '/usage-logs/$section'
     | '/channels'
@@ -759,6 +783,8 @@ export interface FileRouteTypes {
     | '/_authenticated/errors/$error'
     | '/_authenticated/lightcode/devices'
     | '/_authenticated/lightcode/models'
+    | '/_authenticated/lightcode/subscription'
+    | '/_authenticated/lightcode/usage'
     | '/_authenticated/models/$section'
     | '/_authenticated/usage-logs/$section'
     | '/_authenticated/channels/'
@@ -1052,6 +1078,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLightcodeModelsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/lightcode/subscription': {
+      id: '/_authenticated/lightcode/subscription'
+      path: '/lightcode/subscription'
+      fullPath: '/lightcode/subscription'
+      preLoaderRoute: typeof AuthenticatedLightcodeSubscriptionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/lightcode/usage': {
+      id: '/_authenticated/lightcode/usage'
+      path: '/lightcode/usage'
+      fullPath: '/lightcode/usage'
+      preLoaderRoute: typeof AuthenticatedLightcodeUsageRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/models/': {
       id: '/_authenticated/models/'
       path: '/models'
@@ -1342,6 +1382,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
   AuthenticatedLightcodeDevicesRoute: typeof AuthenticatedLightcodeDevicesRoute
   AuthenticatedLightcodeModelsRoute: typeof AuthenticatedLightcodeModelsRoute
+  AuthenticatedLightcodeSubscriptionRoute: typeof AuthenticatedLightcodeSubscriptionRoute
+  AuthenticatedLightcodeUsageRoute: typeof AuthenticatedLightcodeUsageRoute
   AuthenticatedModelsSectionRoute: typeof AuthenticatedModelsSectionRoute
   AuthenticatedUsageLogsSectionRoute: typeof AuthenticatedUsageLogsSectionRoute
   AuthenticatedChannelsIndexRoute: typeof AuthenticatedChannelsIndexRoute
@@ -1368,6 +1410,9 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
   AuthenticatedLightcodeDevicesRoute: AuthenticatedLightcodeDevicesRoute,
   AuthenticatedLightcodeModelsRoute: AuthenticatedLightcodeModelsRoute,
+  AuthenticatedLightcodeSubscriptionRoute:
+    AuthenticatedLightcodeSubscriptionRoute,
+  AuthenticatedLightcodeUsageRoute: AuthenticatedLightcodeUsageRoute,
   AuthenticatedModelsSectionRoute: AuthenticatedModelsSectionRoute,
   AuthenticatedUsageLogsSectionRoute: AuthenticatedUsageLogsSectionRoute,
   AuthenticatedChannelsIndexRoute: AuthenticatedChannelsIndexRoute,

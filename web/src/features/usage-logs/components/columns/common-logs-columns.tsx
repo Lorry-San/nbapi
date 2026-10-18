@@ -46,6 +46,7 @@ import {
   formatModelName,
   getTieredBillingSummary,
   hasAnyCacheTokens,
+  isLightcodeLog,
   parseLogOther,
   isViolationFeeLog,
   renderAuditContent,
@@ -253,7 +254,7 @@ function buildTypeDetailSegments(
           })
         }
       }
-    } else {
+    } else if (!isLightcodeLog(other, log.token_name)) {
       const userGroupRatio = other.user_group_ratio
       const groupRatio = other.group_ratio
       const isUserGroup =
@@ -550,7 +551,9 @@ export function useCommonLogsColumns(isAdmin: boolean): ColumnDef<UsageLog>[] {
       const displayName = sensitiveVisible ? tokenName : '••••'
       let group = log.group
       if (!group) group = other?.group || ''
-      const groupRatio = getGroupRatio(other)
+      const groupRatio = isLightcodeLog(other, log.token_name)
+        ? null
+        : getGroupRatio(other)
 
       return (
         <div className='flex max-w-[200px] flex-col gap-0.5'>
@@ -698,7 +701,13 @@ export function useCommonLogsColumns(isAdmin: boolean): ColumnDef<UsageLog>[] {
 
         const quota = row.getValue('quota') as number
         const other = parseLogOther(log.other)
-        return <LogCostDisplay quota={quota} other={other} />
+        return (
+          <LogCostDisplay
+            quota={quota}
+            other={other}
+            lightcode={isLightcodeLog(other, log.token_name)}
+          />
+        )
       },
     },
 

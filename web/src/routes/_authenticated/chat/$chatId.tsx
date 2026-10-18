@@ -29,8 +29,10 @@ import {
   chatLinkRequiresApiKey,
   resolveChatUrl,
 } from '@/features/chat/lib/chat-links'
+import { redirectNonAdminToUsage } from '@/lib/route-guards'
 
 export const Route = createFileRoute('/_authenticated/chat/$chatId')({
+  beforeLoad: redirectNonAdminToUsage,
   loader: async ({ params }) => {
     if (!Number.isInteger(Number(params.chatId))) {
       throw redirect({ to: '/dashboard' })

@@ -154,4 +154,17 @@ describe('log cost display', () => {
 
     await unmountCost(rendered)
   })
+
+  test('lightcode logs show a plain subscription badge without amount', async () => {
+    const rendered = await renderCost({
+      quota: 0,
+      other: { billing_source: 'subscription', lightcode: true },
+      lightcode: true,
+    })
+
+    assert.equal(rendered.container.textContent?.includes('Subscription'), true)
+    assert.equal(rendered.container.querySelector('.cursor-help'), null)
+
+    await unmountCost(rendered)
+  })
 })

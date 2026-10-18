@@ -85,6 +85,7 @@ export interface LightcodeGroupModel {
   context_window: number
   max_output_tokens: number
   vision: boolean
+  multiplier: number
 }
 
 export interface LightcodeGroupModelRecord extends LightcodeGroupModel {
@@ -93,8 +94,17 @@ export interface LightcodeGroupModelRecord extends LightcodeGroupModel {
 
 export type UserSubscription = z.infer<typeof userSubscriptionSchema>
 
+export interface LightcodeWindow {
+  used_percent: number
+  reset_at: number
+}
+
 export interface UserSubscriptionRecord {
   subscription: UserSubscription
+  lightcode_windows?: {
+    short: LightcodeWindow | null
+    long: LightcodeWindow | null
+  }
 }
 
 // ============================================================================

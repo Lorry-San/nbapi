@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
-import { type TopNavLink } from '../types'
+import type { TopNavLink } from '../types'
 
 type TopNavProps = React.HTMLAttributes<HTMLElement> & {
   links: TopNavLink[]
@@ -64,15 +64,15 @@ export function TopNav({ className, links, ...props }: TopNavProps) {
           </DropdownMenuTrigger>
           <DropdownMenuContent side='bottom' align='start'>
             {normalizedLinks.map(
-              ({ title, href, isActive, disabled, external }) => (
+              ({ title, href, isActive, disabled, external, document }) => (
                 <DropdownMenuItem
                   key={`${title}-${href}`}
                   render={
-                    external ? (
+                    external || document ? (
                       <a
                         href={href}
-                        target='_blank'
-                        rel='noopener noreferrer'
+                        target={external ? '_blank' : undefined}
+                        rel={external ? 'noopener noreferrer' : undefined}
                         className={!isActive ? 'text-muted-foreground' : ''}
                       >
                         {title}
@@ -102,13 +102,13 @@ export function TopNav({ className, links, ...props }: TopNavProps) {
         )}
         {...props}
       >
-        {normalizedLinks.map(({ title, href, isActive, disabled, external }) =>
-          external ? (
+        {normalizedLinks.map(({ title, href, isActive, disabled, external, document }) =>
+          external || document ? (
             <a
               key={`${title}-${href}`}
               href={href}
-              target='_blank'
-              rel='noopener noreferrer'
+              target={external ? '_blank' : undefined}
+              rel={external ? 'noopener noreferrer' : undefined}
               className={`hover:text-primary text-sm font-medium transition-colors ${isActive ? '' : 'text-muted-foreground'}`}
             >
               {title}

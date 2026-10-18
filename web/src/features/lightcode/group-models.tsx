@@ -38,6 +38,7 @@ const emptyModel = (): LightcodeGroupModel => ({
   context_window: 200000,
   max_output_tokens: 32000,
   vision: false,
+  multiplier: 1,
 })
 
 /** Rows edit only display and policy; routing still comes from channel abilities. */
@@ -72,6 +73,11 @@ function ModelRow(props: {
         <label className='flex flex-col gap-1 text-sm'>
           {t('Max output tokens')}
           <Input type='number' min={1} value={props.value.max_output_tokens} onChange={(e) => props.onChange({ ...props.value, max_output_tokens: Number.parseInt(e.target.value, 10) || 0 })} />
+        </label>
+        <label className='flex flex-col gap-1 text-sm'>
+          {t('Consumption multiplier')}
+          <Input type='number' min={0.01} max={100} step={0.1} value={props.value.multiplier} onChange={(e) => props.onChange({ ...props.value, multiplier: Number.parseFloat(e.target.value) || 0 })} />
+          <span className='text-muted-foreground text-xs'>{t('Applies to Lightcode usage windows only')}</span>
         </label>
       </div>
       <fieldset className='flex flex-col gap-2'>

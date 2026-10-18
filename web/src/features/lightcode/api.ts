@@ -67,3 +67,79 @@ export async function revokeLightcodeDevice(
   )
   return res.data
 }
+
+export interface LightcodeUsageWindow {
+  seconds: number
+  used_percent: number
+  reset_at: number
+}
+
+export interface LightcodeUsageData {
+  days: {
+    date: string
+    requests: number
+    input_tokens: number
+    output_tokens: number
+    cache_tokens: number
+    total_tokens: number
+  }[]
+  model_days: { date: string; model: string; total_tokens: number }[]
+  models: { model: string; requests: number; total_tokens: number }[]
+  totals: {
+    requests: number
+    input_tokens: number
+    output_tokens: number
+    cache_tokens: number
+    total_tokens: number
+  }
+  subscription: {
+    plan: string
+    end_time: number
+    window_short: LightcodeUsageWindow | null
+    window_long: LightcodeUsageWindow | null
+  } | null
+}
+
+export interface LightcodeSubscriptionStatus {
+  plan: string
+  end_time: number
+  window_short: LightcodeUsageWindow | null
+  window_long: LightcodeUsageWindow | null
+}
+
+export interface LightcodeProfileData {
+  user: { id: number; username: string; display_name: string }
+  subscription: LightcodeSubscriptionStatus | null
+  stats: {
+    total_tokens: number
+    requests: number
+    active_days: number
+    peak_day_tokens: number
+    peak_day: string
+    longest_streak_days: number
+    current_streak_days: number
+  }
+  /** 371 entries, oldest first, last is today in the requested timezone. */
+  days: { date: string; requests: number; total_tokens: number }[]
+  models: { model: string; requests: number; total_tokens: number }[]
+  truncated: boolean
+}
+
+export async function getLightcodeProfile(): Promise<
+  ApiResponse<LightcodeProfileData>
+> {
+  const res = await api.get('/api/lightcode/profile', {
+    params: { tz_offset_minutes: -new Date().getTimezoneOffset() },
+  })
+  return res.data
+}
+
+/** Token and request counts only; the endpoint never returns money fields. */
+export async function getLightcodeUsage(
+  days: number
+): Promise<ApiResponse<LightcodeUsageData>> {
+  const res = await api.get('/api/lightcode/usage', {
+    params: { days, tz_offset_minutes: -new Date().getTimezoneOffset() },
+  })
+  return res.data
+}

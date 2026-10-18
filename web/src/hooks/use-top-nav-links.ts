@@ -29,6 +29,7 @@ export type TopNavLink = {
   disabled?: boolean
   requiresAuth?: boolean
   external?: boolean
+  document?: boolean
 }
 
 /**
@@ -66,6 +67,9 @@ export function useTopNavLinks(): TopNavLink[] {
   if (modules?.home !== false) {
     links.push({ title: t('Home'), href: '/' })
   }
+
+  // Lightcode product site: a static page the gateway serves itself, not an app route
+  links.push({ title: t('Lightcode'), href: '/lightcode', document: true })
 
   // Console -> /dashboard (new console path)
   if (modules?.console !== false) {

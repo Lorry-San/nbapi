@@ -196,11 +196,11 @@ export function PublicHeader(props: PublicHeaderProps) {
               className='group flex shrink-0 items-center gap-2.5'
             >
               <div className='flex size-7 shrink-0 items-center justify-center transition-all duration-300 group-hover:scale-105'>
-                {loading ? (
+                {loading && (
                   <Skeleton className='size-full rounded-lg' />
-                ) : customLogo ? (
-                  customLogo
-                ) : (
+                )}
+                {!loading && customLogo}
+                {!loading && !customLogo && (
                   <HeaderLogo
                     src={systemLogo}
                     loading={loading}
@@ -216,12 +216,23 @@ export function PublicHeader(props: PublicHeaderProps) {
 
             {/* Desktop nav */}
             <div className='hidden items-center gap-0.5 sm:flex'>
-              {links.map((link, i) => {
+              {links.map((link) => {
                 const isActive = pathname === link.href
+                if (link.document) {
+                  return (
+                    <a
+                      key={link.href}
+                      href={link.href}
+                      className='text-muted-foreground hover:text-foreground rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors duration-200'
+                    >
+                      {t(link.title)}
+                    </a>
+                  )
+                }
                 if (link.external) {
                   return (
                     <a
-                      key={i}
+                      key={link.href}
                       href={link.href}
                       target='_blank'
                       rel='noopener noreferrer'
@@ -239,7 +250,7 @@ export function PublicHeader(props: PublicHeaderProps) {
                 }
                 return (
                   <Link
-                    key={i}
+                    key={link.href}
                     to={link.href}
                     disabled={link.disabled}
                     onClick={(event) => handleNavLinkClick(event, link)}
@@ -280,11 +291,11 @@ export function PublicHeader(props: PublicHeaderProps) {
               {showAuthButtons && (
                 <>
                   <div className='bg-border/40 mx-1 h-4 w-px' />
-                  {loading ? (
+                  {loading && (
                     <Skeleton className='h-8 w-20 rounded-lg' />
-                  ) : isAuthenticated ? (
-                    <ProfileDropdown />
-                  ) : (
+                  )}
+                  {!loading && isAuthenticated && <ProfileDropdown />}
+                  {!loading && !isAuthenticated && (
                     <Button
                       size='sm'
                       className='h-8 rounded-lg px-3.5 text-xs font-medium'
@@ -361,10 +372,22 @@ export function PublicHeader(props: PublicHeaderProps) {
               const transitionStyle = {
                 transitionDelay: mobileOpen ? `${100 + i * 50}ms` : '0ms',
               }
+              if (link.document) {
+                return (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    className={linkClassName}
+                    style={transitionStyle}
+                  >
+                    {t(link.title)}
+                  </a>
+                )
+              }
               if (link.external) {
                 return (
                   <a
-                    key={i}
+                    key={link.href}
                     href={link.href}
                     target='_blank'
                     rel='noopener noreferrer'
@@ -380,7 +403,7 @@ export function PublicHeader(props: PublicHeaderProps) {
               }
               return (
                 <Link
-                  key={i}
+                  key={link.href}
                   to={link.href}
                   disabled={link.disabled}
                   onClick={(event) => handleNavLinkClick(event, link, true)}

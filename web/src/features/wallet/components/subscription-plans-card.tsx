@@ -51,6 +51,7 @@ import {
   updateBillingPreference,
 } from '@/features/subscriptions/api'
 import { SubscriptionPurchaseDialog } from '@/features/subscriptions/components/dialogs/subscription-purchase-dialog'
+import { LightcodeWindowUsage } from '@/features/subscriptions/components/lightcode-window-usage'
 import { formatDuration, formatResetPeriod } from '@/features/subscriptions/lib'
 import type {
   PlanRecord,
@@ -66,6 +67,8 @@ interface SubscriptionPlansCardProps {
   onAvailabilityChange?: (available: boolean) => void
   userQuota?: number
   onPurchaseSuccess?: () => void | Promise<void>
+  /** Only show plans and subscriptions of this pool, e.g. 'lightcode'. */
+  pool?: string
 }
 
 function getEpayMethods(payMethods: PaymentMethod[] = []): PaymentMethod[] {
@@ -97,6 +100,7 @@ export function SubscriptionPlansCard({
   onAvailabilityChange,
   userQuota,
   onPurchaseSuccess,
+  pool,
 }: SubscriptionPlansCardProps) {
   const { t } = useTranslation()
 
@@ -128,12 +132,13 @@ export function SubscriptionPlansCard({
     try {
       const res = await getPublicPlans()
       if (res.success) {
-        setPlans(res.data || [])
+        const all = res.data || []
+        setPlans(pool ? all.filter((p) => p?.plan?.pool === pool) : all)
       }
     } catch {
       setPlans([])
     }
-  }, [])
+  }, [pool])
 
   const fetchSelfSubscription = useCallback(async () => {
     try {
@@ -142,13 +147,15 @@ export function SubscriptionPlansCard({
         setBillingPreference(
           res.data.billing_preference || 'subscription_first'
         )
-        setActiveSubscriptions(res.data.subscriptions || [])
-        setAllSubscriptions(res.data.all_subscriptions || [])
+        const inPool = (s: UserSubscriptionRecord) =>
+          !pool || s?.subscription?.pool === pool
+        setActiveSubscriptions((res.data.subscriptions || []).filter(inPool))
+        setAllSubscriptions((res.data.all_subscriptions || []).filter(inPool))
       }
     } catch {
       // ignore
     }
-  }, [])
+  }, [pool])
 
   useEffect(() => {
     const init = async () => {
@@ -399,6 +406,7 @@ export function SubscriptionPlansCard({
               <div className='max-h-64 space-y-3 overflow-y-auto pr-1'>
                 {allSubscriptions.map((sub) => {
                   const subscription = sub.subscription
+                  const isLightcode = subscription?.pool === 'lightcode'
                   const totalAmount = Number(subscription?.amount_total || 0)
                   const usedAmount = Number(subscription?.amount_used || 0)
                   const remainAmount =
@@ -479,6 +487,20 @@ export function SubscriptionPlansCard({
                           {new Date(nextResetTime * 1000).toLocaleString()}
                         </div>
                       )}
+                      {isLightcode ? (
+                        <div className='mt-2 space-y-2'>
+                          {(
+                            [
+                              [t('5-Hour Window'), sub.lightcode_windows?.short],
+                              [t('7-day window'), sub.lightcode_windows?.long],
+                            ] as const
+                          ).map(([label, win]) =>
+                            win ? (
+                              <LightcodeWindowUsage key={label} label={label} window={win} active={isActive} />
+                            ) : null
+                          )}
+                        </div>
+                      ) : (
                       <div className='text-muted-foreground mt-1'>
                         {t('Total Quota')}:{' '}
                         {totalAmount > 0 ? (
@@ -504,7 +526,8 @@ export function SubscriptionPlansCard({
                           </span>
                         )}
                       </div>
-                      {totalAmount > 0 && isActive && (
+                      )}
+                      {!isLightcode && totalAmount > 0 && isActive && (
                         <Progress value={usagePercent} className='mt-2 h-1.5' />
                       )}
                     </div>
@@ -539,9 +562,20 @@ export function SubscriptionPlansCard({
                 formatResetPeriod(plan, t) !== t('No Reset')
                   ? `${t('Quota Reset')}: ${formatResetPeriod(plan, t)}`
                   : null,
-                totalAmount > 0
-                  ? `${t('Total Quota')}: ${formatQuota(totalAmount)}`
-                  : `${t('Total Quota')}: ${t('Unlimited')}`,
+                ...(plan.pool === 'lightcode'
+                  ? [
+                      plan.window_short_seconds
+                        ? t('5-Hour Window')
+                        : null,
+                      plan.window_long_seconds
+                        ? t('7-day window')
+                        : null,
+                    ]
+                  : [
+                      totalAmount > 0
+                        ? `${t('Total Quota')}: ${formatQuota(totalAmount)}`
+                        : `${t('Total Quota')}: ${t('Unlimited')}`,
+                    ]),
                 limit > 0 ? `${t('Purchase Limit')}: ${limit}` : null,
                 plan.upgrade_group
                   ? `${t('Upgrade Group')}: ${plan.upgrade_group}`
@@ -561,7 +595,7 @@ export function SubscriptionPlansCard({
                           {plan.title || t('Subscription Plans')}
                         </h4>
                         {plan.subtitle && (
-                          <p className='text-muted-foreground truncate text-xs'>
+                          <p className='text-muted-foreground text-xs whitespace-pre-line'>
                             {plan.subtitle}
                           </p>
                         )}

@@ -71,6 +71,7 @@ import {
   decodeBillingExprB64,
   getTieredBillingSummary,
   hasAnyCacheTokens,
+  isLightcodeLog,
   isViolationFeeLog,
   getFirstResponseTimeColor,
   getResponseTimeColor,
@@ -222,6 +223,7 @@ function BillingBreakdown(props: {
 }) {
   const { t } = useTranslation()
   const { log, other, isAdmin } = props
+  const lightcode = isLightcodeLog(other, log.token_name)
   const isPerCall = isPerCallBilling(other.model_price)
   const isClaude = other.claude === true
   const isTieredExpr = other.billing_mode === 'tiered_expr'
@@ -283,7 +285,7 @@ function BillingBreakdown(props: {
   const userGR = other.user_group_ratio
   const isUserGR = userGR != null && Number.isFinite(userGR) && userGR !== -1
   const effectiveGR = isUserGR ? userGR : other.group_ratio
-  if (effectiveGR != null && Number.isFinite(effectiveGR)) {
+  if (!lightcode && effectiveGR != null && Number.isFinite(effectiveGR)) {
     rows.push({
       label: isUserGR ? t('User Exclusive Ratio') : t('Group Ratio'),
       value: `${formatRatio(effectiveGR)}x`,
@@ -387,10 +389,12 @@ function BillingBreakdown(props: {
     })
   }
 
-  rows.push({
-    label: t('Total Cost'),
-    value: formatLogQuota(log.quota),
-  })
+  if (!lightcode) {
+    rows.push({
+      label: t('Total Cost'),
+      value: formatLogQuota(log.quota),
+    })
+  }
 
   if (rows.length === 0) return null
 
@@ -489,6 +493,7 @@ export function DetailsDialog(props: DetailsDialogProps) {
   const isTopup = props.log.type === 1
   const isManage = props.log.type === 3
   const isSubscription = other?.billing_source === 'subscription'
+  const isLightcode = isLightcodeLog(other, props.log.token_name)
   const isTieredBilling =
     isConsume &&
     !isViolation &&
@@ -1166,14 +1171,15 @@ export function DetailsDialog(props: DetailsDialogProps) {
                 mono
               />
             )}
-            {other.subscription_pre_consumed != null && (
+            {!isLightcode && other.subscription_pre_consumed != null && (
               <DetailRow
                 label={t('Pre-consumed')}
                 value={formatLogQuota(other.subscription_pre_consumed)}
                 mono
               />
             )}
-            {other.subscription_post_delta != null &&
+            {!isLightcode &&
+              other.subscription_post_delta != null &&
               other.subscription_post_delta !== 0 && (
                 <DetailRow
                   label={t('Post Delta')}
@@ -1181,14 +1187,14 @@ export function DetailsDialog(props: DetailsDialogProps) {
                   mono
                 />
               )}
-            {other.subscription_consumed != null && (
+            {!isLightcode && other.subscription_consumed != null && (
               <DetailRow
                 label={t('Final Consumed')}
                 value={formatLogQuota(other.subscription_consumed)}
                 mono
               />
             )}
-            {other.subscription_remain != null && (
+            {!isLightcode && other.subscription_remain != null && (
               <DetailRow
                 label={t('Remaining')}
                 value={`${formatLogQuota(other.subscription_remain)}${other.subscription_total != null ? ` / ${formatLogQuota(other.subscription_total)}` : ''}`}

@@ -5255,6 +5255,10 @@
     "Display name in Lightcode": "Display name in Lightcode",
     "Context window": "Context window",
     "Max output tokens": "Max output tokens",
+    "7-day window": "7-day window",
+    "Resets at": "Resets at",
+    "Consumption multiplier": "Consumption multiplier",
+    "Applies to Lightcode usage windows only": "Applies to Lightcode usage windows only",
     "Supported reasoning efforts": "Supported reasoning efforts",
     "Default reasoning effort": "Default reasoning effort",
     "Lightcode devices": "Lightcode devices",
@@ -5272,6 +5276,15 @@
     "Short window quota ({{currency}})": "Short window quota ({{currency}})",
     "Long window (days)": "Long window (days)",
     "Long window quota ({{currency}})": "Long window quota ({{currency}})",
-    "Each window opens at the first request after it lapses and resets when it ends. Requests stop while either window is used up. 0 quota disables a window.": "Each window opens at the first request after it lapses and resets when it ends. Requests stop while either window is used up. 0 quota disables a window."
+    "Each window opens at the first request after it lapses and resets when it ends. Requests stop while either window is used up. 0 quota disables a window.": "Each window opens at the first request after it lapses and resets when it ends. Requests stop while either window is used up. 0 quota disables a window.",
+    "Peak day": "Пиковый день",
+    "Longest streak": "Самая длинная серия",
+    "Current streak": "Текущая серия",
+    "Cumulative": "Накопительно",
+    "View plans": "Посмотреть тарифы",
+    "Token activity": "Активность токенов",
+    "Token activity over the last year": "Активность токенов за последний год",
+    "No Lightcode usage yet": "Использования Lightcode пока нет",
+    "Some older usage records were not counted.": "Некоторые старые записи использования не учтены."
   }
 }

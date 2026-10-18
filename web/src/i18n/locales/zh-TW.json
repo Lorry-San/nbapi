@@ -5242,6 +5242,10 @@
     "Display name in Lightcode": "Display name in Lightcode",
     "Context window": "Context window",
     "Max output tokens": "Max output tokens",
+    "7-day window": "7-day window",
+    "Resets at": "Resets at",
+    "Consumption multiplier": "Consumption multiplier",
+    "Applies to Lightcode usage windows only": "Applies to Lightcode usage windows only",
     "Supported reasoning efforts": "Supported reasoning efforts",
     "Default reasoning effort": "Default reasoning effort",
     "Lightcode devices": "Lightcode devices",
@@ -5259,6 +5263,15 @@
     "Short window quota ({{currency}})": "Short window quota ({{currency}})",
     "Long window (days)": "Long window (days)",
     "Long window quota ({{currency}})": "Long window quota ({{currency}})",
-    "Each window opens at the first request after it lapses and resets when it ends. Requests stop while either window is used up. 0 quota disables a window.": "Each window opens at the first request after it lapses and resets when it ends. Requests stop while either window is used up. 0 quota disables a window."
+    "Each window opens at the first request after it lapses and resets when it ends. Requests stop while either window is used up. 0 quota disables a window.": "Each window opens at the first request after it lapses and resets when it ends. Requests stop while either window is used up. 0 quota disables a window.",
+    "Peak day": "單日峰值",
+    "Longest streak": "最長連續天數",
+    "Current streak": "目前連續天數",
+    "Cumulative": "累計",
+    "View plans": "查看方案",
+    "Token activity": "Token 活動",
+    "Token activity over the last year": "過去一年的 Token 活動",
+    "No Lightcode usage yet": "尚無 Lightcode 使用紀錄",
+    "Some older usage records were not counted.": "部分較早的使用紀錄未計入統計。"
   }
 }

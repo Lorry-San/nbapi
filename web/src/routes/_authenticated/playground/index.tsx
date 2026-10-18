@@ -21,9 +21,11 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Main } from '@/components/layout'
 import { Playground } from '@/features/playground'
 import { isSidebarModuleEnabled } from '@/lib/nav-modules'
+import { redirectNonAdminToUsage } from '@/lib/route-guards'
 
 export const Route = createFileRoute('/_authenticated/playground/')({
   beforeLoad: () => {
+    redirectNonAdminToUsage()
     if (!isSidebarModuleEnabled('chat', 'playground')) {
       throw redirect({ to: '/dashboard' })
     }

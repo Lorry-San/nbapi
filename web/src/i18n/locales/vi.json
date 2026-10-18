@@ -5255,6 +5255,10 @@
     "Display name in Lightcode": "Display name in Lightcode",
     "Context window": "Context window",
     "Max output tokens": "Max output tokens",
+    "7-day window": "7-day window",
+    "Resets at": "Resets at",
+    "Consumption multiplier": "Consumption multiplier",
+    "Applies to Lightcode usage windows only": "Applies to Lightcode usage windows only",
     "Supported reasoning efforts": "Supported reasoning efforts",
     "Default reasoning effort": "Default reasoning effort",
     "Lightcode devices": "Lightcode devices",
@@ -5272,6 +5276,15 @@
     "Short window quota ({{currency}})": "Short window quota ({{currency}})",
     "Long window (days)": "Long window (days)",
     "Long window quota ({{currency}})": "Long window quota ({{currency}})",
-    "Each window opens at the first request after it lapses and resets when it ends. Requests stop while either window is used up. 0 quota disables a window.": "Each window opens at the first request after it lapses and resets when it ends. Requests stop while either window is used up. 0 quota disables a window."
+    "Each window opens at the first request after it lapses and resets when it ends. Requests stop while either window is used up. 0 quota disables a window.": "Each window opens at the first request after it lapses and resets when it ends. Requests stop while either window is used up. 0 quota disables a window.",
+    "Peak day": "Ngày cao nhất",
+    "Longest streak": "Chuỗi dài nhất",
+    "Current streak": "Chuỗi hiện tại",
+    "Cumulative": "Tích lũy",
+    "View plans": "Xem gói",
+    "Token activity": "Hoạt động token",
+    "Token activity over the last year": "Hoạt động token trong năm qua",
+    "No Lightcode usage yet": "Chưa có lượt sử dụng Lightcode",
+    "Some older usage records were not counted.": "Một số bản ghi sử dụng cũ chưa được tính."
   }
 }
