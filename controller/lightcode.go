@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
 	"slices"
@@ -14,17 +15,36 @@ import (
 )
 
 func LightcodeAuthorizePage(c *gin.Context) {
-	if err := service.ValidateLightcodeRedirect(c.Query("client_id"), c.Query("redirect_uri")); err != nil { c.JSON(400, gin.H{"error": "invalid_request"}); return }
+	if err := service.ValidateLightcodeRedirect(c.Query("client_id"), c.Query("redirect_uri")); err != nil {
+		c.JSON(400, gin.H{"error": "invalid_request"})
+		return
+	}
 	c.Redirect(http.StatusFound, "/lightcode/authorize?"+c.Request.URL.RawQuery)
 }
 
 func LightcodeAuthorize(c *gin.Context) {
-	var req struct { ClientId string `json:"client_id"`; RedirectURI string `json:"redirect_uri"`; Challenge string `json:"code_challenge"`; Method string `json:"code_challenge_method"`; State string `json:"state"`; ResponseType string `json:"response_type"` }
-	if err := c.ShouldBindJSON(&req); err != nil || req.State == "" || len(req.State) > 512 || req.ResponseType != "code" { c.JSON(400, gin.H{"error": "invalid_request"}); return }
+	var req struct {
+		ClientId     string `json:"client_id"`
+		RedirectURI  string `json:"redirect_uri"`
+		Challenge    string `json:"code_challenge"`
+		Method       string `json:"code_challenge_method"`
+		State        string `json:"state"`
+		ResponseType string `json:"response_type"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.State == "" || len(req.State) > 512 || req.ResponseType != "code" {
+		c.JSON(400, gin.H{"error": "invalid_request"})
+		return
+	}
 	code, err := service.AuthorizeLightcode(c.GetInt("id"), req.ClientId, req.RedirectURI, req.Challenge, req.Method)
-	if err != nil { c.JSON(400, gin.H{"error": "invalid_request", "error_description": err.Error()}); return }
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid_request", "error_description": err.Error()})
+		return
+	}
 	u, _ := url.Parse(req.RedirectURI)
-	q := u.Query(); q.Set("code", code); q.Set("state", req.State); u.RawQuery = q.Encode()
+	q := u.Query()
+	q.Set("code", code)
+	q.Set("state", req.State)
+	u.RawQuery = q.Encode()
 	c.JSON(200, gin.H{"redirect_uri": u.String()})
 }
 
@@ -33,65 +53,216 @@ func LightcodeToken(c *gin.Context) {
 	c.Header("Pragma", "no-cache")
 	var bundle *service.LightcodeTokenBundle
 	var err error
-	switch c.PostForm("grant_type") {
-	case "authorization_code": bundle, err = service.ExchangeLightcodeGrant(c.PostForm("code"), c.PostForm("client_id"), c.PostForm("redirect_uri"), c.PostForm("code_verifier"), common.GetClientIP(c), c.Request.UserAgent())
-	case "refresh_token": bundle, err = service.RefreshLightcodeGrant(c.PostForm("refresh_token"), c.PostForm("client_id"))
-	default: c.JSON(400, gin.H{"error": "unsupported_grant_type"}); return
+	if service.LightcodeEnforce {
+		if _, aerr := service.LightcodeCheckUA(c.Request.UserAgent()); aerr != nil {
+			lightcodeTokenError(c, aerr)
+			return
+		}
 	}
-	if err != nil { c.JSON(400, gin.H{"error": "invalid_grant"}); return }
+	switch c.PostForm("grant_type") {
+	case "authorization_code":
+		att := &service.LightcodeAttestation{DeviceKey: c.PostForm("device_key"), ClientVersion: c.PostForm("client_version"), BindProof: c.PostForm("bind_proof"), AppProof: c.PostForm("app_proof")}
+		bundle, err = service.ExchangeLightcodeAttested(c.PostForm("code"), c.PostForm("client_id"), c.PostForm("redirect_uri"), c.PostForm("code_verifier"), common.GetClientIP(c), c.Request.UserAgent(), att)
+	case "refresh_token":
+		bundle, err = service.RefreshLightcodeAttested(c.PostForm("refresh_token"), c.PostForm("client_id"), &service.LightcodeRefreshProof{Ts: c.PostForm("ts"), Nonce: c.PostForm("nonce"), Proof: c.PostForm("refresh_proof")})
+	default:
+		c.JSON(400, gin.H{"error": "unsupported_grant_type"})
+		return
+	}
+	var aerr *service.LightcodeAttestError
+	if errors.As(err, &aerr) {
+		lightcodeTokenError(c, aerr)
+		return
+	}
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid_grant"})
+		return
+	}
 	c.JSON(200, bundle)
 }
 
+func lightcodeTokenError(c *gin.Context, e *service.LightcodeAttestError) {
+	body := gin.H{"error": e.Code, "error_description": e.Message}
+	if e.ServerTime != 0 {
+		body["server_time"] = e.ServerTime
+	}
+	c.JSON(e.Status, body)
+}
+
 func LightcodeRevoke(c *gin.Context) {
-	if err := service.RevokeLightcodeToken(c.PostForm("token")); err != nil { c.JSON(503, gin.H{"error": "temporarily_unavailable"}); return }
+	if err := service.RevokeLightcodeToken(c.PostForm("token")); err != nil {
+		c.JSON(503, gin.H{"error": "temporarily_unavailable"})
+		return
+	}
 	c.Status(200)
 }
 
 func LightcodeAccount(c *gin.Context) {
 	subs, err := model.LightcodeSubscriptions(c.GetInt("id"))
-	if err != nil { c.JSON(503, gin.H{"error": "subscription_unavailable"}); return }
+	if err != nil {
+		c.JSON(503, gin.H{"error": "subscription_unavailable"})
+		return
+	}
 	user, err := model.GetUserCache(c.GetInt("id"))
-	if err != nil { c.JSON(503, gin.H{"error": "account_unavailable"}); return }
+	if err != nil {
+		c.JSON(503, gin.H{"error": "account_unavailable"})
+		return
+	}
 	views := []gin.H{}
 	for _, sub := range subs {
 		var plan model.SubscriptionPlan
 		_ = common.UnmarshalJsonStr(sub.PlanSnapshot, &plan)
-		remaining := ""
-		if sub.AmountTotal > 0 && common.QuotaPerUnit > 0 {
-			remaining = strconv.FormatFloat(float64(max(sub.AmountTotal-sub.AmountUsed, 0))/common.QuotaPerUnit, 'f', 2, 64)
-		}
 		short, long := model.LightcodeWindowStatus(&sub, time.Now().Unix())
-		views = append(views, gin.H{"id": sub.Id, "status": sub.Status, "plan": plan.Title, "start_time": sub.StartTime, "end_time": sub.EndTime, "next_reset_time": sub.NextResetTime, "remaining_usd": remaining, "unlimited": sub.AmountTotal == 0,
+		views = append(views, gin.H{"id": sub.Id, "status": sub.Status, "plan": plan.Title, "start_time": sub.StartTime, "end_time": sub.EndTime, "next_reset_time": sub.NextResetTime,
 			"window_short": lightcodeWindowJSON(short, plan.WindowShortSeconds), "window_long": lightcodeWindowJSON(long, plan.WindowLongSeconds)})
 	}
 	c.JSON(200, gin.H{"user": gin.H{"id": user.Id, "name": user.Username}, "subscriptions": views})
 }
 
-// lightcodeWindowJSON renders a usage window in USD for the client; nil means the plan has none.
+// lightcodeWindowJSON exposes utilization without disclosing the monetary quota.
 func lightcodeWindowJSON(view *model.LightcodeWindowView, seconds int64) gin.H {
-	if view == nil || common.QuotaPerUnit <= 0 {
+	if view == nil {
 		return nil
 	}
-	usd := func(q int64) string { return strconv.FormatFloat(float64(q)/common.QuotaPerUnit, 'f', 2, 64) }
-	return gin.H{"seconds": seconds, "limit_usd": usd(view.Limit), "used_usd": usd(view.Used), "remaining_usd": usd(max(view.Limit-view.Used, 0)), "reset_at": view.ResetAt}
+	return gin.H{"seconds": seconds, "used_percent": view.UsedPercent, "reset_at": view.ResetAt}
+}
+
+// LightcodeUsage returns the caller's Lightcode token usage and window
+// percentages. It never exposes quota, prices or multipliers.
+func LightcodeUsage(c *gin.Context) {
+	days, _ := strconv.Atoi(c.DefaultQuery("days", "14"))
+	tzOffset := lightcodeTzOffset(c)
+	userId := c.GetInt("id")
+	now := time.Now().Unix()
+	usage, err := model.GetLightcodeUsage(userId, days, tzOffset, now)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	subscription, err := lightcodeSubscriptionJSON(userId, now)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, gin.H{"days": usage.Days, "model_days": usage.ModelDays, "models": usage.Models, "totals": usage.Totals, "subscription": subscription})
+}
+
+// lightcodeTzOffset parses tz_offset_minutes (minutes east of UTC), defaulting
+// to the server zone when absent or outside [-840, 840].
+func lightcodeTzOffset(c *gin.Context) int {
+	_, offset := time.Now().Zone()
+	tzOffset := offset / 60
+	if v := c.Query("tz_offset_minutes"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= -14*60 && n <= 14*60 {
+			tzOffset = n
+		}
+	}
+	return tzOffset
+}
+
+// lightcodeSubscriptionJSON returns the first active Lightcode subscription as
+// plan/end_time/window percentages, or nil when there is none.
+func lightcodeSubscriptionJSON(userId int, now int64) (gin.H, error) {
+	subs, err := model.LightcodeSubscriptions(userId)
+	if err != nil {
+		return nil, err
+	}
+	for _, sub := range subs {
+		if sub.Status != "active" {
+			continue
+		}
+		var plan model.SubscriptionPlan
+		_ = common.UnmarshalJsonStr(sub.PlanSnapshot, &plan)
+		short, long := model.LightcodeWindowStatus(&sub, now)
+		return gin.H{"plan": plan.Title, "end_time": sub.EndTime,
+			"window_short": lightcodeWindowJSON(short, plan.WindowShortSeconds), "window_long": lightcodeWindowJSON(long, plan.WindowLongSeconds)}, nil
+	}
+	return nil, nil
+}
+
+func buildLightcodeProfile(c *gin.Context) (gin.H, error) {
+	userId := c.GetInt("id")
+	now := time.Now().Unix()
+	user, err := model.GetUserCache(userId)
+	if err != nil {
+		return nil, err
+	}
+	displayName, err := model.GetUserDisplayName(userId)
+	if err != nil {
+		return nil, err
+	}
+	if displayName == "" {
+		displayName = user.Username
+	}
+	activity, err := model.GetLightcodeActivity(userId, lightcodeTzOffset(c), now)
+	if err != nil {
+		return nil, err
+	}
+	subscription, err := lightcodeSubscriptionJSON(userId, now)
+	if err != nil {
+		return nil, err
+	}
+	return gin.H{
+		"user":         gin.H{"id": user.Id, "username": user.Username, "display_name": displayName},
+		"subscription": subscription,
+		"stats":        activity.Stats,
+		"days":         activity.Days,
+		"models":       activity.Models,
+		"truncated":    activity.Truncated,
+	}, nil
+}
+
+// LightcodeProfile serves the dashboard activity page (ApiSuccess wrapper).
+func LightcodeProfile(c *gin.Context) {
+	data, err := buildLightcodeProfile(c)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, data)
+}
+
+// LightcodeClientProfile serves the same data raw under /lc/v1.
+func LightcodeClientProfile(c *gin.Context) {
+	data, err := buildLightcodeProfile(c)
+	if err != nil {
+		c.JSON(503, gin.H{"error": "profile_unavailable"})
+		return
+	}
+	c.JSON(200, data)
 }
 
 func LightcodeCatalog(c *gin.Context) {
 	subs, err := model.LightcodeSubscriptions(c.GetInt("id"))
-	if err != nil { c.JSON(503, gin.H{"error": "subscription_unavailable"}); return }
+	if err != nil {
+		c.JSON(503, gin.H{"error": "subscription_unavailable"})
+		return
+	}
 	models := []gin.H{}
 	for _, sub := range subs {
-		if sub.Status != "active" { continue }
+		if sub.Status != "active" {
+			continue
+		}
 		var policies []model.LightcodeGroupModel
-		if err := model.DB.Where("routing_group = ?", sub.RoutingGroup).Order("id asc").Find(&policies).Error; err != nil { c.JSON(503, gin.H{"error": "catalog_unavailable"}); return }
+		if err := model.DB.Where("routing_group = ?", sub.RoutingGroup).Order("id asc").Find(&policies).Error; err != nil {
+			c.JSON(503, gin.H{"error": "catalog_unavailable"})
+			return
+		}
 		var names []string
-		if err := model.DB.Model(&model.Ability{}).Distinct("model").Where("enabled = ?", true).Where(map[string]interface{}{"group": sub.RoutingGroup}).Pluck("model", &names).Error; err != nil { c.JSON(503, gin.H{"error": "catalog_unavailable"}); return }
+		if err := model.DB.Model(&model.Ability{}).Distinct("model").Where("enabled = ?", true).Where(map[string]interface{}{"group": sub.RoutingGroup}).Pluck("model", &names).Error; err != nil {
+			c.JSON(503, gin.H{"error": "catalog_unavailable"})
+			return
+		}
 		for _, name := range names {
 			policy := model.LightcodeGroupModel{Model: name, DisplayName: name, Efforts: []string{}}
-			configured := false
-			for _, p := range policies { if p.Model == name { policy, configured = p, true; break } }
-			available := configured && slices.Contains(sub.AllowedModels, name)
-			reason := ""; if !available { reason = "subscription_model_unsupported" }
+			for _, p := range policies {
+				if p.Model == name {
+					policy = p
+					break
+				}
+			}
+			_, reason := model.LightcodeModelEntitlement(&sub, name, policies)
+			available := reason == ""
 			models = append(models, gin.H{"id": name, "display_name": policy.DisplayName, "efforts": policy.Efforts, "default_effort": policy.DefaultEffort, "available": available, "unavailable_reason": reason, "context_window": policy.ContextWindow, "max_output_tokens": policy.MaxOutputTokens, "vision": policy.Vision})
 		}
 		break
@@ -102,32 +273,75 @@ func LightcodeCatalog(c *gin.Context) {
 func AdminLightcodeModels(c *gin.Context) {
 	if c.Request.Method == http.MethodGet {
 		var models []model.LightcodeGroupModel
-		if err := model.DB.Order("routing_group asc, id asc").Find(&models).Error; err != nil { common.ApiError(c, err); return }
-		common.ApiSuccess(c, models); return
+		if err := model.DB.Order("routing_group asc, id asc").Find(&models).Error; err != nil {
+			common.ApiError(c, err)
+			return
+		}
+		common.ApiSuccess(c, models)
+		return
 	}
-	var req struct { Group string `json:"group"`; Models []model.LightcodeGroupModel `json:"models"` }
-	if err := c.ShouldBindJSON(&req); err != nil || req.Group == "" || req.Group == "auto" || len(req.Models) > 500 { common.ApiErrorMsg(c, "Invalid Lightcode model group"); return }
+	var req struct {
+		Group  string                      `json:"group"`
+		Models []model.LightcodeGroupModel `json:"models"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.Group == "" || req.Group == "auto" || len(req.Models) > 500 {
+		common.ApiErrorMsg(c, "Invalid Lightcode model group")
+		return
+	}
 	seen := map[string]bool{}
 	for i := range req.Models {
 		p := &req.Models[i]
-		if p.Model == "" || len(p.Model) > 191 || seen[p.Model] || p.ContextWindow <= 0 || p.MaxOutputTokens <= 0 || p.MaxOutputTokens > p.ContextWindow { common.ApiErrorMsg(c, "Invalid model or token limits"); return }
+		if p.Model == "" || len(p.Model) > 191 || seen[p.Model] || p.ContextWindow <= 0 || p.MaxOutputTokens <= 0 || p.MaxOutputTokens > p.ContextWindow {
+			common.ApiErrorMsg(c, "Invalid model or token limits")
+			return
+		}
 		seen[p.Model] = true
-		for _, effort := range p.Efforts { if !slices.Contains([]string{"minimal", "low", "medium", "high", "xhigh", "max"}, effort) { common.ApiErrorMsg(c, "Invalid reasoning effort"); return } }
-		if p.DefaultEffort != "" && !slices.Contains(p.Efforts, p.DefaultEffort) { common.ApiErrorMsg(c, "Default reasoning effort must be supported"); return }
-		if len(p.Efforts) > 0 && p.DefaultEffort == "" { common.ApiErrorMsg(c, "Select a default reasoning effort"); return }
+		for _, effort := range p.Efforts {
+			if !slices.Contains([]string{"minimal", "low", "medium", "high", "xhigh", "max"}, effort) {
+				common.ApiErrorMsg(c, "Invalid reasoning effort")
+				return
+			}
+		}
+		if p.DefaultEffort != "" && !slices.Contains(p.Efforts, p.DefaultEffort) {
+			common.ApiErrorMsg(c, "Default reasoning effort must be supported")
+			return
+		}
+		if len(p.Efforts) > 0 && p.DefaultEffort == "" {
+			common.ApiErrorMsg(c, "Select a default reasoning effort")
+			return
+		}
+		if p.Multiplier == 0 {
+			p.Multiplier = 1
+		}
+		if p.Multiplier < 0.01 || p.Multiplier > 100 {
+			common.ApiErrorMsg(c, "Consumption multiplier must be between 0.01 and 100")
+			return
+		}
 		p.Id, p.RoutingGroup = 0, req.Group
-		if p.DisplayName == "" { p.DisplayName = p.Model }
+		if p.DisplayName == "" {
+			p.DisplayName = p.Model
+		}
 	}
-	if err := model.ReplaceLightcodeGroupModels(req.Group, req.Models); err != nil { common.ApiError(c, err); return }
+	if err := model.ReplaceLightcodeGroupModels(req.Group, req.Models); err != nil {
+		common.ApiError(c, err)
+		return
+	}
 	common.ApiSuccess(c, nil)
 }
 
 func LightcodeDevices(c *gin.Context) {
 	if c.Request.Method == http.MethodDelete {
-		if err := model.DB.Model(&model.LightcodeSession{}).Where("id = ? AND user_id = ?", c.Param("id"), c.GetInt("id")).Update("revoked_at", time.Now().Unix()).Error; err != nil { common.ApiError(c, err); return }
-		common.ApiSuccess(c, nil); return
+		if err := model.DB.Model(&model.LightcodeSession{}).Where("id = ? AND user_id = ?", c.Param("id"), c.GetInt("id")).Update("revoked_at", time.Now().Unix()).Error; err != nil {
+			common.ApiError(c, err)
+			return
+		}
+		common.ApiSuccess(c, nil)
+		return
 	}
 	var sessions []model.LightcodeSession
-	if err := model.DB.Where("user_id = ?", c.GetInt("id")).Order("created_at desc").Limit(100).Find(&sessions).Error; err != nil { common.ApiError(c, err); return }
+	if err := model.DB.Where("user_id = ?", c.GetInt("id")).Order("created_at desc").Limit(100).Find(&sessions).Error; err != nil {
+		common.ApiError(c, err)
+		return
+	}
 	common.ApiSuccess(c, sessions)
 }

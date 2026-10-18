@@ -20,11 +20,28 @@ type WebAssets struct {
 }
 
 func SetWebRouter(router *gin.Engine, assets WebAssets) {
-	frontendFS := common.EmbedFolder(assets.BuildFS, "web/dist")
+	// A missing site page only disables /lightcode; the dashboard still serves.
+	siteIndex, _ := assets.BuildFS.ReadFile("web/dist/lightcode/index.html")
+	setWebRouter(router, common.EmbedFolder(assets.BuildFS, "web/dist"), siteIndex, assets.IndexPage)
+}
 
+func setWebRouter(router *gin.Engine, frontendFS static.ServeFileSystem, siteIndex, indexPage []byte) {
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 	router.Use(middleware.GlobalWebRateLimit())
 	router.Use(middleware.Cache())
+	// The product site shares its name with an embedded directory. Registered after static.Serve, the
+	// directory would be redirected and its page cached for a week, so these routes precede it.
+	if len(siteIndex) > 0 {
+		serveSite := func(c *gin.Context) {
+			c.Set(middleware.RouteTagKey, "web")
+			c.Header("Cache-Control", "no-cache")
+			c.Data(http.StatusOK, "text/html; charset=utf-8", siteIndex)
+		}
+		for _, path := range []string{"/lightcode", "/lightcode/"} {
+			router.GET(path, serveSite)
+			router.HEAD(path, serveSite)
+		}
+	}
 	router.Use(static.Serve("/", frontendFS))
 	router.NoRoute(func(c *gin.Context) {
 		c.Set(middleware.RouteTagKey, "web")
@@ -33,6 +50,6 @@ func SetWebRouter(router *gin.Engine, assets WebAssets) {
 			return
 		}
 		c.Header("Cache-Control", "no-cache")
-		c.Data(http.StatusOK, "text/html; charset=utf-8", assets.IndexPage)
+		c.Data(http.StatusOK, "text/html; charset=utf-8", indexPage)
 	})
 }

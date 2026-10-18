@@ -17,6 +17,8 @@ func SetApiRouter(router *gin.Engine) {
 	oauthServer.POST("/authorize", middleware.UserAuth(), controller.LightcodeAuthorize)
 	oauthServer.POST("/token", controller.LightcodeToken)
 	oauthServer.POST("/revoke", controller.LightcodeRevoke)
+	router.GET("/download/lightcode/:name", middleware.RouteTag("web"), middleware.DownloadRateLimit(), controller.LightcodeDownloadFile)
+	router.HEAD("/download/lightcode/:name", middleware.RouteTag("web"), middleware.DownloadRateLimit(), controller.LightcodeDownloadFile)
 	apiRouter := router.Group("/api")
 	apiRouter.Use(middleware.RouteTag("api"))
 	apiRouter.Use(gzip.Gzip(gzip.DefaultCompression))
@@ -25,8 +27,12 @@ func SetApiRouter(router *gin.Engine) {
 	anonymousRequestBodyLimit := middleware.AnonymousRequestBodyLimit()
 	{
 		apiRouter.GET("/setup", controller.GetSetup)
+		apiRouter.GET("/lightcode/download", controller.LightcodeDownloadInfo)
+		apiRouter.GET("/lightcode/plans", controller.LightcodePublicPlans)
 		apiRouter.GET("/lightcode/models", middleware.AdminAuth(), controller.AdminLightcodeModels)
 		apiRouter.PUT("/lightcode/models", middleware.AdminAuth(), controller.AdminLightcodeModels)
+		apiRouter.GET("/lightcode/usage", middleware.UserAuth(), middleware.DisableCache(), controller.LightcodeUsage)
+		apiRouter.GET("/lightcode/profile", middleware.UserAuth(), middleware.DisableCache(), controller.LightcodeProfile)
 		apiRouter.GET("/lightcode/devices", middleware.UserAuth(), controller.LightcodeDevices)
 		apiRouter.DELETE("/lightcode/devices/:id", middleware.UserAuth(), controller.LightcodeDevices)
 		apiRouter.POST("/setup", anonymousRequestBodyLimit, controller.PostSetup)
@@ -157,7 +163,7 @@ func SetApiRouter(router *gin.Engine) {
 				adminRoute.PUT("/", controller.UpdateUser)
 				adminRoute.DELETE("/:id", controller.DeleteUser)
 				adminRoute.DELETE("/:id/reset_passkey", controller.AdminResetPasskey)
-		adminRoute.POST("/:id/impersonate", middleware.RootAuth(), controller.ImpersonateUser)
+				adminRoute.POST("/:id/impersonate", middleware.RootAuth(), controller.ImpersonateUser)
 
 				// Admin 2FA routes
 				adminRoute.GET("/2fa/stats", controller.Admin2FAStats)

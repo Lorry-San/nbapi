@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LightCode | 探索智能的边界</title>
+<link rel="icon" href="/lightcode/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=Montserrat:wght@500&family=Fragment+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --brand: #6799fe; --text: #fff; --text2: hsla(0,0%,100%,.8); --desc: hsla(0,0%,100%,.5);
+  --page: #0a0a0a; --s1: hsla(0,0%,100%,.06); --s3: hsla(0,0%,100%,.02); --raised: hsla(0,0%,100%,.25);
+  --border: hsla(0,0%,100%,.06); --border-sub: hsla(0,0%,100%,.08); --sec-border: hsla(0,0%,100%,.15);
+  --blur: 12px; --pill: 100px; --panel: 16px; --media: 10px;
+  --sans: "DM Sans", system-ui, -apple-system, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --mono: "Fragment Mono", ui-monospace, Consolas, monospace;
+  --ease: cubic-bezier(.22,1,.36,1);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: var(--text); }
+body { font-family: var(--sans); -webkit-font-smoothing: antialiased; overscroll-behavior: none; overflow-x: hidden; }
+::selection { background: var(--brand); color: #fff; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+:focus-visible { outline: 2px solid #5686fe; outline-offset: 2px; }
+.container { width: min(100% - 48px, 1140px); margin-inline: auto; }
+@media (min-width: 768px) { .container { width: min(100% - 144px, 1140px); } }
+@media (min-width: 1280px) { .container { width: min(100% - 160px, 1280px); } }
+
+/* 导航：顶部透明，滚动后出现毛玻璃胶囊 */
+.header-wrapper { position: fixed; top: 0; left: 0; right: 0; margin: 0 auto; z-index: 50; width: min(100% - 48px, 1140px); padding-top: 8px; }
+@media (min-width: 768px) { .header-wrapper { width: min(100% - 144px, 1140px); } }
+@media (min-width: 1280px) { .header-wrapper { width: min(100% - 160px, 1280px); } }
+.header-bar { position: relative; display: flex; align-items: center; justify-content: space-between; margin: 0 auto; max-width: 100%; padding: 4px 0; border-radius: var(--pill); transition: max-width .5s var(--ease), padding .5s var(--ease); }
+.header-bar::before { content: ""; position: absolute; inset: -1px; border-radius: inherit; z-index: -1; pointer-events: none;
+  background: var(--raised); backdrop-filter: blur(var(--blur)); -webkit-backdrop-filter: blur(var(--blur)); border: 1px solid var(--border);
+  opacity: 0; visibility: hidden; transition: opacity .4s ease-in-out, visibility 0s .4s; }
+.header-bar.is-scrolled { max-width: calc(100% - 100px); padding: 4px 6px 4px 16px; }
+@media (max-width: 767px) { .header-bar.is-scrolled { max-width: 100%; } }
+.brand .pv { font: 500 11px/1 var(--sans); padding: 3px 8px; border-radius: var(--pill); border: 1px solid hsla(0,0%,100%,.25); background: hsla(0,0%,100%,.12); color: hsla(0,0%,100%,.85); letter-spacing: 0; }
+.header-bar.is-scrolled::before { opacity: 1; visibility: visible; transition: opacity .4s ease-in-out, visibility 0s; }
+
+.brand, .brand img { transition: font-size .5s var(--ease), width .5s var(--ease), height .5s var(--ease); }
+/* 右侧插槽：顶部显示语言切换，收缩后换成下载按钮 */
+.slot { position: relative; display: grid; justify-items: end; align-items: center; }
+.slot > * { grid-area: 1 / 1; transition: opacity .3s ease, transform .4s var(--ease), visibility 0s; }
+.island-dl { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px; border-radius: var(--pill); background: #fff; color: #0a0a0a; font-size: 13px; font-weight: 500; white-space: nowrap;
+  opacity: 0; visibility: hidden; transform: scale(.85); transition: opacity .3s ease, transform .4s var(--ease), visibility 0s .4s, background-color .2s; }
+.island-dl:hover { background: #e6e8eb; }
+.island-dl svg { width: 14px; height: 14px; }
+.header-bar.is-scrolled .locale { opacity: 0; visibility: hidden; transform: scale(.85); transition: opacity .2s ease, transform .4s var(--ease), visibility 0s .4s; }
+.header-bar.is-scrolled .island-dl { opacity: 1; visibility: visible; transform: none; transition: opacity .3s ease .1s, transform .4s var(--ease), visibility 0s, background-color .2s; }
+.brand { display: flex; align-items: center; gap: 8px; font-family: "Montserrat", var(--sans); font-weight: 500; font-size: 19px; letter-spacing: -.01em; }
+.brand img { width: 24px; height: 24px; }
+.locale { display: flex; align-items: center; height: 32px; padding: 3px; border-radius: var(--pill); border: 1px solid var(--border); }
+.locale button { height: 100%; padding: 0 12px; border-radius: var(--pill); font-size: 12px; font-weight: 500; color: var(--desc); transition: color .2s, background-color .2s; }
+.locale button.is-active { background: var(--raised); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+
+/* Hero */
+.hero { position: relative; display: flex; align-items: center; }
+.hero-bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; opacity: 0; filter: blur(20px); transition: opacity 1.8s ease-out, filter 1.8s ease-out;
+  -webkit-mask: linear-gradient(#000000fc 0%, #000000e8 8.98%, transparent 100%); mask: linear-gradient(#000000fc 0%, #000000e8 8.98%, transparent 100%); }
+.hero-bg.ready { opacity: 1; filter: blur(0); }
+.hero-bg canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hero-inner { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 56px; padding: 160px 0 80px; }
+.hero-copy { display: flex; flex-direction: column; align-items: center; gap: 32px; width: 100%; max-width: 800px; padding-top: 16px; text-align: center; }
+.badge { display: inline-flex; align-items: center; gap: 7px; font: 500 12px/1 var(--mono); text-transform: uppercase; letter-spacing: .22em; color: hsla(0,0%,100%,.45); }
+.badge i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+h1 { margin: 16px 0 0; font-size: 32px; font-weight: 500; letter-spacing: -.02em; line-height: 150%; }
+@media (min-width: 768px) { h1 { font-size: 40px; } }
+:lang(zh) h1, :lang(zh) h2, :lang(zh) h3 { font-weight: 400; }
+.body { font-size: 16px; line-height: 160%; color: var(--desc); margin: 0; text-wrap: pretty; }
+.hero-desc { display: flex; flex-direction: column; gap: 4px; max-width: 720px; }
+
+.btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 18px; border-radius: var(--pill); font-size: 15px; font-weight: 500; line-height: 120%; overflow: hidden; isolation: isolate; }
+.btn::after { content: ""; position: absolute; top: 50%; left: 50%; width: 150%; aspect-ratio: 1; border-radius: 50%; opacity: 0; z-index: -1; transform: translate(-50%,-50%) scale(0); transition: transform .36s ease-out, opacity .1s; }
+.btn:hover::after { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+.btn-primary { background: #fff; color: #0a0a0a; }
+.btn-primary::after { background: rgba(0,0,0,.12); }
+.btn-secondary { background: var(--s1); border: 1px solid var(--sec-border); backdrop-filter: blur(var(--blur)); -webkit-backdrop-filter: blur(var(--blur)); transition: border-color .35s; }
+.btn-secondary::after { background: hsla(0,0%,100%,.2); }
+.btn-secondary:hover { border-color: hsla(0,0%,100%,.6); }
+.btn svg { width: 16px; height: 16px; }
+
+/* 入场动画 */
+@keyframes enter { from { opacity: 0; transform: translateY(var(--y, 20px)); filter: blur(var(--b, 0)); } }
+.enter { animation: enter .8s ease-out backwards; }
+.reveal { opacity: 0; transform: translateY(30px); transition: opacity .6s var(--ease), transform .6s var(--ease), filter .6s var(--ease); }
+.reveal.in { opacity: 1; transform: none; }
+
+/* 桌面预览窗口 */
+.preview { width: 100%; max-width: 1020px; animation: enter .8s ease-out .4s backwards; }
+.win { --u: .9px; position: relative; display: flex; height: calc(var(--u) * 680); overflow: hidden; border-radius: var(--panel); text-align: left; color: #f9fafb; font-size: calc(var(--u) * 14); line-height: 1.4; user-select: none;
+  box-shadow: 0 0 0 1px hsla(0,0%,100%,.12), 0 24px 72px rgba(0,0,0,.2); font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+.side { width: calc(var(--u) * 260); flex: none; display: flex; flex-direction: column; padding: 0 calc(var(--u) * 8);
+  background: linear-gradient(180deg, rgba(122,155,240,.08), rgba(122,155,240,0) 35%, rgba(143,137,184,0) 68%, rgba(143,137,184,.07)), rgba(95,102,114,.42);
+  backdrop-filter: blur(32px) saturate(125%); -webkit-backdrop-filter: blur(32px) saturate(125%); box-shadow: inset -.5px 0 hsla(0,0%,100%,.1); }
+.lights { display: flex; gap: 8px; height: calc(var(--u) * 52); align-items: center; padding: 0 4px; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; }
+.lights i:nth-child(2) { background: #febc2e; } .lights i:nth-child(3) { background: #28c840; }
+.side .logo { display: flex; align-items: center; gap: 8px; padding: 4px 8px 12px; font-weight: 600; font-size: calc(var(--u) * 16); }
+.side .logo img { width: 20px; height: 20px; }
+.row { display: flex; align-items: center; gap: calc(var(--u) * 8); height: calc(var(--u) * 36); padding: 0 calc(var(--u) * 8); border-radius: 8px; color: #e7e9ec; }
+.row svg { width: 16px; height: 16px; flex: none; opacity: .85; }
+.row.on { background: hsla(0,0%,100%,.1); }
+.side h5 { margin: calc(var(--u) * 14) 0 4px; padding: 0 calc(var(--u) * 8); font-size: calc(var(--u) * 13); font-weight: 400; color: #adb2b8; }
+.row.sess { padding-left: calc(var(--u) * 32); height: calc(var(--u) * 32); color: #cfd3d6; }
+.main { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; background: #151517; }
+.main-bar { height: calc(var(--u) * 50); padding: 0 20px; display: flex; align-items: center; flex: none; box-shadow: inset 0 -.5px hsla(0,0%,100%,.1); color: #cfd3d6; font-weight: 500; }
+.thread { flex: 1; overflow: hidden; width: calc(100% - 32px); max-width: calc(var(--u) * 762); margin: 0 auto; padding-top: calc(var(--u) * 28); }
+.umsg { width: fit-content; max-width: 70%; margin: 0 0 calc(var(--u) * 20) auto; padding: calc(var(--u) * 10) calc(var(--u) * 16); border-radius: calc(var(--u) * 22); background: #2c2c2e; }
+.thought { display: flex; align-items: center; gap: 6px; color: #adb2b8; font-size: calc(var(--u) * 13); margin-bottom: 12px; }
+.reply p { margin: 0 0 10px; line-height: 1.6; color: #e7e9ec; }
+.reply ol { margin: 0 0 10px; padding-left: 20px; line-height: 1.7; color: #e7e9ec; }
+.reply strong { color: #fff; }
+.dock { width: calc(100% - 32px); max-width: calc(var(--u) * 762); margin: 0 auto; padding: calc(var(--u) * 16) 0 calc(var(--u) * 20); }
+.composer { padding: 8px; border-radius: calc(var(--u) * 22); background: #2c2c2e; box-shadow: 0 0 0 .5px hsla(0,0%,100%,.12), 0 4px 16px rgba(0,0,0,.06); }
+.ph { padding: 6px 8px; color: #8e9399; }
+.tools { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; font-size: calc(var(--u) * 13); color: #cfd3d6; }
+.tools span { display: inline-flex; align-items: center; gap: 6px; }
+.tools .l, .tools .r { display: flex; gap: 10px; align-items: center; }
+.plus, .send { width: 28px; height: 28px; border-radius: 50%; display: grid !important; place-items: center; line-height: 1; font-size: 16px; background: hsla(0,0%,100%,.08); }
+.send { background: #fff; color: #151517; }
+.dim { color: #8e9399; }
+@media (max-width: 760px) { .side { display: none; } .win { height: calc(var(--u) * 560); } .umsg { max-width: 90%; } }
+
+/* 能力卡片 */
+.caps { padding: 160px 0; }
+h2 { margin: 0; font-family: "Montserrat", var(--sans); font-size: 28px; font-weight: 500; letter-spacing: -.02em; line-height: 150%; text-align: center; }
+@media (min-width: 768px) { h2 { font-size: 36px; } }
+.grid { display: grid; grid-template-columns: 1fr; gap: 32px; margin-top: 80px; }
+@media (min-width: 1024px) { .grid { grid-template-columns: 1fr 1fr; } }
+.card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; padding: 40px 40px 0; border: 1px solid var(--border); border-radius: var(--panel); background: var(--s3); }
+.card h3 { margin: 0; font-size: 20px; font-weight: 500; letter-spacing: -.01em; line-height: 150%; }
+.copy { display: flex; flex-direction: column; gap: 8px; padding-bottom: 32px; }
+.media { position: relative; margin-top: auto; min-height: 280px; overflow: hidden; border: 1px solid var(--border); border-bottom: 0; border-radius: var(--media) var(--media) 0 0; background: #101113; padding: 20px; font-size: 13px; color: #cfd3d6; }
+.plug { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 10px; background: hsla(0,0%,100%,.03); margin-bottom: 8px; }
+.plug .ic { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: #2c2c2e; font-size: 15px; flex: none; }
+.plug b { display: block; color: #f9fafb; font-weight: 500; }
+.plug small { color: #8e9399; }
+.plug .tag { margin-left: auto; font-size: 11px; padding: 3px 8px; border-radius: 6px; background: hsla(0,0%,100%,.06); color: #adb2b8; white-space: nowrap; }
+.plug .tag.on { background: rgba(103,153,254,.16); color: var(--brand); }
+.flow { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px 14px; align-items: center; }
+.node { padding: 12px; border-radius: 10px; background: hsla(0,0%,100%,.04); border: .5px solid hsla(0,0%,100%,.1); }
+.node b { display: block; color: #f9fafb; font-weight: 500; margin-bottom: 2px; }
+.node small { color: #8e9399; font-family: var(--mono); font-size: 11px; }
+.arrow { color: var(--brand); text-align: center; font-family: var(--mono); }
+.files { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.file { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; background: hsla(0,0%,100%,.04); border: .5px solid hsla(0,0%,100%,.1); }
+.file i { width: 18px; height: 22px; border-radius: 3px; display: block; }
+.code { font-family: var(--mono); font-size: 12px; line-height: 1.8; padding: 14px; border-radius: 8px; background: #151517; border: .5px solid hsla(0,0%,100%,.1); }
+.code .a { color: #7ee787; } .code .k { color: #ff7b72; } .code .s { color: #a5d6ff; }
+.task { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 12px; background: #1c1c1e; border: .5px solid hsla(0,0%,100%,.12); margin-top: 12px; }
+.task .clk { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: rgba(103,153,254,.16); color: var(--brand); flex: none; }
+.task b { display: block; color: #f9fafb; font-weight: 500; }
+.task small { color: #8e9399; }
+.task .open { margin-left: auto; color: var(--brand); }
+
+/* CTA */
+.cta-wrap { position: relative; overflow: hidden; max-height: 720px; }
+.cta-glow { position: absolute; top: 80px; left: 0; width: 100%; height: 500px; pointer-events: none; opacity: 0; transform: scale(.85); transition: opacity 1.2s ease-out, transform 1.2s ease-out; }
+.cta-wrap.in .cta-glow { opacity: 1; transform: none; }
+.cta-glow canvas { position: absolute; inset: 0; width: 100%; height: 100%;
+  -webkit-mask: linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent), linear-gradient(to right, transparent, #000 15%, #000 85%, transparent); -webkit-mask-composite: source-in;
+  mask: linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent), linear-gradient(to right, transparent, #000 15%, #000 85%, transparent); mask-composite: intersect; }
+.orb { position: absolute; border-radius: 50%; }
+.orb1 { bottom: -100px; left: 10%; width: 500px; height: 500px; opacity: .3; background: radial-gradient(circle, #1A3870 0%, transparent 70%); filter: blur(80px); }
+.orb2 { bottom: -50px; left: 50%; transform: translateX(-50%); width: 700px; height: 400px; opacity: .4; background: radial-gradient(ellipse at center, #2D5F9E 0%, #1A3870 40%, transparent 70%); filter: blur(100px); }
+.orb3 { bottom: -80px; right: 10%; width: 400px; height: 400px; opacity: .2; background: radial-gradient(circle, #4A8AC4 0%, #2D5F9E 30%, transparent 70%); filter: blur(60px); }
+.cta { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 160px 0 240px; min-height: min(60vh, 720px); }
+.cta .body { max-width: 640px; margin-top: 24px; }
+.cta-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; margin-top: 32px; }
+
+footer { padding-bottom: 32px; }
+.line { height: 1px; background: var(--border-sub); }
+.foot { display: flex; flex-direction: column; align-items: center; gap: 16px; padding-top: 24px; font-size: 13px; }
+@media (min-width: 1280px) { .foot { display: grid; grid-template-columns: 1fr auto 1fr; } .foot nav { justify-self: end; } }
+.foot p { margin: 0; color: var(--desc); text-align: center; }
+.foot nav { display: flex; flex-wrap: wrap; gap: 8px 12px; justify-content: center; }
+.foot nav a:hover { opacity: .7; }
+.foot nav span { color: var(--desc); }
+
+@media (prefers-reduced-motion: reduce) {
+  .enter, .preview { animation: none; }
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .header-bar, .header-bar::before, .header-bar *, .slot > * { transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="header-wrapper">
+  <div class="header-bar" id="bar">
+    <a class="brand" href="/lightcode"><img src="/lightcode/logo-white.svg" alt="">LightCode<span class="pv" data-i18n="pv"></span></a>
+    <div class="slot">
+      <div class="locale" role="group" aria-label="Language">
+        <button type="button" data-lang="zh">中文</button>
+        <button type="button" data-lang="en">EN</button>
+      </div>
+      <a class="island-dl" data-dl href="https://github.com/LightCode-AI/lightcode-releases/releases">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/></svg>
+        <span data-i18n="dl"></span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<main>
+  <section class="hero" id="hero">
+    <div class="hero-bg" id="heroBg"><canvas id="fluid"></canvas></div>
+    <div class="container hero-inner">
+      <div class="hero-copy">
+        <div class="enter" style="--y:24px;--b:10px;animation-duration:.9s">
+          <span class="badge"><i></i><span data-i18n="badge"></span></span>
+          <h1><span data-i18n="h1a"></span><br><span data-i18n="h1b"></span></h1>
+        </div>
+        <div class="hero-desc enter" style="--y:20px;--b:8px;animation-delay:.15s">
+          <p class="body" data-i18n="d1"></p>
+          <p class="body" data-i18n="d2"></p>
+        </div>
+        <div class="enter" style="--y:16px;animation-duration:.7s;animation-delay:.3s">
+          <a class="btn btn-primary" data-dl href="https://github.com/LightCode-AI/lightcode-releases/releases">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/></svg>
+            <span data-i18n="dl"></span>
+          </a>
+        </div>
+      </div>
+
+      <div class="preview" id="preview">
+        <div class="win" role="img" data-i18n-label="winLabel">
+          <aside class="side">
+            <div class="lights"><i></i><i></i><i></i></div>
+            <div class="logo"><img src="/lightcode/logo-white.svg" alt="">LightCode</div>
+            <div class="row"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M8 3v10M3 8h10"/></svg><span data-i18n="sNew"></span></div>
+            <div class="row"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M6 2.5h4v3h3v4h-3v4H6v-4H3v-4h3z"/></svg><span data-i18n="sPlug"></span></div>
+            <div class="row"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="11" cy="11" r="2"/><path d="M6.5 6.5l3 3"/></svg><span data-i18n="sProv"></span></div>
+            <div class="row"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v3l2 1.5"/></svg><span data-i18n="sAuto"></span></div>
+            <h5 data-i18n="sWs"></h5>
+            <div class="row"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M2.5 4.5h4l1.5 1.5h5.5v6.5h-11z"/></svg><span data-i18n="sWs2"></span></div>
+            <div class="row sess on" data-i18n="ss1"></div>
+            <div class="row sess" data-i18n="ss2"></div>
+            <div class="row sess" data-i18n="ss3"></div>
+            <div class="row sess" data-i18n="ss4"></div>
+            <div class="row sess" data-i18n="ss5"></div>
+          </aside>
+          <div class="main">
+            <div class="main-bar">LightCode</div>
+            <div class="thread">
+              <div class="umsg" data-i18n="q"></div>
+              <div class="thought"><span data-i18n="thought"></span> ›</div>
+              <div class="reply">
+                <p data-i18n="a0"></p>
+                <ol>
+                  <li data-i18n-html="a1"></li>
+                  <li data-i18n-html="a2"></li>
+                  <li data-i18n-html="a3"></li>
+                  <li data-i18n-html="a4"></li>
+                </ol>
+                <p data-i18n="more"></p>
+              </div>
+            </div>
+            <div class="dock">
+              <div class="composer">
+                <div class="ph" data-i18n="ph"></div>
+                <div class="tools">
+                  <div class="l"><span class="plus">+</span><span>🛡 <span data-i18n="perm"></span> ⌄</span></div>
+                  <div class="r"><span><span class="dim">LightCode ·</span> Gemini 3.8 Flash <span class="dim">High</span> ⌄</span><span class="send">↑</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="container caps">
+    <h2 class="reveal"><span data-i18n="capA"></span><br><span data-i18n="capB"></span></h2>
+    <div class="grid">
+      <article class="card reveal">
+        <div class="copy"><h3 data-i18n="c1t"></h3><p class="body" data-i18n="c1d"></p></div>
+        <div class="media">
+          <div class="plug"><span class="ic">🧩</span><span><b>dsh-plugin-scheduler</b><small data-i18n="p1"></small></span><span class="tag on" data-i18n="enabled"></span></div>
+          <div class="plug"><span class="ic">📊</span><span><b>dsh-plugin-office</b><small data-i18n="p2"></small></span><span class="tag on" data-i18n="enabled"></span></div>
+          <div class="plug"><span class="ic">🔍</span><span><b>dsh-plugin-websearch</b><small data-i18n="p3"></small></span><span class="tag" data-i18n="community"></span></div>
+          <div class="plug"><span class="ic">✨</span><span><b data-i18n="p4t"></b><small data-i18n="p4"></small></span><span class="tag" data-i18n="creator"></span></div>
+        </div>
+      </article>
+      <article class="card reveal">
+        <div class="copy"><h3 data-i18n="c2t"></h3><p class="body" data-i18n="c2d"></p></div>
+        <div class="media">
+          <div class="flow">
+            <div class="node"><b>LightCode Agent</b><small data-i18n="n1"></small></div><div class="arrow">⇄</div><div class="node"><b data-i18n="n2t"></b><small data-i18n="n2"></small></div>
+          </div>
+          <div class="task"><span class="clk">✓</span><span><b data-i18n="sw1"></b><small data-i18n="sw2"></small></span></div>
+          <div class="task"><span class="clk">⇄</span><span><b data-i18n="sw3"></b><small data-i18n="sw4"></small></span></div>
+        </div>
+      </article>
+      <article class="card reveal">
+        <div class="copy"><h3 data-i18n="c3t"></h3><p class="body" data-i18n="c3d"></p></div>
+        <div class="media">
+          <div class="files">
+            <span class="file"><i style="background:#2b579a"></i>report.docx</span>
+            <span class="file"><i style="background:#217346"></i>sales.xlsx</span>
+            <span class="file"><i style="background:#e44d26"></i>index.html</span>
+            <span class="file"><i style="background:#3178c6"></i>app.ts</span>
+          </div>
+          <div class="code"><span class="k">export function</span> <span class="a">summarize</span>(rows) {<br>&nbsp;&nbsp;<span class="k">return</span> rows.<span class="a">reduce</span>((s, r) =&gt; s + r.total, <span class="s">0</span>);<br>}</div>
+        </div>
+      </article>
+      <article class="card reveal">
+        <div class="copy"><h3 data-i18n="c4t"></h3><p class="body" data-i18n="c4d"></p></div>
+        <div class="media">
+          <p style="margin:0;color:#e7e9ec" data-i18n="t0"></p>
+          <div class="task"><span class="clk">◷</span><span><b data-i18n="t1"></b><small data-i18n="t2"></small></span><span class="open" data-i18n="open"></span></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <div class="cta-wrap" id="ctaWrap">
+    <div class="cta-glow"><canvas id="dots"></canvas><div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div></div>
+    <section class="container cta reveal">
+      <h2 data-i18n="ctaT"></h2>
+      <p class="body" data-i18n="ctaD"></p>
+      <div class="cta-actions">
+        <a class="btn btn-primary" data-dl href="https://github.com/LightCode-AI/lightcode-releases/releases" data-i18n="dlWin"></a>
+        <a class="btn btn-secondary" href="https://github.com/topics/dsh-plugin" target="_blank" rel="noopener noreferrer" data-i18n="ctaPlug"></a>
+      </div>
+    </section>
+  </div>
+
+  <footer class="container">
+    <div class="line"></div>
+    <div class="foot">
+      <div></div>
+      <p><span data-i18n="copy"></span> · <span data-i18n="based"></span></p>
+      <nav aria-label="Policies"><a href="/privacy-policy" data-i18n="privacy"></a><span>·</span><a href="/user-agreement" data-i18n="terms"></a><span>·</span><a href="https://github.com/deepseek-ai/deepseek-harness/blob/master/LICENSE" target="_blank" rel="noopener noreferrer" data-i18n="lic"></a></nav>
+    </div>
+  </footer>
+</main>
+
+<script>
+const I18N = {
+  zh: {
+    title: "LightCode | 探索智能的边界", badge: "Preview", pv: "预览",
+    h1a: "LightCode", h1b: "即开即用，立刻上手。",
+    d1: "日常任务、编程开发，还是打造你自己的 Agent，从这里开始。",
+    d2: "LightCode 基于 DeepSeek Harness 深度定制，兼容 DSH 插件生态，并让模型提供方与 Agent 联动协作。",
+    dl: "下载桌面版", dlWin: "下载 Windows 版", winLabel: "LightCode 对话预览",
+    sNew: "新建会话", sPlug: "插件", sProv: "Provider", sAuto: "自动化", sWs: "工作区", sWs2: "默认工作区",
+    ss1: "认识 LightCode", ss2: "Q3 总结幻灯片", ss3: "评审准备", ss4: "多 Agent 重构", ss5: "DSH 插件迁移",
+    q: "介绍一下你自己？", thought: "已思考片刻",
+    a0: "我是 LightCode，一个基于 DeepSeek Harness 打造的 Agent，桌面端开箱即用。",
+    a1: "<strong>DSH 插件</strong> —— 原版插件直接安装，无需修改。",
+    a2: "<strong>Provider 联动</strong> —— 与 LightCode 模型供应商协同开发，联合调测更稳定。",
+    a3: "<strong>各类任务</strong> —— 文档、表格、代码与实时预览。",
+    a4: "<strong>工作流</strong> —— 定时任务与进度追踪。",
+    more: "以及更多……",
+    ph: "描述你想做的事，/ 调用命令，@ 引用文件或会话", perm: "工作区可写",
+    capA: "能力不断扩展。", capB: "按你的方式工作。",
+    c1t: "兼容 DSH 插件生态", c1d: "DeepSeek Harness 的官方与社区插件可直接安装运行，工具、技能与界面扩展开箱即用；也可在 “Creator 模式” 中通过对话创建插件。",
+    p1: "定时任务 · 官方", p2: "文档与表格 · 官方", p3: "联网搜索 · 社区", p4t: "通过对话创建插件", p4: "Creator 模式",
+    enabled: "已启用", community: "社区", creator: "Creator",
+    c2t: "Provider 与 Agent 联动", c2d: "LightCode Agent 与 LightCode 模型供应商一体化开发，两端协同调测：模型接入、参数与兼容性在发布前已联调完成，出现问题也能一起定位，开箱即稳定。",
+    n1: "客户端", n2t: "LightCode Provider", n2: "模型供应商 · 一体化开发",
+    sw1: "联合调测已通过", sw2: "工具调用、流式输出与思考模式均已验证",
+    sw3: "两端同步迭代", sw4: "LightCode Provider 能力更新，Agent 随之适配",
+    c3t: "完成各类任务", c3d: "整理文档、分析表格、编写代码。直接预览结果，并通过对话持续完善。",
+    c4t: "适配你的工作流", c4d: "启用定时任务插件，随时启动任务，或按计划执行重复工作。随时掌握进度，需要时查看工具调用详情。",
+    t0: "已创建 “项目周报”，每周五 17:00（北京时间）执行。", t1: "项目周报", t2: "每周五 17:00（UTC+08:00 · 中国标准时间）", open: "打开",
+    ctaT: "开始使用 LightCode", ctaD: "LightCode 目前处于预览阶段，核心功能持续迭代中。下载桌面版，在熟悉的 DSH 插件生态里，体验 Provider 与 Agent 的联动协作。",
+    ctaPlug: "社区插件",
+    copy: "© 2026 LightCode. 保留所有权利。", based: "基于 DeepSeek Harness（MIT）", privacy: "隐私政策", terms: "使用条款", lic: "开源许可"
+  },
+  en: {
+    title: "LightCode | Explore the limits of intelligence", badge: "Preview", pv: "Preview",
+    h1a: "LightCode", h1b: "Ready to use. Right now.",
+    d1: "Everyday tasks, coding, or your own agent—it starts here.",
+    d2: "LightCode is a customized build of DeepSeek Harness, compatible with the DSH plugin ecosystem, with providers and agents that work in concert.",
+    dl: "Download Desktop", dlWin: "Download for Windows", winLabel: "LightCode conversation preview",
+    sNew: "New Session", sPlug: "Plugins", sProv: "Providers", sAuto: "Automation", sWs: "Workspace", sWs2: "Default workspace",
+    ss1: "Meet LightCode", ss2: "Q3 summary slides", ss3: "Review prep", ss4: "Multi-agent refactor", ss5: "DSH plugin migration",
+    q: "Could you introduce yourself?", thought: "Thought for a while",
+    a0: "I'm LightCode, an agent built on DeepSeek Harness, ready to use on your desktop.",
+    a1: "<strong>DSH plugins</strong> — Install original plugins as-is.",
+    a2: "<strong>Provider linking</strong> — Built and tested with the LightCode provider.",
+    a3: "<strong>Any task</strong> — Docs, data, and code with live preview.",
+    a4: "<strong>Workflows</strong> — Scheduled tasks and progress tracking.",
+    more: "And so much more...",
+    ph: "Describe what you want to build, / commands, @ files or sessions", perm: "Workspace Write",
+    capA: "Expanding capabilities.", capB: "Work on your terms.",
+    c1t: "DSH plugin compatible", c1d: "Official and community DeepSeek Harness plugins install and run unchanged, so tools, skills, and UI extensions just work. Or create new ones through chat in “Creator mode”.",
+    p1: "Scheduled tasks · Official", p2: "Docs & sheets · Official", p3: "Web search · Community", p4t: "Create a plugin via chat", p4: "Creator mode",
+    enabled: "Enabled", community: "Community", creator: "Creator",
+    c2t: "Providers and agents, linked", c2d: "The LightCode agent and the LightCode model provider are developed as one and tested together. Model access, parameters, and compatibility are tuned end to end, and issues get traced across both sides.",
+    n1: "Client", n2t: "LightCode Provider", n2: "Model provider · built as one",
+    sw1: "Joint testing passed", sw2: "Tool calls, streaming, and thinking mode verified",
+    sw3: "Evolving in sync", sw4: "When LightCode Provider ships new capabilities, the agent adapts",
+    c3t: "Complete a range of tasks", c3d: "Organize documents, analyze spreadsheets, and write code. Preview the results directly and refine them through conversation.",
+    c4t: "Adapt to your workflow", c4d: "Enable the Scheduled tasks plugin to start tasks anytime and run recurring work on schedule. Stay on top of progress and inspect tool call details when needed.",
+    t0: "Created “Weekly project report”, scheduled for Fridays at 17:00 Beijing time.", t1: "Weekly project report", t2: "Weekly on Fri at 17:00 (UTC+08:00 · China Standard Time)", open: "Open",
+    ctaT: "Get started with LightCode", ctaD: "LightCode is in preview, with core features evolving quickly. Download the desktop app and try linked providers and agents on top of the DSH plugin ecosystem you already know.",
+    ctaPlug: "Community plugins",
+    copy: "© 2026 LightCode. All rights reserved.", based: "Built on DeepSeek Harness (MIT)", privacy: "Privacy Policy", terms: "Terms of Use", lic: "Open-source licenses"
+  }
+};
+
+function setLang(lang) {
+  const d = I18N[lang];
+  document.documentElement.lang = lang;
+  document.title = d.title;
+  document.querySelectorAll("[data-i18n]").forEach(el => el.textContent = d[el.dataset.i18n]);
+  document.querySelectorAll("[data-i18n-html]").forEach(el => el.innerHTML = d[el.dataset.i18nHtml]);
+  document.querySelectorAll("[data-i18n-label]").forEach(el => el.setAttribute("aria-label", d[el.dataset.i18nLabel]));
+  document.querySelectorAll("[data-lang]").forEach(b => {
+    const on = b.dataset.lang === lang;
+    b.classList.toggle("is-active", on);
+    b.setAttribute("aria-pressed", on);
+  });
+  localStorage.setItem("lc-lang", lang);
+}
+document.querySelectorAll("[data-lang]").forEach(b => b.addEventListener("click", () => setLang(b.dataset.lang)));
+setLang(localStorage.getItem("lc-lang") || (navigator.language.startsWith("zh") ? "zh" : "en"));
+
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const bar = document.getElementById("bar");
+const hero = document.getElementById("hero");
+const heroBg = document.getElementById("heroBg");
+const preview = document.getElementById("preview");
+
+// 滚动：导航毛玻璃、Hero 背景模糊、预览窗口透视倾斜
+function onScroll() {
+  bar.classList.toggle("is-scrolled", scrollY > 8);
+  const r = hero.getBoundingClientRect();
+  const p = Math.min(1, Math.max(0, -r.top / (0.6 * hero.offsetHeight)));
+  if (heroBg.classList.contains("ready")) heroBg.style.filter = p > 0 ? `blur(${20 * p}px)` : "";
+}
+addEventListener("scroll", onScroll, { passive: true });
+onScroll();
+
+
+// 滚动入场
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+}), { rootMargin: "-80px 0px" });
+document.querySelectorAll(".reveal, #ctaWrap").forEach(el => io.observe(el));
+
+// Hero 流体渐变背景（WebGL2），配色取自原版：深蓝 #204a7e + 暖白 #cec8bb，右侧虚拟光源
+(function fluid() {
+  const cv = document.getElementById("fluid");
+  const gl = cv.getContext("webgl2", { alpha: true, premultipliedAlpha: false, powerPreference: "low-power" });
+  if (!gl) {
+    heroBg.style.background = "radial-gradient(60% 50% at 80% 40%, #2d5f9e88, transparent 70%), radial-gradient(50% 40% at 30% 30%, #204a7e66, transparent 70%)";
+    heroBg.classList.add("ready");
+    return;
+  }
+  const vs = `#version 300 es
+in vec2 p; out vec2 vUv; void main(){ vUv = p*.5+.5; gl_Position = vec4(p,0.,1.); }`;
+  const fs = `#version 300 es
+precision mediump float;
+in vec2 vUv; out vec4 o;
+uniform float t; uniform vec2 res; uniform vec2 mouse;
+float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
+float n(vec2 p){ vec2 i=floor(p), f=fract(p); vec2 u=f*f*(3.-2.*f);
+  return mix(mix(h(i),h(i+vec2(1,0)),u.x), mix(h(i+vec2(0,1)),h(i+vec2(1,1)),u.x), u.y); }
+mat2 rot(float a){ return mat2(cos(a),sin(a),-sin(a),cos(a)); }
+void main(){
+  float aspect = res.x/res.y;
+  vec2 uv = vUv; vec2 p = (uv-.5)*vec2(aspect,1.);
+  p = rot(.26)*p*1.19 + vec2(-.25,-.1);
+  p += (mouse-.5)*.06;
+  float tt = t*.017*6.;
+  for(float i=1.; i<12.; i++){
+    p.x += .3/i*sin(i*p.y*1.6 + tt + n(p*.8+tt*.2)*1.2);
+    p.y += .3/i*cos(i*p.x*1.3 - tt*.8);
+  }
+  float m = clamp(.5 + .5*sin(p.x*1.4 + p.y*.9), 0., 1.);
+  vec3 c0 = vec3(0.), c1 = vec3(.125,.29,.494), c2 = vec3(.808,.784,.733);
+  vec3 col = mix(c0, c1, smoothstep(.25,.6,m));
+  col = mix(col, c2, smoothstep(.72,.98,m)*.85);
+  col = mix(col, c0, smoothstep(.98,1.,m));
+  float l = dot(col, vec3(.299,.587,.114));
+  col += (col*.85 + vec3(.15,.145,.13)) * smoothstep(.43,.79,l) * .4;
+  float ld = length((uv - vec2(.89,.46))*vec2(aspect,1.));
+  col += vec3(1.,.97,.9)*exp(-ld*ld*4.5)*.14 + vec3(.72,.8,1.)*exp(-ld*1.8)*.2;
+  col = mix(col*(1.-.38), col, 1.-smoothstep(.35,.75,length(uv-.5)));
+  col += (h(uv*res + t) - .5) * .02;
+  o = vec4(col, 1.);
+}`;
+  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); return null; } return s; };
+  const pr = gl.createProgram();
+  const v = sh(gl.VERTEX_SHADER, vs), f = sh(gl.FRAGMENT_SHADER, fs);
+  if (!v || !f) return;
+  gl.attachShader(pr, v); gl.attachShader(pr, f); gl.linkProgram(pr); gl.useProgram(pr);
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(pr, "p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  const uT = gl.getUniformLocation(pr, "t"), uR = gl.getUniformLocation(pr, "res"), uM = gl.getUniformLocation(pr, "mouse");
+  let mx = .5, my = .5, tmx = .5, tmy = .5, visible = true;
+  addEventListener("pointermove", e => { tmx = e.clientX / innerWidth; tmy = 1 - e.clientY / innerHeight; }, { passive: true });
+  new IntersectionObserver(([e]) => visible = e.isIntersecting).observe(cv);
+  const dpr = Math.min(devicePixelRatio || 1, 1.5);
+  const t0 = performance.now();
+  function frame(now) {
+    requestAnimationFrame(frame);
+    if (!visible) return;
+    const w = cv.clientWidth * dpr | 0, hgt = cv.clientHeight * dpr | 0;
+    if (cv.width !== w || cv.height !== hgt) { cv.width = w; cv.height = hgt; gl.viewport(0, 0, w, hgt); }
+    mx += (tmx - mx) * .05; my += (tmy - my) * .05;
+    gl.uniform1f(uT, reduce ? 0 : (now - t0) / 1000);
+    gl.uniform2f(uR, w, hgt); gl.uniform2f(uM, mx, my);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+  requestAnimationFrame(frame);
+  requestAnimationFrame(() => heroBg.classList.add("ready"));
+})();
+
+// Download links use the public Releases page until installer metadata arrives.
+(function download() {
+  const links = document.querySelectorAll("[data-dl]");
+  const mb = n => (n / 1048576).toFixed(0) + " MB";
+  fetch("/api/lightcode/download", { headers: { Accept: "application/json" } })
+    .then(r => r.ok ? r.json() : null)
+    .then(res => {
+      const f = res && res.success && res.data;
+      if (!f || typeof f.url !== "string") return;
+      const url = new URL(f.url, location.origin);
+      const local = url.origin === location.origin && url.pathname.startsWith("/download/lightcode/");
+      const release = url.origin === "https://github.com" && ["/LightCode-AI/", "/Lorry-San/"].some(owner => url.pathname.startsWith(owner + "lightcode-releases/releases/"));
+      if (!local && !release) return;
+      links.forEach(a => { a.href = f.url; a.setAttribute("download", f.name); a.title = (f.version ? "v" + f.version + " · " : "") + mb(f.size) + " · SHA-256 " + f.sha256; });
+    })
+    .catch(() => {});
+})();
+// CTA 点阵网格
+(function dots() {
+  if (matchMedia("(hover: none), (pointer: coarse)").matches) return;
+  const cv = document.getElementById("dots"), c = cv.getContext("2d");
+  const dpr = Math.min(devicePixelRatio || 1, 2), G = 90;
+  function draw() {
+    const w = cv.clientWidth, h = cv.clientHeight;
+    cv.width = w * dpr; cv.height = h * dpr; c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const cols = Math.ceil(w / G) + 1, rows = Math.ceil(h / G) + 1;
+    const ox = (w - (cols - 1) * G) / 2, oy = (h - (rows - 1) * G) / 2;
+    c.clearRect(0, 0, w, h);
+    c.strokeStyle = "rgba(255,255,255,.05)"; c.lineWidth = .5; c.beginPath();
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+      const px = ox + x * G, py = oy + y * G;
+      if (x < cols - 1) { c.moveTo(px + 10, py); c.lineTo(px + G - 10, py); }
+      if (y < rows - 1) { c.moveTo(px, py + 10); c.lineTo(px, py + G - 10); }
+    }
+    c.stroke();
+    c.fillStyle = "rgba(255,255,255,.12)";
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) c.fillRect(ox + x * G - 1.8, oy + y * G - 1.8, 3.6, 3.6);
+  }
+  draw();
+  let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(draw, 150); });
+})();
+</script>
+</body>
+</html>
