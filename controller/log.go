@@ -33,6 +33,7 @@ func GetAllLogs(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	model.MaskLightcodeLogs(logs)
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(logs)
 	common.ApiSuccess(c, pageInfo)
@@ -55,6 +56,7 @@ func GetUserLogs(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	model.MaskLightcodeLogs(logs)
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(logs)
 	common.ApiSuccess(c, pageInfo)
@@ -79,6 +81,7 @@ func writeLogsCsv(c *gin.Context, filename string, logs []*model.Log) {
 	c.Header("Content-Type", "text/csv; charset=utf-8")
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 
+	model.MaskLightcodeLogs(logs)
 	writer := csv.NewWriter(c.Writer)
 	defer writer.Flush()
 
@@ -192,6 +195,7 @@ func GetLogByKey(c *gin.Context) {
 		})
 		return
 	}
+	model.MaskLightcodeLogs(logs)
 	c.JSON(200, gin.H{
 		"success": true,
 		"message": "",

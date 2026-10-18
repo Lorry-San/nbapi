@@ -155,6 +155,9 @@ func appendBillingInfo(relayInfo *relaycommon.RelayInfo, other map[string]interf
 	if relayInfo == nil || other == nil {
 		return
 	}
+	if relayInfo.IsLightcode {
+		other["lightcode"] = true
+	}
 	// billing_source: "wallet" or "subscription"
 	if relayInfo.BillingSource != "" {
 		other["billing_source"] = relayInfo.BillingSource

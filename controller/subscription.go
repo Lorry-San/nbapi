@@ -43,6 +43,9 @@ func GetSubscriptionPlans(c *gin.Context) {
 	result := make([]SubscriptionPlanDTO, 0, len(plans))
 	for _, p := range plans {
 		p.NormalizeDefaults()
+		if p.Pool == model.SubscriptionPoolLightcode {
+			p.WindowShortAmount, p.WindowLongAmount, p.TotalAmount = 0, 0, 0
+		}
 		result = append(result, SubscriptionPlanDTO{
 			Plan: p,
 		})
@@ -65,6 +68,13 @@ func GetSubscriptionSelf(c *gin.Context) {
 	activeSubscriptions, err := model.GetAllActiveUserSubscriptions(userId)
 	if err != nil {
 		activeSubscriptions = []model.SubscriptionSummary{}
+	}
+	for _, summaries := range [][]model.SubscriptionSummary{allSubscriptions, activeSubscriptions} {
+		for _, summary := range summaries {
+			if sub := summary.Subscription; sub != nil && sub.Pool == model.SubscriptionPoolLightcode {
+				sub.AmountTotal, sub.AmountUsed, sub.WindowShortUsed, sub.WindowLongUsed = 0, 0, 0, 0
+			}
+		}
 	}
 
 	common.ApiSuccess(c, gin.H{

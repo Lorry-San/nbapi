@@ -113,6 +113,48 @@ func assignDisplayLogIds(logs []*Log, startIdx int) {
 	}
 }
 
+var lightcodeHiddenOtherKeys = []string{
+	"group_ratio",
+	"user_group_ratio",
+	"subscription_consumed",
+	"subscription_pre_consumed",
+	"subscription_post_delta",
+	"subscription_remain",
+	"subscription_total",
+	"subscription_used",
+}
+
+func isLightcodeLogOther(log *Log, otherMap map[string]interface{}) bool {
+	if otherMap == nil {
+		return false
+	}
+	if v, ok := otherMap["lightcode"].(bool); ok && v {
+		return true
+	}
+	src, _ := otherMap["billing_source"].(string)
+	return src == "subscription" && log.TokenName == "Lightcode"
+}
+
+// MaskLightcodeLogs hides group multiplier and deducted amounts for Lightcode
+// logs in API responses (both user and admin views). DB rows are untouched.
+func MaskLightcodeLogs(logs []*Log) {
+	for _, l := range logs {
+		if l == nil || l.Other == "" {
+			continue
+		}
+		otherMap, _ := common.StrToMap(l.Other)
+		if !isLightcodeLogOther(l, otherMap) {
+			continue
+		}
+		for _, k := range lightcodeHiddenOtherKeys {
+			delete(otherMap, k)
+		}
+		otherMap["lightcode"] = true
+		l.Other = common.MapToJsonStr(otherMap)
+		l.Quota = 0
+	}
+}
+
 func formatUserLogs(logs []*Log, startIdx int) {
 	for i := range logs {
 		logs[i].ChannelName = ""

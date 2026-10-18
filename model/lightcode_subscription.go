@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 	"time"
@@ -18,12 +19,34 @@ const (
 
 var ErrLightcodePendingSubscription = errors.New("a Lightcode renewal is already pending")
 
+// ReplaceLightcodeGroupModels swaps a group's model list and drops removed models from the
+// group's plans, which validation would otherwise reject on the next plan save. Existing
+// subscriptions keep their purchase-time snapshot.
 func ReplaceLightcodeGroupModels(group string, models []LightcodeGroupModel) error {
-	return DB.Transaction(func(tx *gorm.DB) error {
+	var changed []int
+	err := DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("routing_group = ?", group).Delete(&LightcodeGroupModel{}).Error; err != nil { return err }
-		if len(models) == 0 { return nil }
-		return tx.Create(&models).Error
+		if len(models) > 0 {
+			for i := range models { models[i].Id, models[i].RoutingGroup = 0, group }
+			if err := tx.Create(&models).Error; err != nil { return err }
+		}
+		keep := make(map[string]bool, len(models))
+		for _, m := range models { keep[m.Model] = true }
+		var plans []SubscriptionPlan
+		if err := tx.Where("pool = ? AND routing_group = ?", SubscriptionPoolLightcode, group).Find(&plans).Error; err != nil { return err }
+		for _, plan := range plans {
+			allowed := slices.DeleteFunc(slices.Clone(plan.AllowedModels), func(name string) bool { return !keep[name] })
+			if len(allowed) == len(plan.AllowedModels) { continue }
+			plan.AllowedModels = allowed
+			if err := tx.Model(&plan).Select("allowed_models").Updates(&plan).Error; err != nil { return err }
+			changed = append(changed, plan.Id)
+		}
+		return nil
 	})
+	if err == nil {
+		for _, id := range changed { InvalidateSubscriptionPlanCache(id) }
+	}
+	return err
 }
 
 // LightcodeGroupModel adds presentation and reasoning policy to a channel routing group.
@@ -37,6 +60,13 @@ type LightcodeGroupModel struct {
 	ContextWindow int `json:"context_window"`
 	MaxOutputTokens int `json:"max_output_tokens"`
 	Vision bool `json:"vision"`
+	// Multiplier is applied to Lightcode consumption only; API pricing is unaffected. 0 means 1.
+	Multiplier float64 `json:"multiplier" gorm:"not null;default:1"`
+}
+
+func (m *LightcodeGroupModel) EffectiveMultiplier() float64 {
+	if m.Multiplier <= 0 { return 1 }
+	return m.Multiplier
 }
 
 func ValidateLightcodePlan(plan *SubscriptionPlan) error {
@@ -61,6 +91,13 @@ func ValidateLightcodePlan(plan *SubscriptionPlan) error {
 		if !slices.ContainsFunc(models, func(m LightcodeGroupModel) bool { return m.Model == name }) { return fmt.Errorf("model %q is not configured in Lightcode group %q", name, plan.RoutingGroup) }
 	}
 	return nil
+}
+
+// LightcodeModelEntitlement is the shared model check for admission and catalog; reason is "" when allowed.
+func LightcodeModelEntitlement(sub *UserSubscription, name string, policies []LightcodeGroupModel) (policy *LightcodeGroupModel, reason string) {
+	if !slices.Contains(sub.AllowedModels, name) { return nil, "subscription_model_unsupported" }
+	for i := range policies { if policies[i].RoutingGroup == sub.RoutingGroup && policies[i].Model == name { return &policies[i], "" } }
+	return nil, "model_unavailable"
 }
 
 // The write obtains SQLite's writer reservation; row locking covers MySQL and PostgreSQL.
@@ -165,9 +202,16 @@ func applyLightcodeWindows(sub *UserSubscription, delta int64, now int64, enforc
 
 // LightcodeWindowView is the client-facing state of one usage window.
 type LightcodeWindowView struct {
-	Limit   int64 `json:"limit"`
-	Used    int64 `json:"used"`
+	Limit   int64 `json:"-"`
+	Used    int64 `json:"-"`
+	UsedPercent int `json:"used_percent"`
 	ResetAt int64 `json:"reset_at"`
+}
+
+// LightcodeWindowsView pairs the short and long windows; a nil side means the plan has no such window.
+type LightcodeWindowsView struct {
+	Short *LightcodeWindowView `json:"short"`
+	Long  *LightcodeWindowView `json:"long"`
 }
 
 // LightcodeWindowStatus projects both windows without mutating state; a lapsed window reads as empty.
@@ -187,12 +231,22 @@ func LightcodeWindowStatus(sub *UserSubscription, now int64) (short, long *Light
 			long.ResetAt = view.WindowLongStart + longSec
 		}
 	}
+	for _, window := range []*LightcodeWindowView{short, long} {
+		if window != nil {
+			window.UsedPercent = int(min(100, max(0, math.Ceil(float64(window.Used)/float64(window.Limit)*100))))
+		}
+	}
 	return short, long
 }
 
 // LightcodeSubscriptions advances due renewals before exposing current entitlements.
 func LightcodeSubscriptions(userId int) ([]UserSubscription, error) {
 	var subs []UserSubscription
+	// Fast path: lock-free read; fall through to the locked path whenever any expiry, activation or reset is due.
+	now := GetDBTimestamp()
+	if err := DB.Where("user_id = ? AND pool = ? AND status IN ?", userId, SubscriptionPoolLightcode, []string{"active", "pending"}).Order("start_time asc").Find(&subs).Error; err != nil { return nil, err }
+	if !lightcodeMaintenanceDue(subs, now) { return subs, nil }
+	subs = nil
 	err := DB.Transaction(func(tx *gorm.DB) error {
 		if err := lockLightcodeUser(tx, userId); err != nil { return err }
 		now := getDBTimestampTx(tx)
@@ -207,6 +261,20 @@ func LightcodeSubscriptions(userId int) ([]UserSubscription, error) {
 		return nil
 	})
 	return subs, err
+}
+
+func lightcodeMaintenanceDue(subs []UserSubscription, now int64) bool {
+	hasActive := false
+	for _, s := range subs { if s.Status == "active" { hasActive = true } }
+	for _, s := range subs {
+		if s.EndTime <= now { return true }
+		if s.Status == "pending" && !hasActive && s.StartTime <= now { return true }
+		if s.Status != "active" { continue }
+		var plan SubscriptionPlan
+		if common.UnmarshalJsonStr(s.PlanSnapshot, &plan) != nil { return true }
+		if NormalizeResetPeriod(plan.QuotaResetPeriod) != SubscriptionResetNever && (s.NextResetTime <= 0 || s.NextResetTime <= now) { return true }
+	}
+	return false
 }
 
 // ActivateDueLightcodeRenewals also handles pending renewals after a long outage.

@@ -91,6 +91,18 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 	defer func() {
 		if nbapiError != nil {
 			logger.LogError(c, fmt.Sprintf("relay error: %s", common.LocalLogPreview(nbapiError.Error())))
+			// Lightcode clients treat 401/403 as their own login failing; upstream credential faults are gateway errors.
+			if c.GetBool("lightcode_request") && (nbapiError.StatusCode == http.StatusUnauthorized || nbapiError.StatusCode == http.StatusForbidden) {
+				switch {
+				case nbapiError.GetErrorCode() == types.ErrorCodeInsufficientUserQuota:
+					nbapiError = types.NewOpenAIError(errors.New("Lightcode 订阅额度不足，请等待窗口重置或续订"), types.ErrorCodeInsufficientUserQuota, http.StatusPaymentRequired)
+				case nbapiError.GetErrorType() != types.ErrorTypeNBAPIError:
+					// Only genuine upstream credential faults; local 401/403s keep their own meaning but not the status.
+					nbapiError = types.NewOpenAIError(errors.New("上游服务认证失败，请稍后重试"), types.ErrorCode("upstream_auth_failed"), http.StatusBadGateway)
+				default:
+					nbapiError = types.NewOpenAIError(errors.New(nbapiError.Error()), nbapiError.GetErrorCode(), http.StatusConflict)
+				}
+			}
 			nbapiError.SetMessage(common.MessageWithRequestId(nbapiError.Error(), requestId))
 			switch relayFormat {
 			case types.RelayFormatOpenAIRealtime:

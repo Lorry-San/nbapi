@@ -64,3 +64,21 @@ func TestLightcodeShortAndLongWindowsLimitIndependently(t *testing.T) {
 	assert.Zero(t, lapsed.Used)
 	assert.Zero(t, lapsed.ResetAt)
 }
+
+func TestLightcodeWindowStatusPublishesPercentageWithoutRawQuota(t *testing.T) {
+	plan := SubscriptionPlan{WindowShortSeconds: 18000, WindowShortAmount: 100, WindowLongSeconds: 604800, WindowLongAmount: 200}
+	data, err := common.Marshal(plan)
+	require.NoError(t, err)
+	sub := UserSubscription{Pool: SubscriptionPoolLightcode, PlanSnapshot: string(data),
+		WindowShortStart: 100, WindowShortUsed: 27, WindowLongStart: 100, WindowLongUsed: 450}
+	short, long := LightcodeWindowStatus(&sub, 101)
+	require.NotNil(t, short)
+	require.NotNil(t, long)
+	assert.Equal(t, 27, short.UsedPercent)
+	assert.Equal(t, 100, long.UsedPercent, "settlement overruns stop at 100 percent in the UI")
+	encoded, err := common.Marshal(short)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"used_percent":27,"reset_at":18100}`, string(encoded))
+	short, _ = LightcodeWindowStatus(&sub, 18101)
+	assert.Equal(t, 0, short.UsedPercent, "an expired window has no usage")
+}

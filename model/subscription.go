@@ -329,6 +329,8 @@ func (s *UserSubscription) BeforeUpdate(tx *gorm.DB) error {
 
 type SubscriptionSummary struct {
 	Subscription *UserSubscription `json:"subscription"`
+	// Windows is set for Lightcode subscriptions, whose limits live in the plan snapshot.
+	Windows *LightcodeWindowsView `json:"lightcode_windows,omitempty"`
 }
 
 type SubscriptionResetResult struct {
@@ -952,9 +954,12 @@ func buildSubscriptionSummaries(subs []UserSubscription) []SubscriptionSummary {
 	result := make([]SubscriptionSummary, 0, len(subs))
 	for _, sub := range subs {
 		subCopy := sub
-		result = append(result, SubscriptionSummary{
-			Subscription: &subCopy,
-		})
+		summary := SubscriptionSummary{Subscription: &subCopy}
+		if subCopy.Pool == SubscriptionPoolLightcode {
+			short, long := LightcodeWindowStatus(&subCopy, common.GetTimestamp())
+			summary.Windows = &LightcodeWindowsView{Short: short, Long: long}
+		}
+		result = append(result, summary)
 	}
 	return result
 }
@@ -1410,7 +1415,8 @@ func PreConsumeSubscriptionPool(requestId string, userId int, modelName string, 
 				return err
 			}
 			usedBefore := sub.AmountUsed
-			if sub.AmountTotal > 0 {
+			// Lightcode quota is governed only by its 5h/7d windows.
+			if sub.AmountTotal > 0 && pool != SubscriptionPoolLightcode {
 				remain := sub.AmountTotal - usedBefore
 				if remain < amount {
 					continue
@@ -1593,7 +1599,7 @@ func postConsumeUserSubscriptionDeltaTx(tx *gorm.DB, userSubscriptionId int, del
 		if newUsed < 0 {
 			newUsed = 0
 		}
-		if sub.AmountTotal > 0 && newUsed > sub.AmountTotal {
+		if sub.AmountTotal > 0 && sub.Pool != SubscriptionPoolLightcode && newUsed > sub.AmountTotal {
 			return fmt.Errorf("subscription used exceeds total, used=%d total=%d", newUsed, sub.AmountTotal)
 		}
 		if err := applyLightcodeWindows(&sub, delta, getDBTimestampTx(tx), false); err != nil {

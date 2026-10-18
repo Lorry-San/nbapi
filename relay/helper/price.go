@@ -66,6 +66,16 @@ func HandleGroupRatio(ctx *gin.Context, relayInfo *relaycommon.RelayInfo) types.
 		groupRatioInfo.GroupRatio = ratio_setting.GetGroupRatio(relayInfo.UsingGroup)
 	}
 
+	// Lightcode charges its windows at a per-model multiplier set on the group model policy.
+	if relayInfo.IsLightcode {
+		if m := ctx.GetFloat64("lightcode_multiplier"); m > 0 {
+			groupRatioInfo.GroupRatio *= m
+			if groupRatioInfo.HasSpecialRatio {
+				groupRatioInfo.GroupSpecialRatio = groupRatioInfo.GroupRatio
+			}
+		}
+	}
+
 	return groupRatioInfo
 }
 
