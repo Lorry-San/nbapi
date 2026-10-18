@@ -30,6 +30,8 @@ type LightcodeSession struct {
 	LastActiveAt int64 `json:"last_active_at"`
 	ExpiresAt int64 `json:"expires_at"`
 	RevokedAt int64 `json:"revoked_at"`
+	DeviceKey string `json:"-" gorm:"type:varchar(64)"`
+	ClientVersion string `json:"client_version" gorm:"type:varchar(64)"`
 }
 
 type LightcodeRefreshToken struct {
@@ -75,7 +77,7 @@ func RotateLightcodeRefresh(hash, nextHash, clientId string) (*LightcodeSession,
 		if user.Status != 1 || user.AuthVersion != session.AuthVersion { return ErrLightcodeGrant }
 		if token.UsedAt != 0 {
 			var next LightcodeRefreshToken
-			if now-token.UsedAt <= 10 && tx.First(&next, "hash = ?", nextHash).Error == nil && next.UsedAt == 0 {
+			if now-token.UsedAt <= 60 && tx.First(&next, "hash = ?", nextHash).Error == nil && next.UsedAt == 0 {
 				issuedAt = token.UsedAt
 				return nil
 			}
@@ -89,6 +91,30 @@ func RotateLightcodeRefresh(hash, nextHash, clientId string) (*LightcodeSession,
 	})
 	if err != nil { return nil, 0, err }; if rejected { return nil, 0, ErrLightcodeGrant }
 	return &session, issuedAt, nil
+}
+
+// LightcodeSessionByRefresh resolves the session owning a refresh token without changing any state.
+func LightcodeSessionByRefresh(hash string) (*LightcodeSession, error) {
+	var token LightcodeRefreshToken
+	if err := DB.First(&token, "hash = ?", hash).Error; err != nil { return nil, ErrLightcodeGrant }
+	var session LightcodeSession
+	if err := DB.First(&session, "id = ?", token.SessionId).Error; err != nil { return nil, ErrLightcodeGrant }
+	return &session, nil
+}
+
+func RevokeLightcodeSession(id string) error {
+	return DB.Model(&LightcodeSession{}).Where("id = ? AND revoked_at = 0", id).Update("revoked_at", time.Now().Unix()).Error
+}
+
+// EnforceLightcodeDeviceCap revokes the least recently active live sessions of a user beyond max and returns their ids.
+func EnforceLightcodeDeviceCap(userId, max int) ([]string, error) {
+	var sessions []LightcodeSession
+	now := time.Now().Unix()
+	if err := DB.Where("user_id = ? AND revoked_at = 0 AND expires_at > ?", userId, now).Order("last_active_at desc, created_at desc").Find(&sessions).Error; err != nil { return nil, err }
+	if len(sessions) <= max { return nil, nil }
+	var ids []string
+	for _, s := range sessions[max:] { ids = append(ids, s.Id) }
+	return ids, DB.Model(&LightcodeSession{}).Where("id IN ?", ids).Update("revoked_at", now).Error
 }
 
 func RevokeLightcodeRefresh(hash string) error {

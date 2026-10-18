@@ -15,6 +15,7 @@ import (
 	"github.com/Lorry-San/nbapi/common"
 	"github.com/Lorry-San/nbapi/model"
 	"github.com/golang-jwt/jwt/v5"
+	"gorm.io/gorm"
 )
 
 const LightcodeIssuer = "https://lightcode.lcapi.online"
@@ -67,14 +68,46 @@ func issueLightcodeBundle(session *model.LightcodeSession, refresh string, issue
 }
 
 func ExchangeLightcodeGrant(code, clientId, redirect, verifier, ip, userAgent string) (*LightcodeTokenBundle, error) {
+	return exchangeLightcode(code, clientId, redirect, verifier, ip, userAgent, nil)
+}
+
+// ExchangeLightcodeAttested verifies the LC1 sign-in proofs (unless enforcement is off) and binds the device key to the new session.
+func ExchangeLightcodeAttested(code, clientId, redirect, verifier, ip, userAgent string, att *LightcodeAttestation) (*LightcodeTokenBundle, error) {
+	if LightcodeEnforce {
+		if att == nil { return nil, upgradeErr() }
+		version, aerr := LightcodeCheckUA(userAgent)
+		if aerr != nil { return nil, aerr }
+		att.UAVersion = version
+		if aerr := VerifyLightcodeAttestation(att, code); aerr != nil { return nil, aerr }
+	} else if att != nil && (att.DeviceKey == "" || att.BindProof == "") { att = nil }
+	return exchangeLightcode(code, clientId, redirect, verifier, ip, userAgent, att)
+}
+
+func exchangeLightcode(code, clientId, redirect, verifier, ip, userAgent string, att *LightcodeAttestation) (*LightcodeTokenBundle, error) {
 	if err := ValidateLightcodeRedirect(clientId, redirect); err != nil { return nil, model.ErrLightcodeGrant }
 	if len(verifier) < 43 || len(verifier) > 128 || strings.ContainsAny(verifier, " \r\n\t") { return nil, model.ErrLightcodeGrant }
 	sum := sha256.Sum256([]byte(verifier))
 	now := time.Now().Unix()
 	refresh := "lc_rt_"+lightcodeRandom()
 	session := &model.LightcodeSession{Id: lightcodeRandom(), ClientId: clientId, IP: truncateAuthMetadata(ip, 64), UserAgent: truncateAuthMetadata(userAgent, 512), CreatedAt: now, LastActiveAt: now, ExpiresAt: now+60*86400}
+	if att != nil { session.DeviceKey, session.ClientVersion = att.DeviceKey, att.ClientVersion }
 	if err := model.ExchangeLightcodeCode(lightcodeHash(code), clientId, redirect, base64.RawURLEncoding.EncodeToString(sum[:]), lightcodeHash(refresh), session); err != nil { return nil, err }
+	if LightcodeEnforce {
+		if ids, err := model.EnforceLightcodeDeviceCap(session.UserId, LightcodeMaxDevices); err == nil {
+			lightcodeIPs.Lock(); for _, id := range ids { delete(lightcodeIPs.m, id) }; lightcodeIPs.Unlock()
+		}
+	}
 	return issueLightcodeBundle(session, refresh, now)
+}
+
+// RefreshLightcodeAttested verifies the device signature BEFORE rotating, so a stolen refresh token cannot rotate or trigger replay revocation.
+func RefreshLightcodeAttested(refresh, clientId string, proof *LightcodeRefreshProof) (*LightcodeTokenBundle, error) {
+	if LightcodeEnforce && clientId == LightcodeClientID && strings.HasPrefix(refresh, "lc_rt_") && len(refresh) <= 256 {
+		if session, err := model.LightcodeSessionByRefresh(lightcodeHash(refresh)); err == nil {
+			if aerr := VerifyLightcodeRefresh(session, refresh, proof); aerr != nil { return nil, aerr }
+		}
+	}
+	return RefreshLightcodeGrant(refresh, clientId)
 }
 
 func RefreshLightcodeGrant(refresh, clientId string) (*LightcodeTokenBundle, error) {
@@ -95,7 +128,10 @@ func ValidateLightcodeAccess(raw string) (*model.LightcodeSession, error) {
 	}, jwt.WithValidMethods([]string{"HS256"}), jwt.WithIssuer(LightcodeIssuer), jwt.WithAudience("lightcode"), jwt.WithExpirationRequired())
 	if err != nil || !token.Valid { return nil, model.ErrLightcodeGrant }
 	var session model.LightcodeSession
-	if err := model.DB.First(&session, "id = ?", claims.SessionId).Error; err != nil { return nil, model.ErrLightcodeGrant }
+	if err := model.DB.First(&session, "id = ?", claims.SessionId).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) { return nil, model.ErrLightcodeGrant }
+		return nil, err
+	}
 	if session.RevokedAt != 0 || session.ExpiresAt <= time.Now().Unix() || claims.Subject != strconv.Itoa(session.UserId) { return nil, model.ErrLightcodeGrant }
 	user, err := model.GetUserCache(session.UserId)
 	if err != nil { return nil, err }
