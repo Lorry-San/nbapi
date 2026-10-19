@@ -3,438 +3,271 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lightcode AI · 模型订阅与桌面 Agent</title>
+<title>LightCode | 探索智能的边界</title>
 <link rel="icon" href="/lightcode/favicon.png">
-<link rel="canonical" href="https://lightcode.lcapi.online/">
-<meta name="description" content="Lightcode 连接模型订阅与桌面 Agent。一个账号，处理文档、表格、代码与日常工作。">
+<link rel="canonical" href="https://lightcode.lcapi.online/lightcode">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=Montserrat:wght@500&family=Fragment+Mono&display=swap" rel="stylesheet">
 <style>
 :root {
-  --brand: #6799fe; --brand-soft: rgba(103,153,254,.14); --page: #0a0a0b; --panel: #121215; --panel2: #18181c;
-  --text: #f5f6f8; --text2: #c4c8ce; --muted: #8b9098; --line: rgba(255,255,255,.08); --line2: rgba(255,255,255,.14);
-  --ok: #4ade80; --warn: #fbbf24;
-  --sans: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
-  --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
-  --r: 16px; --pill: 999px;
+  --brand: #6799fe; --text: #fff; --text2: hsla(0,0%,100%,.8); --desc: hsla(0,0%,100%,.5);
+  --page: #0a0a0a; --s1: hsla(0,0%,100%,.06); --s3: hsla(0,0%,100%,.02); --raised: hsla(0,0%,100%,.25);
+  --border: hsla(0,0%,100%,.06); --border-sub: hsla(0,0%,100%,.08); --sec-border: hsla(0,0%,100%,.15);
+  --blur: 12px; --pill: 100px; --panel: 16px; --media: 10px;
+  --sans: "DM Sans", system-ui, -apple-system, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --mono: "Fragment Mono", ui-monospace, Consolas, monospace;
+  --ease: cubic-bezier(.22,1,.36,1);
 }
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--page); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+html, body { margin: 0; background: var(--page); color: var(--text); }
+body { font-family: var(--sans); -webkit-font-smoothing: antialiased; overscroll-behavior: none; overflow-x: hidden; }
+::selection { background: var(--brand); color: #fff; }
 a { color: inherit; text-decoration: none; }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
-:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 6px; }
-.wrap { width: min(100% - 40px, 1160px); margin-inline: auto; }
+:focus-visible { outline: 2px solid #5686fe; outline-offset: 2px; }
+.container { width: min(100% - 48px, 1140px); margin-inline: auto; }
+@media (min-width: 768px) { .container { width: min(100% - 144px, 1140px); } }
+@media (min-width: 1280px) { .container { width: min(100% - 160px, 1280px); } }
 
-/* 灵动岛导航：顶部透明铺满，滚动后收成悬浮玻璃胶囊 */
-.island-wrap { position: fixed; top: 0; left: 0; right: 0; z-index: 50; padding-top: 10px; pointer-events: none; }
-.island { position: relative; pointer-events: auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 52px; margin-inline: auto;
-  width: min(100% - 40px, 1160px); padding: 0 4px; border-radius: var(--pill); background: transparent;
-  transition: width .6s cubic-bezier(.22,1,.36,1), padding .6s cubic-bezier(.22,1,.36,1), background-color .4s ease; }
-.island > .lg-rim { opacity: 0; transition: opacity .4s ease; }
-.island.is-scrolled { width: min(100% - 24px, 760px); padding: 0 6px 0 18px; background: rgba(14,15,20,.52); }
-/* At the top the island is plain text over the hero, so the glass only exists once it collapses. */
-.island.lg-glass:not(.is-scrolled) { -webkit-backdrop-filter: none; backdrop-filter: none; }
-.island.is-scrolled > .lg-rim { opacity: 1; }
-/* Before liquid-glass.js attaches (or without it), the scrolled island still reads as frosted glass. */
-.island.is-scrolled:not(.lg-glass) { -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 17px; letter-spacing: -.01em; white-space: nowrap; }
+/* 导航：保留原版尺寸，顶部透明，滚动后出现 Liquid Glass 胶囊。外层不创建 backdrop root。 */
+.header-wrapper { position: fixed; top: 0; left: 0; right: 0; margin: 0 auto; z-index: 50; width: min(100% - 48px, 1140px); padding-top: 8px; }
+@media (min-width: 768px) { .header-wrapper { width: min(100% - 144px, 1140px); } }
+@media (min-width: 1280px) { .header-wrapper { width: min(100% - 160px, 1280px); } }
+.header-bar { position: relative; display: flex; align-items: center; justify-content: space-between; margin: 0 auto; max-width: 100%; padding: 4px 0; border-radius: var(--pill); background: transparent; transition: max-width .5s var(--ease), padding .5s var(--ease), background-color .4s ease-in-out; }
+.header-bar > .lg-rim { opacity: 0; transition: opacity .4s ease-in-out; }
+.header-bar.lg-glass:not(.is-scrolled) { backdrop-filter: none; -webkit-backdrop-filter: none; }
+.header-bar.is-scrolled { max-width: calc(100% - 100px); padding: 4px 6px 4px 16px; background: rgba(22,24,32,.3); }
+.header-bar.is-scrolled > .lg-rim { opacity: 1; }
+.header-bar.is-scrolled:not(.lg-glass) { backdrop-filter: blur(var(--blur)) saturate(160%); -webkit-backdrop-filter: blur(var(--blur)) saturate(160%); box-shadow: inset 0 0 0 1px var(--border); }
+@media (max-width: 767px) { .header-bar.is-scrolled { max-width: 100%; } }
+.brand .pv { font: 500 11px/1 var(--sans); padding: 3px 8px; border-radius: var(--pill); border: 1px solid hsla(0,0%,100%,.25); background: hsla(0,0%,100%,.12); color: hsla(0,0%,100%,.85); letter-spacing: 0; }
+
+.brand, .brand img { transition: font-size .5s var(--ease), width .5s var(--ease), height .5s var(--ease); }
+/* 右侧插槽：顶部显示语言切换，收缩后换成下载按钮 */
+.slot { position: relative; display: grid; justify-items: end; align-items: center; }
+.slot > * { grid-area: 1 / 1; transition: opacity .3s ease, transform .4s var(--ease), visibility 0s; }
+.island-dl { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px; border-radius: var(--pill); background: #fff; color: #0a0a0a; font-size: 13px; font-weight: 500; white-space: nowrap;
+  opacity: 0; visibility: hidden; transform: scale(.85); transition: opacity .3s ease, transform .4s var(--ease), visibility 0s .4s, background-color .2s; }
+.island-dl:hover { background: #e6e8eb; }
+.island-dl svg { width: 14px; height: 14px; }
+.header-bar.is-scrolled .locale { opacity: 0; visibility: hidden; transform: scale(.85); transition: opacity .2s ease, transform .4s var(--ease), visibility 0s .4s; }
+.header-bar.is-scrolled .island-dl { opacity: 1; visibility: visible; transform: none; transition: opacity .3s ease .1s, transform .4s var(--ease), visibility 0s, background-color .2s; }
+.brand { display: flex; align-items: center; gap: 8px; font-family: "Montserrat", var(--sans); font-weight: 500; font-size: 19px; letter-spacing: -.01em; }
 .brand img { width: 24px; height: 24px; }
-.brand .tag { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: var(--pill); border: 1px solid var(--line2); color: var(--text2); }
-.links { display: flex; gap: 26px; font-size: 14px; color: var(--text2); transition: gap .6s cubic-bezier(.22,1,.36,1); }
-.links a { white-space: nowrap; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
-.links a:hover { color: var(--text); }
-.island.is-scrolled .links { gap: 20px; }
-.actions { position: relative; display: grid; justify-items: end; align-items: center; }
-.actions > * { grid-area: 1 / 1; transition: opacity .3s ease, transform .45s cubic-bezier(.22,1,.36,1), visibility 0s; }
-.island-dl { height: 38px; padding: 0 16px; font-size: 13px; opacity: 0; visibility: hidden; transform: scale(.85); transition-delay: 0s, 0s, .45s; }
-.island.is-scrolled .actions .locale { opacity: 0; visibility: hidden; transform: scale(.85); transition-delay: 0s, 0s, .45s; }
-.island.is-scrolled .island-dl { opacity: 1; visibility: visible; transform: none; transition-delay: .1s, 0s, 0s; }
-@media (max-width: 860px) { .links { display: none; } .island.is-scrolled { width: min(100% - 24px, 420px); } }
-
-/* 中英文切换：玻璃滑块在两个选项之间流动 */
-.locale { position: relative; display: flex; align-items: center; height: 38px; padding: 3px; border-radius: var(--pill); background: rgba(255,255,255,.06); box-shadow: inset 0 0 0 1px var(--line2); }
-.locale button { height: 100%; padding: 0 14px; border-radius: var(--pill); font-size: 13px; font-weight: 500; color: var(--muted); transition: color .3s ease; }
+.locale { position: relative; display: flex; align-items: center; height: 32px; padding: 3px; border-radius: var(--pill); border: 1px solid var(--border); }
+.locale button { height: 100%; padding: 0 12px; border-radius: var(--pill); font-size: 12px; font-weight: 500; color: var(--desc); transition: color .2s, background-color .2s; }
 .locale button.is-active { color: var(--text); }
-.locale .lg-thumb { top: 3px; bottom: 3px; }
-
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: var(--pill); font-size: 14px; font-weight: 500; transition: background-color .2s, border-color .2s, transform .2s; white-space: nowrap; }
-.btn svg { width: 16px; height: 16px; }
-.btn-primary { background: #fff; color: #0a0a0b; }
-.btn-primary:hover { background: #e4e6ea; }
-.btn-ghost { border: 1px solid var(--line2); color: var(--text); }
-.btn-ghost:hover { border-color: rgba(255,255,255,.4); }
-.btn-lg { height: 48px; padding: 0 24px; font-size: 15px; }
+.locale:not(.has-glass) button.is-active { background: var(--raised); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
 
 /* Hero */
-.hero { position: relative; isolation: isolate; padding: 148px 0 72px; text-align: center; overflow: hidden; }
-.hero > .wrap { position: relative; z-index: 1; }
-/* WebGL fluid: fades in, blurs as it scrolls away, and fades out toward the panels. */
-.hero-bg { position: absolute; inset: 0 0 auto; height: min(100%, 1080px); z-index: 0; pointer-events: none; opacity: 0; filter: blur(20px); transition: opacity 1.6s ease-out, filter 1.6s ease-out;
-  -webkit-mask: linear-gradient(#000 0%, #000 58%, transparent 100%); mask: linear-gradient(#000 0%, #000 58%, transparent 100%); }
-.hero-bg.ready { opacity: 1; filter: none; }
+.hero { position: relative; display: flex; align-items: center; }
+.hero-bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; opacity: 0; filter: blur(20px); transition: opacity 1.8s ease-out, filter 1.8s ease-out;
+  -webkit-mask: linear-gradient(#000000fc 0%, #000000e8 8.98%, transparent 100%); mask: linear-gradient(#000000fc 0%, #000000e8 8.98%, transparent 100%); }
+.hero-bg.ready { opacity: 1; filter: blur(0); }
 .hero-bg canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-/* A soft scrim keeps the headline readable over the brightest parts of the fluid. */
-.hero-bg::after { content: ""; position: absolute; inset: 0; background: radial-gradient(40% 32% at 50% 33%, rgba(10,10,11,.82), rgba(10,10,11,.45) 55%, transparent 80%); }
-.hero .lead, .hero .meta { text-shadow: 0 1px 12px rgba(0,0,0,.85), 0 0 2px rgba(0,0,0,.6); }
-.hero .lead { color: #b7bcc4; }
-.hero .meta { color: #a3a8b0; }
-.hero .eyebrow { background: rgba(10,10,11,.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-.hero .btn-ghost { background: rgba(10,10,11,.45); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-.eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: var(--pill); border: 1px solid var(--line2); background: rgba(255,255,255,.03); font-size: 13px; color: var(--text2); }
-.eyebrow i { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(74,222,128,.18); }
-h1 { margin: 24px auto 0; max-width: 860px; font-size: clamp(34px, 5.4vw, 60px); line-height: 1.12; font-weight: 650; letter-spacing: -.03em; }
+.hero-inner { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 56px; padding: 160px 0 80px; }
+.hero-copy { display: flex; flex-direction: column; align-items: center; gap: 32px; width: 100%; max-width: 800px; padding-top: 16px; text-align: center; }
+.badge { display: inline-flex; align-items: center; gap: 7px; font: 500 12px/1 var(--mono); text-transform: uppercase; letter-spacing: .22em; color: hsla(0,0%,100%,.45); }
+.badge i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+h1 { margin: 16px 0 0; font-size: 32px; font-weight: 500; letter-spacing: -.02em; line-height: 150%; }
+@media (min-width: 768px) { h1 { font-size: 40px; } }
+:lang(zh) h1, :lang(zh) h2, :lang(zh) h3 { font-weight: 400; }
+.body { font-size: 16px; line-height: 160%; color: var(--desc); margin: 0; text-wrap: pretty; }
+.hero-desc { display: flex; flex-direction: column; gap: 4px; max-width: 720px; }
 
-.lead { margin: 22px auto 0; max-width: 600px; font-size: 17px; line-height: 1.7; color: var(--muted); text-wrap: pretty; }
-.hero .cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 36px; }
-.meta { margin-top: 16px; font-size: 13px; color: var(--muted); }
+.btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 18px; border-radius: var(--pill); font-size: 15px; font-weight: 500; line-height: 120%; overflow: hidden; isolation: isolate; }
+.btn::after { content: ""; position: absolute; top: 50%; left: 50%; width: 150%; aspect-ratio: 1; border-radius: 50%; opacity: 0; z-index: -1; transform: translate(-50%,-50%) scale(0); transition: transform .36s ease-out, opacity .1s; }
+.btn:hover::after { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+.btn-primary { background: #fff; color: #0a0a0a; }
+.btn-primary::after { background: rgba(0,0,0,.12); }
+.btn-secondary { background: var(--s1); border: 1px solid var(--sec-border); backdrop-filter: blur(var(--blur)); -webkit-backdrop-filter: blur(var(--blur)); transition: border-color .35s; }
+.btn-secondary::after { background: hsla(0,0%,100%,.2); }
+.btn-secondary:hover { border-color: hsla(0,0%,100%,.6); }
+.btn svg { width: 16px; height: 16px; }
 
-/* Provider + Agent 双面板 */
-.duo { position: relative; display: grid; grid-template-columns: 1fr 1.35fr; gap: 20px; margin-top: 64px; text-align: left; }
-@media (max-width: 900px) { .duo { grid-template-columns: 1fr; } }
-.card { position: relative; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); overflow: hidden; }
-.card-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--text2); }
-/* Panel islands: each panel's title floats as a glass capsule across its top edge. */
-.duo { margin-top: 84px; row-gap: 44px; }
-.duo .card { overflow: visible; }
-.duo .card > :last-child { border-radius: 0 0 var(--r) var(--r); overflow: hidden; }
-.duo .card-head { position: absolute; top: 0; left: 50%; z-index: 4; translate: -50% -50%; gap: 10px; height: 40px; padding: 0 6px 0 16px; border: 0; border-radius: var(--pill);
-  background: rgba(22,24,32,.28); white-space: nowrap; transition: padding .5s cubic-bezier(.22,1,.36,1); }
-.duo .card-head:not(.lg-glass) { -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
-.duo .card-head .live { position: relative; width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--ok); }
-.duo .card-head .live.is-agent { background: var(--brand); }
-/* The pulse ring animates transform and opacity only, which stays on the compositor. */
-.duo .card-head .live::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid currentColor; color: var(--ok); opacity: 0; animation: live 2.4s ease-out infinite; }
-.duo .card-head .live.is-agent::after { color: var(--brand); }
-@keyframes live { 0% { transform: scale(.5); opacity: .7; } 70%, 100% { transform: scale(1.4); opacity: 0; } }
-.duo .card-head .meta-txt { color: var(--muted); font-size: 12px; }
-.duo .card:hover .card-head { padding-right: 8px; }
-.duo .prov { padding-top: 34px; }
-.duo .agent .chat, .duo .agent .side { padding-top: 34px; }
-@media (prefers-reduced-motion: reduce) { .duo .card-head .live::after { animation: none; } }
-.card-head b { color: var(--text); font-weight: 600; }
-.pill { font-size: 11px; padding: 3px 9px; border-radius: var(--pill); background: var(--brand-soft); color: var(--brand); }
-.pill.ok { background: rgba(74,222,128,.12); color: var(--ok); }
-.prov { padding: 18px; display: flex; flex-direction: column; gap: 18px; }
-.plan-row { display: flex; align-items: center; justify-content: space-between; }
-.plan-row .name { font-size: 15px; font-weight: 600; }
-.plan-row small { color: var(--muted); font-size: 12px; }
-.meter { display: flex; flex-direction: column; gap: 8px; }
-.meter .lbl { display: flex; justify-content: space-between; font-size: 13px; color: var(--text2); }
-.meter .lbl span:last-child { color: var(--muted); font-family: var(--mono); font-size: 12px; }
-.bar { height: 8px; border-radius: var(--pill); background: rgba(255,255,255,.06); overflow: hidden; }
-.bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #6799fe, #9f8bff); }
-.models { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.model { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--panel2); border: 1px solid var(--line); font-size: 13px; }
-.model .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-.model small { margin-left: auto; color: var(--muted); font-size: 11px; }
-.console-row { margin-top: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.console-row a { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line2); font-size: 12px; color: var(--text2); background: rgba(255,255,255,.03); transition: border-color .2s, color .2s, background-color .2s; }
-.console-row a:hover { color: var(--text); border-color: rgba(103,153,254,.55); background: rgba(103,153,254,.08); }
-.console-row a b { color: var(--brand); font-weight: 500; }
-.model small { font-variant-numeric: tabular-nums; }
-.prov { flex: 1; }
-.card { display: flex; flex-direction: column; }
-/* No backdrop-filter on the card: it would make the card a backdrop root, and the glass title island would refract only the card instead of the page behind it. */
-.duo .card { background: rgba(18,18,21,.9); border-color: rgba(255,255,255,.1); box-shadow: 0 30px 90px rgba(0,0,0,.45); }
-.duo .side { background: rgba(12,12,15,.55); }
-.duo .model, .duo .step { background: rgba(255,255,255,.035); }
+/* 入场动画 */
+@keyframes enter { from { opacity: 0; transform: translateY(var(--y, 20px)); filter: blur(var(--b, 0)); } }
+.enter { animation: enter .8s ease-out backwards; }
+.reveal { opacity: 0; transform: translateY(30px); transition: opacity .6s var(--ease), transform .6s var(--ease), filter .6s var(--ease); }
+.reveal.in { opacity: 1; transform: none; }
 
-.agent { display: flex; min-height: 420px; }
-.side { width: 190px; flex: none; padding: 14px 10px; border-right: 1px solid var(--line); background: #0f0f12; font-size: 13px; color: var(--text2); }
-@media (max-width: 640px) { .side { display: none; } }
-.side .row { padding: 7px 10px; border-radius: 8px; }
-.side .row.on { background: rgba(255,255,255,.07); color: var(--text); }
-.side h6 { margin: 14px 10px 6px; font-size: 11px; font-weight: 500; color: var(--muted); }
-.chat { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 20px; gap: 14px; font-size: 14px; }
-.msg-u { align-self: flex-end; max-width: 80%; padding: 10px 14px; border-radius: 16px; background: #26262b; }
-.step { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; background: var(--panel2); border: 1px solid var(--line); font-size: 13px; color: var(--text2); }
-.step code { font-family: var(--mono); font-size: 12px; color: var(--text); }
-.step .ok { margin-left: auto; color: var(--ok); font-size: 12px; }
-.msg-a { color: var(--text2); line-height: 1.7; }
-.msg-a b { color: var(--text); font-weight: 600; }
-.composer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 14px; background: #1d1d22; border: 1px solid var(--line); font-size: 12px; color: var(--muted); }
-.composer .send { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: #0a0a0b; font-size: 14px; flex: none; }
+/* 桌面预览窗口 */
+.preview { width: 100%; max-width: 1020px; animation: enter .8s ease-out .4s backwards; }
+.win { --u: .9px; position: relative; display: flex; height: calc(var(--u) * 680); overflow: hidden; border-radius: var(--panel); text-align: left; color: #f9fafb; font-size: calc(var(--u) * 14); line-height: 1.4; user-select: none;
+  box-shadow: 0 0 0 1px hsla(0,0%,100%,.12), 0 24px 72px rgba(0,0,0,.2); font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+.side { width: calc(var(--u) * 260); flex: none; display: flex; flex-direction: column; padding: 0 calc(var(--u) * 8);
+  background: linear-gradient(180deg, rgba(122,155,240,.08), rgba(122,155,240,0) 35%, rgba(143,137,184,0) 68%, rgba(143,137,184,.07)), rgba(95,102,114,.42);
+  backdrop-filter: blur(32px) saturate(125%); -webkit-backdrop-filter: blur(32px) saturate(125%); box-shadow: inset -.5px 0 hsla(0,0%,100%,.1); }
+.lights { display: flex; gap: 8px; height: calc(var(--u) * 52); align-items: center; padding: 0 4px; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; }
+.lights i:nth-child(2) { background: #febc2e; } .lights i:nth-child(3) { background: #28c840; }
+.side .logo { display: flex; align-items: center; gap: 8px; padding: 4px 8px 12px; font-weight: 600; font-size: calc(var(--u) * 16); }
+.side .logo img { width: 20px; height: 20px; }
+.row { display: flex; align-items: center; gap: calc(var(--u) * 8); height: calc(var(--u) * 36); padding: 0 calc(var(--u) * 8); border-radius: 8px; color: #e7e9ec; }
+.row svg { width: 16px; height: 16px; flex: none; opacity: .85; }
+.row.on { background: hsla(0,0%,100%,.1); }
+.side h5 { margin: calc(var(--u) * 14) 0 4px; padding: 0 calc(var(--u) * 8); font-size: calc(var(--u) * 13); font-weight: 400; color: #adb2b8; }
+.row.sess { padding-left: calc(var(--u) * 32); height: calc(var(--u) * 32); color: #cfd3d6; }
+.main { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; background: #151517; }
+.main-bar { height: calc(var(--u) * 50); padding: 0 20px; display: flex; align-items: center; flex: none; box-shadow: inset 0 -.5px hsla(0,0%,100%,.1); color: #cfd3d6; font-weight: 500; }
+.thread { flex: 1; overflow: hidden; width: calc(100% - 32px); max-width: calc(var(--u) * 762); margin: 0 auto; padding-top: calc(var(--u) * 28); }
+.umsg { width: fit-content; max-width: 70%; margin: 0 0 calc(var(--u) * 20) auto; padding: calc(var(--u) * 10) calc(var(--u) * 16); border-radius: calc(var(--u) * 22); background: #2c2c2e; }
+.thought { display: flex; align-items: center; gap: 6px; color: #adb2b8; font-size: calc(var(--u) * 13); margin-bottom: 12px; }
+.reply p { margin: 0 0 10px; line-height: 1.6; color: #e7e9ec; }
+.reply ol { margin: 0 0 10px; padding-left: 20px; line-height: 1.7; color: #e7e9ec; }
+.reply strong { color: #fff; }
+.dock { width: calc(100% - 32px); max-width: calc(var(--u) * 762); margin: 0 auto; padding: calc(var(--u) * 16) 0 calc(var(--u) * 20); }
+.composer { padding: 8px; border-radius: calc(var(--u) * 22); background: #2c2c2e; box-shadow: 0 0 0 .5px hsla(0,0%,100%,.12), 0 4px 16px rgba(0,0,0,.06); }
+.ph { padding: 6px 8px; color: #8e9399; }
+.tools { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; font-size: calc(var(--u) * 13); color: #cfd3d6; }
+.tools span { display: inline-flex; align-items: center; gap: 6px; }
+.tools .l, .tools .r { display: flex; gap: 10px; align-items: center; }
+.plus, .send { width: 28px; height: 28px; border-radius: 50%; display: grid !important; place-items: center; line-height: 1; font-size: 16px; background: hsla(0,0%,100%,.08); }
+.send { background: #fff; color: #151517; }
+.dim { color: #8e9399; }
+@media (max-width: 760px) { .side { display: none; } .win { height: calc(var(--u) * 560); } .umsg { max-width: 90%; } }
 
-/* 中间连接标记 */
-.link-strip { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 18px; font-size: 13px; color: var(--text2); }
-.link-strip i { font-style: normal; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--brand-soft); color: var(--brand); }
+/* 能力卡片 */
+.caps { padding: 160px 0; }
+h2 { margin: 0; font-family: "Montserrat", var(--sans); font-size: 28px; font-weight: 500; letter-spacing: -.02em; line-height: 150%; text-align: center; }
+@media (min-width: 768px) { h2 { font-size: 36px; } }
+.grid { display: grid; grid-template-columns: 1fr; gap: 32px; margin-top: 80px; }
+@media (min-width: 1024px) { .grid { grid-template-columns: 1fr 1fr; } }
+.card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; padding: 40px 40px 0; border: 1px solid var(--border); border-radius: var(--panel); background: var(--s3); }
+.card h3 { margin: 0; font-size: 20px; font-weight: 500; letter-spacing: -.01em; line-height: 150%; }
+.copy { display: flex; flex-direction: column; gap: 8px; padding-bottom: 32px; }
+.media { position: relative; margin-top: auto; min-height: 280px; overflow: hidden; border: 1px solid var(--border); border-bottom: 0; border-radius: var(--media) var(--media) 0 0; background: #101113; padding: 20px; font-size: 13px; color: #cfd3d6; }
+.plug { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 10px; background: hsla(0,0%,100%,.03); margin-bottom: 8px; }
+.plug .ic { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: #2c2c2e; font-size: 15px; flex: none; }
+.plug b { display: block; color: #f9fafb; font-weight: 500; }
+.plug small { color: #8e9399; }
+.plug .tag { margin-left: auto; font-size: 11px; padding: 3px 8px; border-radius: 6px; background: hsla(0,0%,100%,.06); color: #adb2b8; white-space: nowrap; }
+.plug .tag.on { background: rgba(103,153,254,.16); color: var(--brand); }
+.flow { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px 14px; align-items: center; }
+.node { padding: 12px; border-radius: 10px; background: hsla(0,0%,100%,.04); border: .5px solid hsla(0,0%,100%,.1); }
+.node b { display: block; color: #f9fafb; font-weight: 500; margin-bottom: 2px; }
+.node small { color: #8e9399; font-family: var(--mono); font-size: 11px; }
+.arrow { color: var(--brand); text-align: center; font-family: var(--mono); }
+.files { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.file { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; background: hsla(0,0%,100%,.04); border: .5px solid hsla(0,0%,100%,.1); }
+.file i { width: 18px; height: 22px; border-radius: 3px; display: block; }
+.code { font-family: var(--mono); font-size: 12px; line-height: 1.8; padding: 14px; border-radius: 8px; background: #151517; border: .5px solid hsla(0,0%,100%,.1); }
+.code .a { color: #7ee787; } .code .k { color: #ff7b72; } .code .s { color: #a5d6ff; }
+.task { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 12px; background: #1c1c1e; border: .5px solid hsla(0,0%,100%,.12); margin-top: 12px; }
+.task .clk { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: rgba(103,153,254,.16); color: var(--brand); flex: none; }
+.task b { display: block; color: #f9fafb; font-weight: 500; }
+.task small { color: #8e9399; }
+.task .open { margin-left: auto; color: var(--brand); }
 
-/* 通用段落 */
-section.block { padding: 112px 0; border-top: 1px solid var(--line); }
-.kicker { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--brand); font-weight: 600; }
-h2 { margin: 12px 0 0; font-size: clamp(26px, 3.4vw, 38px); line-height: 1.25; font-weight: 650; letter-spacing: -.02em; }
-.sub { margin: 14px 0 0; max-width: 620px; color: var(--muted); font-size: 16px; line-height: 1.7; }
-.center { text-align: center; } .center .sub { margin-inline: auto; }
-
-/* 三栏卖点 */
-@media (max-width: 640px) { .hero { padding-top: 64px; } .lead { font-size: 15px; } .msg-u { max-width: 100%; } .composer span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .actions .btn-ghost { padding: 0 12px; } }
-.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 56px; }
-@media (max-width: 900px) { .grid3 { grid-template-columns: 1fr; } }
-.feat { padding: 28px; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); }
-.feat .ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
-.feat .ic svg { width: 20px; height: 20px; }
-.feat h3 { margin: 18px 0 8px; font-size: 17px; font-weight: 600; }
-.feat p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
-.feat .side-tag { float: right; font-size: 11px; padding: 3px 9px; border-radius: var(--pill); border: 1px solid var(--line2); color: var(--text2); }
-
-/* 闭环流程 */
-.loop { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 56px; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
-@media (max-width: 900px) { .loop { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 520px) { .loop { grid-template-columns: 1fr; } }
-.loop > div { padding: 26px 24px; background: var(--panel); border-right: 1px solid var(--line); }
-.loop > div:last-child { border-right: 0; }
-.loop .n { font-family: var(--mono); font-size: 12px; color: var(--brand); }
-.loop h4 { margin: 10px 0 6px; font-size: 16px; font-weight: 600; }
-.loop p { margin: 0; font-size: 13px; line-height: 1.7; color: var(--muted); }
-
-/* 套餐 */
-.plans { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 56px; max-width: 880px; margin-inline: auto; }
-@media (max-width: 760px) { .plans { grid-template-columns: 1fr; } }
-.plan { padding: 32px; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); text-align: left; }
-.plan.hot { border-color: rgba(103,153,254,.5); background: linear-gradient(180deg, rgba(103,153,254,.08), var(--panel) 60%); }
-.plan .top { display: flex; align-items: center; justify-content: space-between; }
-.plan .title { font-size: 22px; font-weight: 650; }
-.plan .for { margin: 6px 0 22px; color: var(--muted); font-size: 14px; }
-.plan ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; font-size: 14px; color: var(--text2); }
-.plan li { display: flex; gap: 10px; align-items: flex-start; line-height: 1.55; }
-.plan li::before { content: ""; flex: none; width: 16px; height: 16px; margin-top: 2px; border-radius: 50%; background: var(--brand-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%236799fe' stroke-width='2'%3E%3Cpath d='M4.5 8.2 7 10.5l4.5-5'/%3E%3C/svg%3E") center/12px no-repeat; }
-.plan .note { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
-.plan { display: flex; flex-direction: column; }
-.plan .plan-cta { margin-top: 20px; align-self: stretch; }
-.plan .models-line { margin: 14px 0 0; font-size: 12px; color: var(--muted); }
-.plans-foot { margin-top: 20px; text-align: center; font-size: 13px; color: var(--muted); }
-
-/* FAQ */
-.faq { max-width: 760px; margin: 48px auto 0; }
-.faq details { border-bottom: 1px solid var(--line); }
-.faq summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; padding: 20px 0; font-size: 16px; font-weight: 500; }
-.faq summary::-webkit-details-marker { display: none; }
-.faq summary::after { content: "+"; font-size: 20px; color: var(--muted); transition: transform .2s; }
-.faq details[open] summary::after { transform: rotate(45deg); }
-.faq p { margin: 0 0 20px; color: var(--muted); font-size: 14px; line-height: 1.8; }
-
-/* 结尾 CTA */
-.final { padding: 140px 0 200px; text-align: center; border-top: 1px solid var(--line); position: relative; isolation: isolate; overflow: hidden; }
-.final > .wrap { position: relative; z-index: 1; }
-.cta-glow { position: absolute; inset: 60px 0 0; z-index: 0; pointer-events: none; opacity: 0; transform: scale(.9); transition: opacity 1.2s ease-out, transform 1.2s ease-out; }
-.final.in .cta-glow { opacity: 1; transform: none; }
+/* CTA */
+.cta-wrap { position: relative; overflow: hidden; max-height: 720px; }
+.cta-glow { position: absolute; top: 80px; left: 0; width: 100%; height: 500px; pointer-events: none; opacity: 0; transform: scale(.85); transition: opacity 1.2s ease-out, transform 1.2s ease-out; }
+.cta-wrap.in .cta-glow { opacity: 1; transform: none; }
 .cta-glow canvas { position: absolute; inset: 0; width: 100%; height: 100%;
   -webkit-mask: linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent), linear-gradient(to right, transparent, #000 15%, #000 85%, transparent); -webkit-mask-composite: source-in;
   mask: linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent), linear-gradient(to right, transparent, #000 15%, #000 85%, transparent); mask-composite: intersect; }
 .orb { position: absolute; border-radius: 50%; }
-.orb1 { bottom: -100px; left: 10%; width: 500px; height: 500px; opacity: .3; background: radial-gradient(circle, #1a3870 0%, transparent 70%); filter: blur(80px); }
-.orb2 { bottom: -50px; left: 50%; transform: translateX(-50%); width: 700px; height: 400px; opacity: .45; background: radial-gradient(ellipse at center, #2d5f9e 0%, #1a3870 40%, transparent 70%); filter: blur(100px); }
-.orb3 { bottom: -80px; right: 10%; width: 400px; height: 400px; opacity: .22; background: radial-gradient(circle, #4a8ac4 0%, #2d5f9e 30%, transparent 70%); filter: blur(60px); }
-.final.in .orb2 { animation: breathe 9s ease-in-out infinite; }
-@keyframes breathe { 50% { opacity: .62; transform: translateX(-50%) scale(1.08); } }
-.final .cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 32px; }
+.orb1 { bottom: -100px; left: 10%; width: 500px; height: 500px; opacity: .3; background: radial-gradient(circle, #1A3870 0%, transparent 70%); filter: blur(80px); }
+.orb2 { bottom: -50px; left: 50%; transform: translateX(-50%); width: 700px; height: 400px; opacity: .4; background: radial-gradient(ellipse at center, #2D5F9E 0%, #1A3870 40%, transparent 70%); filter: blur(100px); }
+.orb3 { bottom: -80px; right: 10%; width: 400px; height: 400px; opacity: .2; background: radial-gradient(circle, #4A8AC4 0%, #2D5F9E 30%, transparent 70%); filter: blur(60px); }
+.cta { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 160px 0 240px; min-height: min(60vh, 720px); }
+.cta .body { max-width: 640px; margin-top: 24px; }
+.cta-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; margin-top: 32px; }
 
-footer { border-top: 1px solid var(--line); padding: 28px 0 40px; font-size: 13px; color: var(--muted); }
-footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; }
-footer nav { display: flex; gap: 20px; }
-footer a:hover { color: var(--text); }
+footer { padding-bottom: 32px; }
+.line { height: 1px; background: var(--border-sub); }
+.foot { display: flex; flex-direction: column; align-items: center; gap: 16px; padding-top: 24px; font-size: 13px; }
+@media (min-width: 1280px) { .foot { display: grid; grid-template-columns: 1fr auto 1fr; } .foot nav { justify-self: end; } }
+.foot p { margin: 0; color: var(--desc); text-align: center; }
+.foot nav { display: flex; flex-wrap: wrap; gap: 8px 12px; justify-content: center; }
+.foot nav a:hover { opacity: .7; }
+.foot nav span { color: var(--desc); }
 
-.reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
-.reveal.in { opacity: 1; transform: none; }
-@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .reveal { opacity: 1; transform: none; transition: none; } .final.in .orb2 { animation: none; } }
-
-/* Agent homepage: original large preview and detailed capability illustrations. */
-/* 桌面预览窗口 */
-.agent-preview { width: 100%; max-width: 1020px; margin: 80px auto 0; position: relative; scroll-margin-top: 100px; }
-.agent-preview .win { --u: .9px; position: relative; display: flex; height: calc(var(--u) * 680); overflow: hidden; border-radius: var(--r); text-align: left; color: #f9fafb; font-size: calc(var(--u) * 14); line-height: 1.4; user-select: none;
-  box-shadow: 0 0 0 1px hsla(0,0%,100%,.12), 0 24px 72px rgba(0,0,0,.2); font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
-.agent-preview .side { width: calc(var(--u) * 260); flex: none; display: flex; flex-direction: column; padding: 0 calc(var(--u) * 8);
-  background: linear-gradient(180deg, rgba(122,155,240,.08), rgba(122,155,240,0) 35%, rgba(143,137,184,0) 68%, rgba(143,137,184,.07)), rgba(95,102,114,.42);
-  backdrop-filter: blur(32px) saturate(125%); -webkit-backdrop-filter: blur(32px) saturate(125%); box-shadow: inset -.5px 0 hsla(0,0%,100%,.1); }
-.agent-preview .lights { display: flex; gap: 8px; height: calc(var(--u) * 52); align-items: center; padding: 0 4px; }
-.agent-preview .lights i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; }
-.agent-preview .lights i:nth-child(2) { background: #febc2e; } .agent-preview .lights i:nth-child(3) { background: #28c840; }
-.agent-preview .side .logo { display: flex; align-items: center; gap: 8px; padding: 4px 8px 12px; font-weight: 600; font-size: calc(var(--u) * 16); }
-.agent-preview .side .logo img { width: 20px; height: 20px; }
-.agent-preview .row { display: flex; align-items: center; gap: calc(var(--u) * 8); height: calc(var(--u) * 36); padding: 0 calc(var(--u) * 8); border-radius: 8px; color: #e7e9ec; }
-.agent-preview .row svg { width: 16px; height: 16px; flex: none; opacity: .85; }
-.agent-preview .row.on { background: hsla(0,0%,100%,.1); }
-.agent-preview .side h5 { margin: calc(var(--u) * 14) 0 4px; padding: 0 calc(var(--u) * 8); font-size: calc(var(--u) * 13); font-weight: 400; color: #adb2b8; }
-.agent-preview .row.sess { padding-left: calc(var(--u) * 32); height: calc(var(--u) * 32); color: #cfd3d6; }
-.agent-preview .main { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; background: #151517; }
-.agent-preview .main-bar { height: calc(var(--u) * 50); padding: 0 20px; display: flex; align-items: center; flex: none; box-shadow: inset 0 -.5px hsla(0,0%,100%,.1); color: #cfd3d6; font-weight: 500; }
-.agent-preview .thread { flex: 1; overflow: hidden; width: calc(100% - 32px); max-width: calc(var(--u) * 762); margin: 0 auto; padding-top: calc(var(--u) * 28); }
-.agent-preview .umsg { width: fit-content; max-width: 70%; margin: 0 0 calc(var(--u) * 20) auto; padding: calc(var(--u) * 10) calc(var(--u) * 16); border-radius: calc(var(--u) * 22); background: #2c2c2e; }
-.agent-preview .thought { display: flex; align-items: center; gap: 6px; color: #adb2b8; font-size: calc(var(--u) * 13); margin-bottom: 12px; }
-.agent-preview .reply p { margin: 0 0 10px; line-height: 1.6; color: #e7e9ec; }
-.agent-preview .reply ol { margin: 0 0 10px; padding-left: 20px; line-height: 1.7; color: #e7e9ec; }
-.agent-preview .reply strong { color: #fff; }
-.agent-preview .dock { width: calc(100% - 32px); max-width: calc(var(--u) * 762); margin: 0 auto; padding: calc(var(--u) * 16) 0 calc(var(--u) * 20); }
-.agent-preview .composer { display: block; margin-top: 0; padding: 8px; border-radius: calc(var(--u) * 22); background: #2c2c2e; box-shadow: 0 0 0 .5px hsla(0,0%,100%,.12), 0 4px 16px rgba(0,0,0,.06); }
-.agent-preview .ph { padding: 6px 8px; color: #8e9399; }
-.agent-preview .tools { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; font-size: calc(var(--u) * 13); color: #cfd3d6; }
-.agent-preview .tools span { display: inline-flex; align-items: center; gap: 6px; }
-.agent-preview .tools .l, .agent-preview .tools .r { display: flex; gap: 10px; align-items: center; }
-.agent-preview .plus, .agent-preview .send { width: 28px; height: 28px; border-radius: 50%; display: grid !important; place-items: center; line-height: 1; font-size: 16px; background: hsla(0,0%,100%,.08); }
-.agent-preview .send { background: #fff; color: #151517; }
-.agent-preview .dim { color: #8e9399; }
-@media (max-width: 760px) { .agent-preview .side { display: none; } .agent-preview .win { height: calc(var(--u) * 560); } .agent-preview .umsg { max-width: 90%; } }
-
-
-/* 能力卡片 */
-.capabilities { padding: 160px 0; }
-.capabilities h2 { margin: 0; font-family: "Montserrat", var(--sans); font-size: 28px; font-weight: 500; letter-spacing: -.02em; line-height: 150%; text-align: center; }
-@media (min-width: 768px) { .capabilities h2 { font-size: 36px; } }
-.capabilities .grid { display: grid; grid-template-columns: 1fr; gap: 32px; margin-top: 80px; }
-@media (min-width: 1024px) { .capabilities .grid { grid-template-columns: 1fr 1fr; } }
-.capabilities .card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; padding: 40px 40px 0; border: 1px solid var(--line); border-radius: var(--r); background: rgba(255,255,255,.025); }
-.capabilities .card h3 { margin: 0; font-size: 20px; font-weight: 500; letter-spacing: -.01em; line-height: 150%; }
-.capabilities .copy { display: flex; flex-direction: column; gap: 8px; padding-bottom: 32px; }
-.capabilities .media { position: relative; margin-top: auto; min-height: 280px; overflow: hidden; border: 1px solid var(--line); border-bottom: 0; border-radius: 10px 10px 0 0; background: #101113; padding: 20px; font-size: 13px; color: #cfd3d6; }
-.capabilities .plug { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 10px; background: hsla(0,0%,100%,.03); margin-bottom: 8px; }
-.capabilities .plug .ic { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: #2c2c2e; font-size: 15px; flex: none; }
-.capabilities .plug b { display: block; color: #f9fafb; font-weight: 500; }
-.capabilities .plug small { color: #8e9399; }
-.capabilities .plug .tag { margin-left: auto; font-size: 11px; padding: 3px 8px; border-radius: 6px; background: hsla(0,0%,100%,.06); color: #adb2b8; white-space: nowrap; }
-.capabilities .plug .tag.on { background: rgba(103,153,254,.16); color: var(--brand); }
-.capabilities .flow { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px 14px; align-items: center; }
-.capabilities .node { padding: 12px; border-radius: 10px; background: hsla(0,0%,100%,.04); border: .5px solid hsla(0,0%,100%,.1); }
-.capabilities .node b { display: block; color: #f9fafb; font-weight: 500; margin-bottom: 2px; }
-.capabilities .node small { color: #8e9399; font-family: var(--mono); font-size: 11px; }
-.capabilities .arrow { color: var(--brand); text-align: center; font-family: var(--mono); }
-.capabilities .files { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
-.capabilities .file { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; background: hsla(0,0%,100%,.04); border: .5px solid hsla(0,0%,100%,.1); }
-.capabilities .file i { width: 18px; height: 22px; border-radius: 3px; display: block; }
-.capabilities .code { font-family: var(--mono); font-size: 12px; line-height: 1.8; padding: 14px; border-radius: 8px; background: #151517; border: .5px solid hsla(0,0%,100%,.1); }
-.capabilities .code .a { color: #7ee787; } .capabilities .code .k { color: #ff7b72; } .capabilities .code .s { color: #a5d6ff; }
-.capabilities .task { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 12px; background: #1c1c1e; border: .5px solid hsla(0,0%,100%,.12); margin-top: 12px; }
-.capabilities .task .clk { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: rgba(103,153,254,.16); color: var(--brand); flex: none; }
-.capabilities .task b { display: block; color: #f9fafb; font-weight: 500; }
-.capabilities .task small { color: #8e9399; }
-.capabilities .task .open { margin-left: auto; color: var(--brand); }
-
-
-.hero h1, .hero h1 span { color: #fff; background: none; -webkit-text-fill-color: #fff; }
-.hero h1 { font-weight: 500; line-height: 1.3; }
-.preview-island { position: absolute; left: 50%; top: 0; translate: -50% -50%; z-index: 4; display: flex; align-items: center; gap: 10px; height: 42px; padding: 0 18px; border-radius: var(--pill); background: rgba(22,24,32,.3); white-space: nowrap; font-size: 13px; }
-.preview-island > [data-i18n="agentPreview"] { color: var(--muted); font-size: 12px; }
-.preview-island:not(.lg-glass) { backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%); }
-.preview-island .live { width: 7px; height: 7px; border-radius: 50%; background: var(--brand); }
-.agent-preview .win { min-width: 0; }
-.agent-preview .tools .r { min-width: 0; }
-.agent-preview .tools .r > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.agent-preview .side .logo img { flex: none; }
-.agent-preview .ph { font-size: 12px; }
-.capabilities { padding-block: 112px; }
-.capabilities .grid { margin-top: 56px; }
-.capabilities .card { background: rgba(255,255,255,.025); }
-.capabilities .body { margin: 0; color: var(--text2); font-size: 14px; line-height: 1.8; }
-.capabilities .copy h3 { text-align: left; }
-.capabilities .plug > span:nth-child(2), .capabilities .task > span:nth-child(2) { min-width: 0; }
-.capabilities .plug small, .capabilities .task small { display: block; }
-.capabilities .flow { grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); }
-.capabilities .node { min-width: 0; overflow-wrap: anywhere; }
-section[id], #agent { scroll-margin-top: 100px; }
-.download-meta[hidden], .meter[hidden] { display: none; }
-footer .wrap { gap: 24px; }
-footer nav { flex-wrap: wrap; }
-@media (max-width: 640px) {
-  .hero { padding-top: 126px; }
-  .hero h1 { font-size: clamp(30px,8vw,42px); }
-  .agent-preview { margin-top: 64px; }
-  .agent-preview .win { --u: .8px; }
-  .agent-preview .tools .r { max-width: 48%; }
-  .preview-island { padding-inline: 14px; max-width: calc(100% - 20px); }
-  .preview-island > [data-i18n="agentPreview"] { display: none; }
-  .capabilities { padding-block: 72px; }
-  .capabilities .card { padding: 24px 20px 0; }
-  .capabilities .media { padding: 14px; }
-  .capabilities .plug { gap: 8px; padding: 10px; }
-  .capabilities .plug .tag { font-size: 10px; padding-inline: 5px; }
-  .duo .card-head .meta-txt { display: none; }
-  .console-row { grid-template-columns: 1fr; }
-  .brand .tag { display: none; }
-  section.block { padding-block: 72px; }
+@media (prefers-reduced-motion: reduce) {
+  .enter, .preview { animation: none; }
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .header-bar, .header-bar *, .slot > * { transition: none !important; }
 }
 </style>
 </head>
 <body>
-<header class="island-wrap">
-  <div class="island" id="island">
-    <a class="brand" href="/"><img src="/lightcode/logo-white.svg" alt="">Lightcode AI<span class="tag" data-i18n="preview"></span></a>
-    <nav class="links" aria-label="Primary">
-      <a href="#plans" data-i18n="navPlans"></a>
-      <a href="#how" data-i18n="navHow"></a>
-      <a href="/#agent" data-i18n="navAgent"></a>
-      <a href="#faq" data-i18n="navFaq"></a>
-    </nav>
-    <div class="actions">
+<div class="header-wrapper">
+  <div class="header-bar" id="bar">
+    <a class="brand" href="/lightcode"><img src="/lightcode/logo-white.svg" alt="">LightCode<span class="pv" data-i18n="pv"></span></a>
+    <div class="slot">
       <div class="locale" id="locale" role="group" aria-label="Language">
-        <button type="button" data-value="zh">中文</button>
-        <button type="button" data-value="en">EN</button>
+        <button type="button" data-lang="zh" data-value="zh">中文</button>
+        <button type="button" data-lang="en" data-value="en">EN</button>
       </div>
-      <a class="btn btn-primary island-dl" data-console href="/sign-in?redirect=%2Flightcode%2Fusage">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="2"/><path d="M2 6h12M5 9.5h3"/></svg>
-        <span data-i18n="console"></span>
+      <a class="island-dl" data-dl href="https://github.com/LightCode-AI/lightcode-releases/releases">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/></svg>
+        <span data-i18n="dl"></span>
       </a>
     </div>
   </div>
-</header>
+</div>
 
 <main>
   <section class="hero" id="hero">
-    <div class="hero-bg" id="heroBg" aria-hidden="true"><canvas id="fluid"></canvas></div>
-    <div class="wrap">
-      <span class="eyebrow"><i></i><span data-i18n="eyebrow"></span></span>
-      <h1><span data-i18n="h1a"></span><br><span data-i18n="h1b"></span></h1>
-      <p class="lead" data-i18n="lead"></p>
-      <div class="cta">
-        <a class="btn btn-primary btn-lg" data-console href="/sign-in?redirect=%2Flightcode%2Fusage">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="2"/><path d="M2 6h12M5 9.5h3"/></svg>
-          <span data-i18n="console"></span>
-        </a>
-        <a class="btn btn-ghost btn-lg" data-dl href="https://github.com/LightCode-AI/lightcode-releases/releases/latest">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/></svg>
-          <span data-i18n="dlWin"></span>
-        </a>
+    <div class="hero-bg" id="heroBg"><canvas id="fluid"></canvas></div>
+    <div class="container hero-inner">
+      <div class="hero-copy">
+        <div class="enter" style="--y:24px;--b:10px;animation-duration:.9s">
+          <span class="badge"><i></i><span data-i18n="badge"></span></span>
+          <h1><span data-i18n="h1a"></span><br><span data-i18n="h1b"></span></h1>
+        </div>
+        <div class="hero-desc enter" style="--y:20px;--b:8px;animation-delay:.15s">
+          <p class="body" data-i18n="d1"></p>
+          <p class="body" data-i18n="d2"></p>
+        </div>
+        <div class="enter" style="--y:16px;animation-duration:.7s;animation-delay:.3s">
+          <a class="btn btn-primary" data-dl href="https://github.com/LightCode-AI/lightcode-releases/releases">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/></svg>
+            <span data-i18n="dl"></span>
+          </a>
+        </div>
       </div>
-      <p class="meta" data-i18n="meta"></p>
-      <p class="meta download-meta" id="downloadMeta" hidden aria-live="polite"></p>
 
-      <div class="agent-preview" id="agent">
-        <div class="preview-island" data-glass><span class="live is-agent" aria-hidden="true"></span><b>Lightcode Agent</b><span data-i18n="agentPreview"></span></div>
-        <div class="win" role="img" data-i18n-label="agentWinLabel">
+      <div class="preview" id="preview">
+        <div class="win" role="img" data-i18n-label="winLabel">
           <aside class="side">
             <div class="lights"><i></i><i></i><i></i></div>
-            <div class="logo"><img src="/lightcode/logo-white.svg" alt="">Lightcode</div>
-            <div class="row"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M8 3v10M3 8h10"/></svg><span data-i18n="agentSNew"></span></div>
-            <div class="row"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M6 2.5h4v3h3v4h-3v4H6v-4H3v-4h3z"/></svg><span data-i18n="agentSPlug"></span></div>
-            <div class="row"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="11" cy="11" r="2"/><path d="M6.5 6.5l3 3"/></svg><span data-i18n="agentSProv"></span></div>
-            <div class="row"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v3l2 1.5"/></svg><span data-i18n="agentSAuto"></span></div>
-            <h5 data-i18n="agentSWs"></h5>
-            <div class="row"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M2.5 4.5h4l1.5 1.5h5.5v6.5h-11z"/></svg><span data-i18n="agentSWs2"></span></div>
-            <div class="row sess on" data-i18n="agentSs1"></div>
-            <div class="row sess" data-i18n="agentSs2"></div>
-            <div class="row sess" data-i18n="agentSs3"></div>
-            <div class="row sess" data-i18n="agentSs4"></div>
-            <div class="row sess" data-i18n="agentSs5"></div>
+            <div class="logo"><img src="/lightcode/logo-white.svg" alt="">LightCode</div>
+            <div class="row"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M8 3v10M3 8h10"/></svg><span data-i18n="sNew"></span></div>
+            <div class="row"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M6 2.5h4v3h3v4h-3v4H6v-4H3v-4h3z"/></svg><span data-i18n="sPlug"></span></div>
+            <div class="row"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="11" cy="11" r="2"/><path d="M6.5 6.5l3 3"/></svg><span data-i18n="sProv"></span></div>
+            <div class="row"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v3l2 1.5"/></svg><span data-i18n="sAuto"></span></div>
+            <h5 data-i18n="sWs"></h5>
+            <div class="row"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M2.5 4.5h4l1.5 1.5h5.5v6.5h-11z"/></svg><span data-i18n="sWs2"></span></div>
+            <div class="row sess on" data-i18n="ss1"></div>
+            <div class="row sess" data-i18n="ss2"></div>
+            <div class="row sess" data-i18n="ss3"></div>
+            <div class="row sess" data-i18n="ss4"></div>
+            <div class="row sess" data-i18n="ss5"></div>
           </aside>
           <div class="main">
-            <div class="main-bar">Lightcode</div>
+            <div class="main-bar">LightCode</div>
             <div class="thread">
-              <div class="umsg" data-i18n="agentQ"></div>
-              <div class="thought"><span data-i18n="agentThought"></span> ›</div>
+              <div class="umsg" data-i18n="q"></div>
+              <div class="thought"><span data-i18n="thought"></span> ›</div>
               <div class="reply">
-                <p data-i18n="agentA0"></p>
+                <p data-i18n="a0"></p>
                 <ol>
-                  <li data-i18n-html="agentA1"></li>
-                  <li data-i18n-html="agentA2"></li>
-                  <li data-i18n-html="agentA3"></li>
-                  <li data-i18n-html="agentA4"></li>
+                  <li data-i18n-html="a1"></li>
+                  <li data-i18n-html="a2"></li>
+                  <li data-i18n-html="a3"></li>
+                  <li data-i18n-html="a4"></li>
                 </ol>
-                <p data-i18n="agentMore"></p>
+                <p data-i18n="more"></p>
               </div>
             </div>
             <div class="dock">
               <div class="composer">
-                <div class="ph" data-i18n="agentPh"></div>
+                <div class="ph" data-i18n="ph"></div>
                 <div class="tools">
-                  <div class="l"><span class="plus">+</span><span>🛡 <span data-i18n="agentPerm"></span> ⌄</span></div>
-                  <div class="r"><span><span class="dim">Lightcode ·</span> GPT <span class="dim">High</span> ⌄</span><span class="send">↑</span></div>
+                  <div class="l"><span class="plus">+</span><span>🛡 <span data-i18n="perm"></span> ⌄</span></div>
+                  <div class="r"><span><span class="dim">LightCode ·</span> Gemini 3.8 Flash <span class="dim">High</span> ⌄</span><span class="send">↑</span></div>
                 </div>
               </div>
             </div>
@@ -444,30 +277,30 @@ footer nav { flex-wrap: wrap; }
     </div>
   </section>
 
-  <section class="wrap capabilities" id="capabilities">
-    <h2 class="reveal"><span data-i18n="agentCapA"></span><br><span data-i18n="agentCapB"></span></h2>
+  <section class="container caps">
+    <h2 class="reveal"><span data-i18n="capA"></span><br><span data-i18n="capB"></span></h2>
     <div class="grid">
       <article class="card reveal">
-        <div class="copy"><h3 data-i18n="agentC1t"></h3><p class="body" data-i18n="agentC1d"></p></div>
+        <div class="copy"><h3 data-i18n="c1t"></h3><p class="body" data-i18n="c1d"></p></div>
         <div class="media">
-          <div class="plug"><span class="ic">🧩</span><span><b>Scheduled tasks</b><small data-i18n="agentP1"></small></span><span class="tag on" data-i18n="agentEnabled"></span></div>
-          <div class="plug"><span class="ic">📊</span><span><b>Office</b><small data-i18n="agentP2"></small></span><span class="tag on" data-i18n="agentEnabled"></span></div>
-          <div class="plug"><span class="ic">🔍</span><span><b>Web search</b><small data-i18n="agentP3"></small></span><span class="tag" data-i18n="agentCommunity"></span></div>
-          <div class="plug"><span class="ic">✨</span><span><b data-i18n="agentP4t"></b><small data-i18n="agentP4"></small></span><span class="tag" data-i18n="agentCreator"></span></div>
+          <div class="plug"><span class="ic">🧩</span><span><b>dsh-plugin-scheduler</b><small data-i18n="p1"></small></span><span class="tag on" data-i18n="enabled"></span></div>
+          <div class="plug"><span class="ic">📊</span><span><b>dsh-plugin-office</b><small data-i18n="p2"></small></span><span class="tag on" data-i18n="enabled"></span></div>
+          <div class="plug"><span class="ic">🔍</span><span><b>dsh-plugin-websearch</b><small data-i18n="p3"></small></span><span class="tag" data-i18n="community"></span></div>
+          <div class="plug"><span class="ic">✨</span><span><b data-i18n="p4t"></b><small data-i18n="p4"></small></span><span class="tag" data-i18n="creator"></span></div>
         </div>
       </article>
       <article class="card reveal">
-        <div class="copy"><h3 data-i18n="agentC2t"></h3><p class="body" data-i18n="agentC2d"></p></div>
+        <div class="copy"><h3 data-i18n="c2t"></h3><p class="body" data-i18n="c2d"></p></div>
         <div class="media">
           <div class="flow">
-            <div class="node"><b>Lightcode Agent</b><small data-i18n="agentN1"></small></div><div class="arrow">⇄</div><div class="node"><b data-i18n="agentN2t"></b><small data-i18n="agentN2"></small></div>
+            <div class="node"><b>LightCode Agent</b><small data-i18n="n1"></small></div><div class="arrow">⇄</div><div class="node"><b data-i18n="n2t"></b><small data-i18n="n2"></small></div>
           </div>
-          <div class="task"><span class="clk">✓</span><span><b data-i18n="agentSw1"></b><small data-i18n="agentSw2"></small></span></div>
-          <div class="task"><span class="clk">⇄</span><span><b data-i18n="agentSw3"></b><small data-i18n="agentSw4"></small></span></div>
+          <div class="task"><span class="clk">✓</span><span><b data-i18n="sw1"></b><small data-i18n="sw2"></small></span></div>
+          <div class="task"><span class="clk">⇄</span><span><b data-i18n="sw3"></b><small data-i18n="sw4"></small></span></div>
         </div>
       </article>
       <article class="card reveal">
-        <div class="copy"><h3 data-i18n="agentC3t"></h3><p class="body" data-i18n="agentC3d"></p></div>
+        <div class="copy"><h3 data-i18n="c3t"></h3><p class="body" data-i18n="c3d"></p></div>
         <div class="media">
           <div class="files">
             <span class="file"><i style="background:#2b579a"></i>report.docx</span>
@@ -479,509 +312,159 @@ footer nav { flex-wrap: wrap; }
         </div>
       </article>
       <article class="card reveal">
-        <div class="copy"><h3 data-i18n="agentC4t"></h3><p class="body" data-i18n="agentC4d"></p></div>
+        <div class="copy"><h3 data-i18n="c4t"></h3><p class="body" data-i18n="c4d"></p></div>
         <div class="media">
-          <p style="margin:0;color:#e7e9ec" data-i18n="agentT0"></p>
-          <div class="task"><span class="clk">◷</span><span><b data-i18n="agentT1"></b><small data-i18n="agentT2"></small></span><span class="open" data-i18n="agentOpen"></span></div>
+          <p style="margin:0;color:#e7e9ec" data-i18n="t0"></p>
+          <div class="task"><span class="clk">◷</span><span><b data-i18n="t1"></b><small data-i18n="t2"></small></span><span class="open" data-i18n="open"></span></div>
         </div>
       </article>
     </div>
   </section>
 
-  <section class="block" id="provider">
-    <div class="wrap center">
-      <div class="kicker reveal" data-i18n="whyK"></div>
-      <h2 class="reveal" data-i18n="whyT"></h2>
-      <p class="sub reveal" data-i18n="whyD"></p>
-      <div class="duo reveal">
-        <div class="card">
-          <div class="card-head" data-glass><span class="live" aria-hidden="true"></span><b>Lightcode Provider</b><span class="meta-txt" data-i18n="provIsland"></span><span class="pill ok" id="pvActive" data-i18n="active"></span></div>
-          <div class="prov">
-            <div class="plan-row"><span><span class="name" id="pvPlan">Plus</span><br><small id="pvReset" data-i18n="renew"></small></span><span class="pill" id="pvState" data-i18n="sample"></span></div>
-            <div class="meter" id="pvLong"><div class="lbl"><span data-i18n="w7d"></span><span class="v">38%</span></div><div class="bar"><i style="width:38%"></i></div></div>
-            <div class="meter" id="pvShort"><div class="lbl"><span data-i18n="w5h"></span><span class="v" data-i18n="noLimit"></span></div><div class="bar"><i style="width:0"></i></div></div>
-            <div class="models" id="pvModels">
-              <div class="model"><span class="dot" style="background:#d97757"></span>Claude<small data-family="claude">5</small></div>
-              <div class="model"><span class="dot" style="background:#10a37f"></span>GPT<small data-family="gpt">5</small></div>
-              <div class="model"><span class="dot" style="background:#4285f4"></span>Gemini<small data-family="gemini">5</small></div>
-              <div class="model"><span class="dot" style="background:#6799fe"></span><span data-i18n="cnModels"></span><small data-family="cn">3</small></div>
-            </div>
-            <div class="console-row">
-              <a href="/sign-in?redirect=%2Flightcode%2Fusage" data-console-link="/lightcode/usage"><span data-i18n="cUsage"></span><b>›</b></a>
-              <a href="/sign-in?redirect=%2Flightcode%2Fdevices" data-console-link="/lightcode/devices"><span data-i18n="cDevices"></span><b>›</b></a>
-              <a href="/sign-in?redirect=%2Flightcode%2Fsubscription" data-console-link="/lightcode/subscription"><span data-i18n="cSubs"></span><b>›</b></a>
-            </div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-head" data-glass><span class="live is-agent" aria-hidden="true"></span><b>Lightcode Agent</b><span class="meta-txt" data-i18n="agentIsland"></span><span class="pill" data-i18n="desktop"></span></div>
-          <div class="agent">
-            <aside class="side">
-              <div class="row" data-i18n="newSession"></div>
-              <h6 data-i18n="workspace"></h6>
-              <div class="row on" data-i18n="s1"></div>
-              <div class="row" data-i18n="s2"></div>
-              <div class="row" data-i18n="s3"></div>
-            </aside>
-            <div class="chat">
-              <div class="msg-u" data-i18n="ask"></div>
-              <div class="step">📄 <code>sales-q3.xlsx</code><span data-i18n="read"></span><span class="ok">✓</span></div>
-              <div class="step">🧮 <code>analysis.py</code><span data-i18n="run"></span><span class="ok">✓</span></div>
-              <div class="step">📝 <code>report.docx</code><span data-i18n="write"></span><span class="ok">✓</span></div>
-              <div class="msg-a" data-i18n-html="answer"></div>
-              <div class="composer"><span data-i18n="ph"></span><span class="send">↑</span></div>
-            </div>
-          </div>
-        </div>
+  <div class="cta-wrap" id="ctaWrap">
+    <div class="cta-glow"><canvas id="dots"></canvas><div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div></div>
+    <section class="container cta reveal">
+      <h2 data-i18n="ctaT"></h2>
+      <p class="body" data-i18n="ctaD"></p>
+      <div class="cta-actions">
+        <a class="btn btn-primary" data-dl href="https://github.com/LightCode-AI/lightcode-releases/releases" data-i18n="dlWin"></a>
+        <a class="btn btn-secondary" href="https://github.com/topics/dsh-plugin" target="_blank" rel="noopener noreferrer" data-i18n="ctaPlug"></a>
       </div>
-      <p class="link-strip reveal"><i>⇄</i><span data-i18n="linked"></span></p>
-    </div>
-  </section>
+    </section>
+  </div>
 
-  <section class="block" id="how">
-    <div class="wrap center">
-      <div class="kicker reveal" data-i18n="howK"></div>
-      <h2 class="reveal" data-i18n="howT"></h2>
-      <div class="loop reveal" style="text-align:left">
-        <div><span class="n">01</span><h4 data-i18n="l1t"></h4><p data-i18n="l1d"></p></div>
-        <div><span class="n">02</span><h4 data-i18n="l2t"></h4><p data-i18n="l2d"></p></div>
-        <div><span class="n">03</span><h4 data-i18n="l3t"></h4><p data-i18n="l3d"></p></div>
-        <div><span class="n">04</span><h4 data-i18n="l4t"></h4><p data-i18n="l4d"></p></div>
-      </div>
+  <footer class="container">
+    <div class="line"></div>
+    <div class="foot">
+      <div><a class="home-link" href="/" data-i18n="home"></a></div>
+      <p><span data-i18n="copy"></span> · <span data-i18n="based"></span></p>
+      <nav aria-label="Policies"><a href="/privacy-policy" data-i18n="privacy"></a><span>·</span><a href="/user-agreement" data-i18n="terms"></a><span>·</span><a href="https://github.com/deepseek-ai/deepseek-harness/blob/master/LICENSE" target="_blank" rel="noopener noreferrer" data-i18n="lic"></a></nav>
     </div>
-  </section>
-
-  <section class="block" id="plans">
-    <div class="wrap center">
-      <div class="kicker reveal" data-i18n="plansK"></div>
-      <h2 class="reveal" data-i18n="plansT"></h2>
-      <p class="sub reveal" data-i18n="plansD"></p>
-      <div class="plans">
-        <article class="plan reveal" data-plan="go">
-          <div class="top"><span class="title">GO</span></div>
-          <p class="for" data-i18n="goFor"></p>
-          <ul><li data-i18n="go1"></li><li data-i18n="go2"></li><li data-i18n="go3"></li><li data-i18n="go4"></li></ul>
-          <p class="note" data-i18n="goNote"></p>
-          <a class="btn btn-ghost plan-cta" data-console-link="/lightcode/subscription" href="/sign-in?redirect=%2Flightcode%2Fsubscription" data-i18n="subscribe"></a>
-        </article>
-        <article class="plan hot reveal" data-plan="plus">
-          <div class="top"><span class="title">Plus</span><span class="pill" data-i18n="popular"></span></div>
-          <p class="for" data-i18n="plusFor"></p>
-          <ul><li data-i18n="plus1"></li><li data-i18n="plus2"></li><li data-i18n="plus3"></li><li data-i18n="plus4"></li></ul>
-          <p class="note" data-i18n="plusNote"></p>
-          <a class="btn btn-primary plan-cta" data-console-link="/lightcode/subscription" href="/sign-in?redirect=%2Flightcode%2Fsubscription" data-i18n="subscribe"></a>
-        </article>
-      </div>
-      <p class="plans-foot reveal" data-i18n="plansFoot"></p>
-    </div>
-  </section>
-
-  <section class="block" id="faq">
-    <div class="wrap center">
-      <div class="kicker reveal">FAQ</div>
-      <h2 class="reveal" data-i18n="faqT"></h2>
-      <div class="faq" style="text-align:left">
-        <details class="reveal"><summary data-i18n="q1"></summary><p data-i18n="a1"></p></details>
-        <details class="reveal"><summary data-i18n="q2"></summary><p data-i18n="a2"></p></details>
-        <details class="reveal"><summary data-i18n="q3"></summary><p data-i18n="a3"></p></details>
-        <details class="reveal"><summary data-i18n="q4"></summary><p data-i18n="a4"></p></details>
-        <details class="reveal"><summary data-i18n="q5"></summary><p data-i18n="a5"></p></details>
-      </div>
-    </div>
-  </section>
-
-  <section class="final" id="final">
-    <div class="cta-glow" aria-hidden="true"><canvas id="dots"></canvas><div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div></div>
-    <div class="wrap">
-      <h2 class="reveal" data-i18n="endT"></h2>
-      <p class="sub reveal" style="margin-inline:auto" data-i18n="endD"></p>
-      <div class="cta reveal">
-        <a class="btn btn-primary btn-lg" data-console href="/sign-up" data-i18n="signUp"></a>
-        <a class="btn btn-ghost btn-lg" data-dl href="https://github.com/LightCode-AI/lightcode-releases/releases/latest" data-i18n="dlWin"></a>
-      </div>
-    </div>
-  </section>
+  </footer>
 </main>
 
-<footer>
-  <div class="wrap">
-    <span data-i18n="copy"></span>
-    <nav aria-label="Footer">
-      <a href="/#agent" data-i18n="navAgent"></a>
-      <a href="https://github.com/LightCode-AI/lightcode-releases/releases" target="_blank" rel="noopener noreferrer">Releases</a>
-      <a href="/lightcode/usage" data-i18n="usage"></a>
-      <a href="/privacy-policy" data-i18n="privacy"></a>
-      <a href="/terms-of-service" data-i18n="terms"></a>
-      <a href="https://github.com/LightCode-AI/lightcode-releases/blob/main/LICENSE" data-i18n="licenses"></a>
-    </nav>
-  </div>
-</footer>
 <script src="/lightcode/liquid-glass.js"></script>
 <script>
-let livePlans = null, liveSubscription, liveModels = null, downloadInfo = null;
-let signedIn = false;
 const I18N = {
-  "zh": {
-    "title": "Lightcode AI · 模型订阅与桌面 Agent",
-    "preview": "预览版",
-    "navHow": "如何运作",
-    "navPlans": "套餐",
-    "navFaq": "常见问题",
-    "navAgent": "桌面 Agent",
-    "signUp": "注册账号",
-    "provIsland": "Plus · 7 天 38%",
-    "agentIsland": "正在执行 · 3 步",
-    "console": "进入控制台",
-    "consoleIn": "打开控制台",
-    "cUsage": "用量看板",
-    "cDevices": "设备管理",
-    "cSubs": "订阅管理",
-    "subscribe": "在控制台订阅",
-    "sample": "示例数据",
-    "yours": "你的订阅",
-    "noSub": "尚未订阅",
-    "resetAt": "{t} 重置",
-    "w7dShort": "7 天",
-    "nModels": "{n} 个",
-    "planModels": "包含 {n} 个模型",
-    "eyebrow": "Lightcode Provider × Lightcode Agent",
-    "h1a": "Lightcode",
-    "h1b": "即开即用，立刻上手。",
-    "lead": "日常任务、编程开发，还是打造你自己的 Agent，从这里开始。一个账号连接模型订阅与桌面 Agent，登录即可开始工作。",
-    "dlWin": "下载桌面 Agent",
-    "meta": "控制台在浏览器中使用 · 桌面 Agent 支持 Windows 10/11，当前为预览版",
-    "linked": "同一个账号，连接模型订阅、桌面 Agent 和你的本地工作区。",
-    "active": "订阅有效",
-    "renew": "下次重置：周一 08:00",
-    "w7d": "7 天用量",
-    "w5h": "5 小时用量",
-    "noLimit": "Plus 无此限制",
-    "cnModels": "国产模型",
-    "desktop": "桌面端",
-    "newSession": "+ 新建会话",
-    "workspace": "未分组",
-    "s1": "Q3 销售复盘",
-    "s2": "官网改版",
-    "s3": "周报自动化",
-    "ask": "读一下 Q3 销售表，按区域汇总，写成一页复盘报告。",
-    "read": " 读取表格",
-    "run": " 运行分析",
-    "write": " 生成文档",
-    "answer": "已完成。华东环比增长 <b>18%</b>，西南下滑 <b>6%</b>。报告已保存到 <b>report.docx</b>，要我把图表也加进去吗？",
-    "ph": "描述你想完成的事，@ 引用文件",
-    "whyK": "Provider × Agent",
-    "whyT": "模型和 Agent 是一起做的",
-    "whyD": "很多 Agent 要你自己接模型，很多模型服务又只给一个接口。Lightcode 两边都自己做，所以登录就能用，出了问题也有人从头到尾负责。",
-    "howK": "如何运作",
-    "howT": "四步开始，没有额外配置",
-    "l1t": "在控制台订阅",
-    "l1d": "注册 Lightcode 账号，在控制台选择 GO 或 Plus。",
-    "l2t": "下载桌面 Agent",
-    "l2d": "下载 Windows 桌面端，安装后打开。",
-    "l3t": "用同一账号授权",
-    "l3d": "Agent 跳转到控制台确认授权，设备自动绑定，全程不接触密钥。",
-    "l4t": "工作和管理",
-    "l4d": "在 Agent 里干活；用量、设备和订阅随时回控制台查看和调整。",
-    "plansK": "套餐",
-    "plansT": "两档套餐，按使用强度选",
-    "plansD": "两档套餐使用同一个桌面 Agent，可用的模型相同，区别在额度和窗口限制。",
-    "goFor": "日常使用、轻量任务",
-    "go1": "Claude、GPT、Gemini 与国产模型",
-    "go2": "5 小时与 7 天双窗口额度",
-    "go3": "桌面 Agent 全部功能",
-    "go4": "网页实时查看用量百分比",
-    "goNote": "适合每天处理文档、问答和小型编码任务。",
-    "popular": "推荐",
-    "plusFor": "高强度、长时间工作",
-    "plus1": "包含 GO 的全部内容",
-    "plus2": "7 天额度为 GO 的 5 倍",
-    "plus3": "不设 5 小时窗口，连续工作不被打断",
-    "plus4": "适合大型代码库与批量文档任务",
-    "plusNote": "适合每天长时间让 Agent 连续工作的用户。",
-    "plansFoot": "具体价格在登录后的订阅页面查看。",
-    "faqT": "常见问题",
-    "q1": "需要自己准备 API 密钥吗？",
-    "a1": "不需要。订阅后在桌面端用网页授权登录，模型直接可用。客户端和账号都不会向你发放或展示 API 密钥。",
-    "q2": "用量是怎么计算的？",
-    "a2": "不同模型按各自的消耗折算到同一份额度里。客户端和网页只显示 5 小时与 7 天窗口的使用百分比及重置时间。",
-    "q3": "一个账号能在几台电脑上用？",
-    "a3": "每个账号可以同时登录有限数量的设备。超出时，最早不活跃的设备会自动退出登录。",
-    "q4": "我的文件会上传吗？",
-    "a4": "工作区文件保存在你的电脑上。只有你在对话中让 Agent 处理的内容，才会作为请求发送给模型。",
-    "q5": "支持哪些系统？",
-    "a5": "目前提供 Windows 10/11 版本，macOS 版本正在准备中。",
-    "endT": "从控制台开始",
-    "endD": "注册账号并选择套餐，再下载桌面 Agent，用同一个账号登录。",
-    "usage": "用量查询",
-    "copy": "© 2026 Lightcode AI · 基于 DeepSeek Harness（MIT）",
-    "agentWinLabel": "LightCode 对话预览",
-    "agentSNew": "新建会话",
-    "agentSPlug": "插件",
-    "agentSProv": "模型",
-    "agentSAuto": "自动化",
-    "agentSWs": "会话",
-    "agentSWs2": "未分组",
-    "agentSs1": "认识 LightCode",
-    "agentSs2": "Q3 总结幻灯片",
-    "agentSs3": "评审准备",
-    "agentSs4": "多 Agent 重构",
-    "agentSs5": "DSH 插件迁移",
-    "agentQ": "介绍一下你自己？",
-    "agentThought": "已思考片刻",
-    "agentA0": "我是 LightCode，一个基于 DeepSeek Harness 打造的 Agent，桌面端开箱即用。",
-    "agentA1": "<strong>插件与技能</strong> —— 按任务扩展工具和工作方式。",
-    "agentA2": "<strong>Provider 联动</strong> —— 一个账号连接模型订阅与 Agent。",
-    "agentA3": "<strong>各类任务</strong> —— 文档、表格、代码与实时预览。",
-    "agentA4": "<strong>工作流</strong> —— 定时任务与进度追踪。",
-    "agentMore": "以及更多……",
-    "agentPh": "描述你想做的事，/ 调用命令，@ 引用文件或会话",
-    "agentPerm": "工作区可写",
-    "agentCapA": "能力不断扩展。",
-    "agentCapB": "按你的方式工作。",
-    "agentC1t": "兼容 DSH 插件生态",
-    "agentC1d": "在 DeepSeek Harness 的插件架构上扩展工具、技能和界面。按任务选用文件处理、联网搜索与定时任务，也可以通过 Creator 模式对话创建自己的插件。",
-    "agentP1": "定时任务 · 官方",
-    "agentP2": "文档与表格 · 官方",
-    "agentP3": "联网搜索 · 社区",
-    "agentP4t": "通过对话创建插件",
-    "agentP4": "Creator 模式",
-    "agentEnabled": "已启用",
-    "agentCommunity": "社区",
-    "agentCreator": "Creator",
-    "agentC2t": "Provider 与 Agent 联动",
-    "agentC2d": "模型目录、思考强度与工具调用由 Provider 和 Agent 两端协同适配。用同一账号订阅、授权和工作，不必逐一填写供应商地址或 API 密钥。",
-    "agentN1": "客户端",
-    "agentN2t": "LightCode Provider",
-    "agentN2": "模型供应商 · 一体化开发",
-    "agentSw1": "模型与工具调用协同适配",
-    "agentSw2": "模型目录、流式输出与思考强度统一接入",
-    "agentSw3": "模型目录持续同步",
-    "agentSw4": "每轮对话结束后同步模型与用量",
-    "agentC3t": "完成各类任务",
-    "agentC3d": "整理文档、分析表格、编写代码。直接预览结果，并通过对话持续完善。",
-    "agentC4t": "适配你的工作流",
-    "agentC4d": "启用定时任务插件，随时启动任务，或按计划执行重复工作。随时掌握进度，需要时查看工具调用详情。",
-    "agentT0": "已创建 “项目周报”，每周五 17:00（北京时间）执行。",
-    "agentT1": "项目周报",
-    "agentT2": "每周五 17:00（UTC+08:00 · 中国标准时间）",
-    "agentOpen": "打开",
-    "agentPreview": "桌面 Agent · 对话预览",
-    "noWindow": "无此窗口限制",
-    "privacy": "隐私政策",
-    "terms": "使用条款",
-    "licenses": "开源许可",
-    "downloadInfo": "Windows · {v} · {size} MB"
+  zh: {
+    title: "LightCode | 探索智能的边界", badge: "Preview", pv: "预览", home: "← 返回首页",
+    h1a: "LightCode", h1b: "即开即用，立刻上手。",
+    d1: "日常任务、编程开发，还是打造你自己的 Agent，从这里开始。",
+    d2: "LightCode 基于 DeepSeek Harness 深度定制，兼容 DSH 插件生态，并让模型提供方与 Agent 联动协作。",
+    dl: "下载桌面版", dlWin: "下载 Windows 版", winLabel: "LightCode 对话预览",
+    sNew: "新建会话", sPlug: "插件", sProv: "Provider", sAuto: "自动化", sWs: "工作区", sWs2: "默认工作区",
+    ss1: "认识 LightCode", ss2: "Q3 总结幻灯片", ss3: "评审准备", ss4: "多 Agent 重构", ss5: "DSH 插件迁移",
+    q: "介绍一下你自己？", thought: "已思考片刻",
+    a0: "我是 LightCode，一个基于 DeepSeek Harness 打造的 Agent，桌面端开箱即用。",
+    a1: "<strong>DSH 插件</strong> —— 原版插件直接安装，无需修改。",
+    a2: "<strong>Provider 联动</strong> —— 与 LightCode 模型供应商协同开发，联合调测更稳定。",
+    a3: "<strong>各类任务</strong> —— 文档、表格、代码与实时预览。",
+    a4: "<strong>工作流</strong> —— 定时任务与进度追踪。",
+    more: "以及更多……",
+    ph: "描述你想做的事，/ 调用命令，@ 引用文件或会话", perm: "工作区可写",
+    capA: "能力不断扩展。", capB: "按你的方式工作。",
+    c1t: "兼容 DSH 插件生态", c1d: "DeepSeek Harness 的官方与社区插件可直接安装运行，工具、技能与界面扩展开箱即用；也可在 “Creator 模式” 中通过对话创建插件。",
+    p1: "定时任务 · 官方", p2: "文档与表格 · 官方", p3: "联网搜索 · 社区", p4t: "通过对话创建插件", p4: "Creator 模式",
+    enabled: "已启用", community: "社区", creator: "Creator",
+    c2t: "Provider 与 Agent 联动", c2d: "LightCode Agent 与 LightCode 模型供应商一体化开发，两端协同调测：模型接入、参数与兼容性在发布前已联调完成，出现问题也能一起定位，开箱即稳定。",
+    n1: "客户端", n2t: "LightCode Provider", n2: "模型供应商 · 一体化开发",
+    sw1: "联合调测已通过", sw2: "工具调用、流式输出与思考模式均已验证",
+    sw3: "两端同步迭代", sw4: "LightCode Provider 能力更新，Agent 随之适配",
+    c3t: "完成各类任务", c3d: "整理文档、分析表格、编写代码。直接预览结果，并通过对话持续完善。",
+    c4t: "适配你的工作流", c4d: "启用定时任务插件，随时启动任务，或按计划执行重复工作。随时掌握进度，需要时查看工具调用详情。",
+    t0: "已创建 “项目周报”，每周五 17:00（北京时间）执行。", t1: "项目周报", t2: "每周五 17:00（UTC+08:00 · 中国标准时间）", open: "打开",
+    ctaT: "开始使用 LightCode", ctaD: "LightCode 目前处于预览阶段，核心功能持续迭代中。下载桌面版，在熟悉的 DSH 插件生态里，体验 Provider 与 Agent 的联动协作。",
+    ctaPlug: "社区插件",
+    copy: "© 2026 LightCode. 保留所有权利。", based: "基于 DeepSeek Harness（MIT）", privacy: "隐私政策", terms: "使用条款", lic: "开源许可"
   },
-  "en": {
-    "title": "Lightcode AI · Model subscription and desktop agent",
-    "preview": "Preview",
-    "navHow": "How it works",
-    "navPlans": "Plans",
-    "navFaq": "FAQ",
-    "navAgent": "Desktop agent",
-    "signUp": "Create account",
-    "provIsland": "Plus · 7-day 38%",
-    "agentIsland": "Working · 3 steps",
-    "console": "Open the console",
-    "consoleIn": "Go to console",
-    "cUsage": "Usage",
-    "cDevices": "Devices",
-    "cSubs": "Subscription",
-    "subscribe": "Subscribe in the console",
-    "sample": "Sample data",
-    "yours": "Your plan",
-    "noSub": "No plan yet",
-    "resetAt": "Resets {t}",
-    "w7dShort": "7-day",
-    "nModels": "{n}",
-    "planModels": "{n} models included",
-    "eyebrow": "Lightcode Provider × Lightcode Agent",
-    "h1a": "Lightcode",
-    "h1b": "Ready to use. Right now.",
-    "lead": "Everyday tasks, coding, or your own agent—it starts here. One account connects your model subscription and desktop agent, ready when you sign in.",
-    "dlWin": "Download the agent",
-    "meta": "The console runs in your browser · The desktop agent supports Windows 10/11 and is in preview",
-    "linked": "One account connects your model subscription, desktop agent and local workspace.",
-    "active": "Active",
-    "renew": "Next reset: Mon 08:00",
-    "w7d": "7-day usage",
-    "w5h": "5-hour usage",
-    "noLimit": "No limit on Plus",
-    "cnModels": "Chinese models",
-    "desktop": "Desktop",
-    "newSession": "+ New session",
-    "workspace": "Ungrouped",
-    "s1": "Q3 sales review",
-    "s2": "Website redesign",
-    "s3": "Weekly report automation",
-    "ask": "Read the Q3 sales sheet, summarize by region, and write a one-page review.",
-    "read": " Read sheet",
-    "run": " Run analysis",
-    "write": " Write document",
-    "answer": "Done. East China grew <b>18%</b> quarter over quarter; the Southwest fell <b>6%</b>. The report is saved as <b>report.docx</b>. Want me to add the charts?",
-    "ph": "Describe the task, @ to reference files",
-    "whyK": "Provider × Agent",
-    "whyT": "The models and the agent are built together",
-    "whyD": "Many agents make you bring your own model, and many model services only hand you an API. Lightcode builds both sides, so signing in is all it takes, and one team owns the whole path when something breaks.",
-    "howK": "How it works",
-    "howT": "Four steps, nothing to configure",
-    "l1t": "Subscribe in the console",
-    "l1d": "Create a Lightcode account and choose GO or Plus in the console.",
-    "l2t": "Download the agent",
-    "l2d": "Install the Windows desktop app and open it.",
-    "l3t": "Authorize with the same account",
-    "l3d": "The agent opens the console to confirm sign-in. The device is bound automatically and you never handle a key.",
-    "l4t": "Work and manage",
-    "l4d": "Do the work in the agent. Check usage, devices and your plan back in the console at any time.",
-    "plansK": "Plans",
-    "plansT": "Two plans, chosen by how hard you work",
-    "plansD": "Both plans use the same desktop agent and the same models. They differ in allowance and window limits.",
-    "goFor": "Daily use and light tasks",
-    "go1": "Claude, GPT, Gemini and Chinese models",
-    "go2": "5-hour and 7-day usage windows",
-    "go3": "Every desktop agent feature",
-    "go4": "Live usage percentages on the web",
-    "goNote": "Fits daily documents, questions and small coding tasks.",
-    "popular": "Recommended",
-    "plusFor": "Intensive, long sessions",
-    "plus1": "Everything in GO",
-    "plus2": "5× the GO 7-day allowance",
-    "plus3": "No 5-hour window, so long sessions are not interrupted",
-    "plus4": "Built for large codebases and batch document work",
-    "plusNote": "Fits people who keep the agent working for long stretches every day.",
-    "plansFoot": "Prices are shown on the subscription page after you sign in.",
-    "faqT": "Frequently asked questions",
-    "q1": "Do I need my own API key?",
-    "a1": "No. After subscribing, sign in on the desktop app through your browser and the models are ready. Neither the app nor your account issues or shows API keys.",
-    "q2": "How is usage counted?",
-    "a2": "Each model's consumption is converted into one shared allowance. The app and the website show only the percentage used in the 5-hour and 7-day windows and when each resets.",
-    "q3": "How many computers can one account use?",
-    "a3": "Each account can stay signed in on a limited number of devices. Beyond that, the least recently active device is signed out automatically.",
-    "q4": "Are my files uploaded?",
-    "a4": "Workspace files stay on your computer. Only the content you ask the agent to work on in a conversation is sent to the model as part of the request.",
-    "q5": "Which systems are supported?",
-    "a5": "Windows 10/11 is available now. A macOS version is in preparation.",
-    "endT": "Start in the console",
-    "endD": "Create an account and pick a plan, then download the desktop agent and sign in with the same account.",
-    "usage": "Usage",
-    "copy": "© 2026 Lightcode AI · Built on DeepSeek Harness (MIT)",
-    "agentWinLabel": "LightCode conversation preview",
-    "agentSNew": "New Session",
-    "agentSPlug": "Plugins",
-    "agentSProv": "Models",
-    "agentSAuto": "Automation",
-    "agentSWs": "Sessions",
-    "agentSWs2": "Ungrouped",
-    "agentSs1": "Meet LightCode",
-    "agentSs2": "Q3 summary slides",
-    "agentSs3": "Review prep",
-    "agentSs4": "Multi-agent refactor",
-    "agentSs5": "DSH plugin migration",
-    "agentQ": "Could you introduce yourself?",
-    "agentThought": "Thought for a while",
-    "agentA0": "I'm LightCode, an agent built on DeepSeek Harness, ready to use on your desktop.",
-    "agentA1": "<strong>Plugins and skills</strong> — Extend the tools and the way you work.",
-    "agentA2": "<strong>Provider integration</strong> — One account for models and the agent.",
-    "agentA3": "<strong>Any task</strong> — Docs, data, and code with live preview.",
-    "agentA4": "<strong>Workflows</strong> — Scheduled tasks and progress tracking.",
-    "agentMore": "And so much more...",
-    "agentPh": "Describe what you want to build, / commands, @ files or sessions",
-    "agentPerm": "Workspace Write",
-    "agentCapA": "Expanding capabilities.",
-    "agentCapB": "Work on your terms.",
-    "agentC1t": "DSH plugin compatible",
-    "agentC1d": "Extend tools, skills and the interface through the DeepSeek Harness plugin architecture. Choose file tools, web search and scheduled tasks, or create your own plugin through conversation in Creator mode.",
-    "agentP1": "Scheduled tasks · Official",
-    "agentP2": "Docs & sheets · Official",
-    "agentP3": "Web search · Community",
-    "agentP4t": "Create a plugin via chat",
-    "agentP4": "Creator mode",
-    "agentEnabled": "Enabled",
-    "agentCommunity": "Community",
-    "agentCreator": "Creator",
-    "agentC2t": "Providers and agents, linked",
-    "agentC2d": "The provider and agent adapt the model catalog, reasoning effort and tool calls together. Subscribe, authorize and work with one account, without entering provider addresses or API keys.",
-    "agentN1": "Client",
-    "agentN2t": "LightCode Provider",
-    "agentN2": "Model provider · built as one",
-    "agentSw1": "Models and tool calls, adapted together",
-    "agentSw2": "One integration for the catalog, streaming and reasoning effort",
-    "agentSw3": "A catalog that stays in sync",
-    "agentSw4": "Models and usage refresh after each conversation turn",
-    "agentC3t": "Complete a range of tasks",
-    "agentC3d": "Organize documents, analyze spreadsheets, and write code. Preview the results directly and refine them through conversation.",
-    "agentC4t": "Adapt to your workflow",
-    "agentC4d": "Enable the Scheduled tasks plugin to start tasks anytime and run recurring work on schedule. Stay on top of progress and inspect tool call details when needed.",
-    "agentT0": "Created “Weekly project report”, scheduled for Fridays at 17:00 Beijing time.",
-    "agentT1": "Weekly project report",
-    "agentT2": "Weekly on Fri at 17:00 (UTC+08:00 · China Standard Time)",
-    "agentOpen": "Open",
-    "agentPreview": "Desktop agent · Conversation preview",
-    "noWindow": "No window limit",
-    "privacy": "Privacy policy",
-    "terms": "Terms of use",
-    "licenses": "Open-source licenses",
-    "downloadInfo": "Windows · {v} · {size} MB"
+  en: {
+    title: "LightCode | Explore the limits of intelligence", badge: "Preview", pv: "Preview", home: "← Back to home",
+    h1a: "LightCode", h1b: "Ready to use. Right now.",
+    d1: "Everyday tasks, coding, or your own agent—it starts here.",
+    d2: "LightCode is a customized build of DeepSeek Harness, compatible with the DSH plugin ecosystem, with providers and agents that work in concert.",
+    dl: "Download Desktop", dlWin: "Download for Windows", winLabel: "LightCode conversation preview",
+    sNew: "New Session", sPlug: "Plugins", sProv: "Providers", sAuto: "Automation", sWs: "Workspace", sWs2: "Default workspace",
+    ss1: "Meet LightCode", ss2: "Q3 summary slides", ss3: "Review prep", ss4: "Multi-agent refactor", ss5: "DSH plugin migration",
+    q: "Could you introduce yourself?", thought: "Thought for a while",
+    a0: "I'm LightCode, an agent built on DeepSeek Harness, ready to use on your desktop.",
+    a1: "<strong>DSH plugins</strong> — Install original plugins as-is.",
+    a2: "<strong>Provider linking</strong> — Built and tested with the LightCode provider.",
+    a3: "<strong>Any task</strong> — Docs, data, and code with live preview.",
+    a4: "<strong>Workflows</strong> — Scheduled tasks and progress tracking.",
+    more: "And so much more...",
+    ph: "Describe what you want to build, / commands, @ files or sessions", perm: "Workspace Write",
+    capA: "Expanding capabilities.", capB: "Work on your terms.",
+    c1t: "DSH plugin compatible", c1d: "Official and community DeepSeek Harness plugins install and run unchanged, so tools, skills, and UI extensions just work. Or create new ones through chat in “Creator mode”.",
+    p1: "Scheduled tasks · Official", p2: "Docs & sheets · Official", p3: "Web search · Community", p4t: "Create a plugin via chat", p4: "Creator mode",
+    enabled: "Enabled", community: "Community", creator: "Creator",
+    c2t: "Providers and agents, linked", c2d: "The LightCode agent and the LightCode model provider are developed as one and tested together. Model access, parameters, and compatibility are tuned end to end, and issues get traced across both sides.",
+    n1: "Client", n2t: "LightCode Provider", n2: "Model provider · built as one",
+    sw1: "Joint testing passed", sw2: "Tool calls, streaming, and thinking mode verified",
+    sw3: "Evolving in sync", sw4: "When LightCode Provider ships new capabilities, the agent adapts",
+    c3t: "Complete a range of tasks", c3d: "Organize documents, analyze spreadsheets, and write code. Preview the results directly and refine them through conversation.",
+    c4t: "Adapt to your workflow", c4d: "Enable the Scheduled tasks plugin to start tasks anytime and run recurring work on schedule. Stay on top of progress and inspect tool call details when needed.",
+    t0: "Created “Weekly project report”, scheduled for Fridays at 17:00 Beijing time.", t1: "Weekly project report", t2: "Weekly on Fri at 17:00 (UTC+08:00 · China Standard Time)", open: "Open",
+    ctaT: "Get started with LightCode", ctaD: "LightCode is in preview, with core features evolving quickly. Download the desktop app and try linked providers and agents on top of the DSH plugin ecosystem you already know.",
+    ctaPlug: "Community plugins",
+    copy: "© 2026 LightCode. All rights reserved.", based: "Built on DeepSeek Harness (MIT)", privacy: "Privacy Policy", terms: "Terms of Use", lic: "Open-source licenses"
   }
 };
 
 function setLang(lang) {
-  if (!(lang in I18N)) return;
+  if (lang !== "zh" && lang !== "en") return;
   const d = I18N[lang];
   document.documentElement.lang = lang;
   document.title = d.title;
-  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = d[el.dataset.i18n]; });
-  document.querySelectorAll("[data-i18n-html]").forEach(el => { el.innerHTML = d[el.dataset.i18nHtml]; });
+  document.querySelectorAll("[data-i18n]").forEach(el => el.textContent = d[el.dataset.i18n]);
+  document.querySelectorAll("[data-i18n-html]").forEach(el => el.innerHTML = d[el.dataset.i18nHtml]);
   document.querySelectorAll("[data-i18n-label]").forEach(el => el.setAttribute("aria-label", d[el.dataset.i18nLabel]));
-  document.querySelectorAll("#locale [data-value]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.value === lang)));
+  document.querySelectorAll("[data-lang]").forEach(b => {
+    const on = b.dataset.lang === lang;
+    b.classList.toggle("is-active", on);
+    b.setAttribute("aria-pressed", on);
+  });
   try { localStorage.setItem("lc-lang", lang); } catch {}
-  setConsoleLinks();
-  renderPlans();
-  if (liveModels) showFamilies(liveModels);
-  if (liveSubscription !== undefined) showUsage(liveSubscription);
-  if (downloadInfo) renderDownloadInfo();
 }
-let saved = null; try { saved = localStorage.getItem("lc-lang"); } catch {}
-const initialLang = saved === "zh" || saved === "en" ? saved : (navigator.language.startsWith("zh") ? "zh" : "en");
+let savedLang = null;
+try { savedLang = localStorage.getItem("lc-lang"); } catch {}
+const initialLang = savedLang === "zh" || savedLang === "en" ? savedLang : (navigator.language.startsWith("zh") ? "zh" : "en");
 setLang(initialLang);
 
-// Liquid Glass: the header island, the language slider and the two panel islands.
-const island = document.getElementById("island");
+// The header wrapper and language group stay unfiltered so each glass surface sees the live page.
 const glass = window.LiquidGlass;
+const locale = document.getElementById("locale");
 if (glass) {
-  glass.attach(island, { bevel: 18, depth: 14, magnify: 1.04, frost: 2.4, aberration: 0.05 });
-  document.querySelectorAll("[data-glass]").forEach(el => glass.attach(el, { bevel: 14, depth: 11, magnify: 1.06, frost: 1, aberration: 0.06 }));
-  glass.segmented(document.getElementById("locale"), { onChange: lang => setLang(lang) }).select(initialLang, false);
+  glass.attach(document.getElementById("bar"), { bevel: 18, depth: 14, magnify: 1.04, frost: 2.4, aberration: 0.05 });
+  locale.classList.add("has-glass");
+  glass.segmented(locale, { onChange: lang => setLang(lang) }).select(initialLang, false);
 } else {
-  // Without the glass script the toggle still switches languages.
-  document.querySelectorAll("#locale [data-value]").forEach(b => {
-    b.classList.toggle("is-active", b.dataset.value === initialLang);
-    b.addEventListener("click", () => {
-      document.querySelectorAll("#locale [data-value]").forEach(o => o.classList.toggle("is-active", o === b));
-      setLang(b.dataset.value);
-    });
-  });
+  locale.querySelectorAll("[data-lang]").forEach(b => b.addEventListener("click", () => setLang(b.dataset.lang)));
 }
-addEventListener("scroll", () => island.classList.toggle("is-scrolled", scrollY > 8), { passive: true });
-island.classList.toggle("is-scrolled", scrollY > 8);
-
-const io = new IntersectionObserver(entries => entries.forEach(e => {
-  if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
-}), { rootMargin: "0px 0px -60px 0px" });
-document.querySelectorAll(".reveal, #final").forEach(el => io.observe(el));
 
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const bar = document.getElementById("bar");
 const hero = document.getElementById("hero");
 const heroBg = document.getElementById("heroBg");
+const preview = document.getElementById("preview");
 
-// Blur the fluid as the hero scrolls away so the content below reads cleanly.
-addEventListener("scroll", () => {
-  if (!heroBg.classList.contains("ready")) return;
-  const p = Math.min(1, Math.max(0, -hero.getBoundingClientRect().top / (0.6 * hero.offsetHeight)));
-  heroBg.style.filter = p > 0 ? `blur(${20 * p}px)` : "";
-}, { passive: true });
+// 滚动：导航毛玻璃、Hero 背景模糊、预览窗口透视倾斜
+function onScroll() {
+  bar.classList.toggle("is-scrolled", scrollY > 8);
+  const r = hero.getBoundingClientRect();
+  const p = Math.min(1, Math.max(0, -r.top / (0.6 * hero.offsetHeight)));
+  if (heroBg.classList.contains("ready")) heroBg.style.filter = p > 0 ? `blur(${20 * p}px)` : "";
+}
+addEventListener("scroll", onScroll, { passive: true });
+onScroll();
 
-// Hero fluid gradient (WebGL2): deep blue #204a7e and warm white #cec8bb with a light source on the right.
+
+// 滚动入场
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+}), { rootMargin: "-80px 0px" });
+document.querySelectorAll(".reveal, #ctaWrap").forEach(el => io.observe(el));
+
+// Hero 流体渐变背景（WebGL2），配色取自原版：深蓝 #204a7e + 暖白 #cec8bb，右侧虚拟光源
 (function fluid() {
   const cv = document.getElementById("fluid");
   const gl = cv.getContext("webgl2", { alpha: true, premultipliedAlpha: false, powerPreference: "low-power" });
@@ -1025,18 +508,17 @@ void main(){
 }`;
   const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
     if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); return null; } return s; };
+  const pr = gl.createProgram();
   const v = sh(gl.VERTEX_SHADER, vs), f = sh(gl.FRAGMENT_SHADER, fs);
   if (!v || !f) return;
-  const pr = gl.createProgram();
   gl.attachShader(pr, v); gl.attachShader(pr, f); gl.linkProgram(pr); gl.useProgram(pr);
-  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
   const loc = gl.getAttribLocation(pr, "p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
   const uT = gl.getUniformLocation(pr, "t"), uR = gl.getUniformLocation(pr, "res"), uM = gl.getUniformLocation(pr, "mouse");
   let mx = .5, my = .5, tmx = .5, tmy = .5, visible = true;
   addEventListener("pointermove", e => { tmx = e.clientX / innerWidth; tmy = 1 - e.clientY / innerHeight; }, { passive: true });
-  // Stop drawing when the hero is off screen.
-  new IntersectionObserver(([e]) => { visible = e.isIntersecting; }).observe(cv);
+  new IntersectionObserver(([e]) => visible = e.isIntersecting).observe(cv);
   const dpr = Math.min(devicePixelRatio || 1, 1.5);
   const t0 = performance.now();
   function frame(now) {
@@ -1053,7 +535,32 @@ void main(){
   requestAnimationFrame(() => heroBg.classList.add("ready"));
 })();
 
-// Dot grid behind the closing call to action; skipped on touch devices.
+// Download links use the public Releases page until installer metadata arrives.
+(function download() {
+  const links = document.querySelectorAll("[data-dl]");
+  const mb = n => (n / 1048576).toFixed(0) + " MB";
+  fetch("/api/lightcode/download", { credentials: "same-origin", headers: { Accept: "application/json" } })
+    .then(r => r.ok ? r.json() : null)
+    .then(res => {
+      const f = res && res.success && res.data;
+      if (!f || typeof f.url !== "string") return;
+      const url = new URL(f.url, location.origin);
+      const local = url.origin === location.origin && url.pathname.startsWith("/download/lightcode/");
+      const release = url.origin === "https://github.com" && /^\/(?:LightCode-AI|Lorry-San)\/lightcode-releases\/releases\//.test(url.pathname);
+      if ((!local && !release) || url.username || url.password) return;
+      const details = [];
+      if (typeof f.version === "string" && f.version) details.push("v" + f.version);
+      if (Number.isFinite(f.size) && f.size > 0) details.push(mb(f.size));
+      if (typeof f.sha256 === "string" && /^[a-f0-9]{64}$/i.test(f.sha256)) details.push("SHA-256 " + f.sha256);
+      links.forEach(a => {
+        a.href = url.href;
+        if (local && typeof f.name === "string" && f.name) a.setAttribute("download", f.name);
+        if (details.length) a.title = details.join(" · ");
+      });
+    })
+    .catch(() => {});
+})();
+// CTA 点阵网格
 (function dots() {
   if (matchMedia("(hover: none), (pointer: coarse)").matches) return;
   const cv = document.getElementById("dots"), c = cv.getContext("2d");
@@ -1077,150 +584,6 @@ void main(){
   draw();
   let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(draw, 150); });
 })();
-
-// ---- nbapi integration -------------------------------------------------------------------------
-// The page runs on the nbapi origin. Opened as a local file, every request fails and the sample
-// figures above stay in place.
-const API = location.protocol === "file:" ? null : "";
-const getJSON = (path, init) => API === null ? Promise.reject(new Error("offline")) :
-  fetch(API + path, { credentials: "same-origin", headers: { Accept: "application/json" }, ...init })
-    .then(r => r.ok ? r.json() : Promise.reject(new Error(String(r.status))))
-    .then(body => body && body.success !== false ? body : Promise.reject(new Error(body.message || "failed")));
-
-// Group catalog model ids into the four families the panel shows.
-function family(id) {
-  const m = id.toLowerCase();
-  if (m.startsWith("claude")) return "claude";
-  if (m.startsWith("gpt") || /^o\d/.test(m)) return "gpt";
-  if (m.startsWith("gemini")) return "gemini";
-  return "cn";
-}
-function showFamilies(models) {
-  const counts = { claude: 0, gpt: 0, gemini: 0, cn: 0 };
-  for (const id of models) if (typeof id === "string") counts[family(id)]++;
-  document.querySelectorAll("#pvModels [data-family]").forEach(el => {
-    const n = counts[el.dataset.family];
-    el.textContent = I18N[document.documentElement.lang].nModels.replace("{n}", n);
-    el.closest(".model").classList.toggle("is-empty", n === 0);
-  });
-}
-
-// Plans: titles, subtitles and model families come from the gateway; prices are never shown here.
-function renderPlans() {
-  if (!livePlans) return;
-  const d = I18N[document.documentElement.lang];
-  for (const p of livePlans) {
-    const card = document.querySelector(`[data-plan="${/plus/i.test(p.title) ? "plus" : "go"}"]`);
-    if (!card) continue;
-    card.querySelector(".title").textContent = p.title.replace(/^Lightcode\s+/i, "");
-    let line = card.querySelector(".models-line");
-    if (!line) { line = document.createElement("p"); line.className = "models-line"; card.querySelector(".for").after(line); }
-    line.textContent = d.planModels.replace("{n}", p.models.length);
-  }
-}
-getJSON("/api/lightcode/plans").then(res => {
-  livePlans = Array.isArray(res.data) ? res.data.filter(p => p && typeof p.title === "string" && Array.isArray(p.models)) : null;
-  if (!livePlans || !livePlans.length) return;
-  renderPlans();
-  // The preview shows the plan with the widest catalog until the visitor's own usage arrives.
-  const widest = livePlans.reduce((a, b) => (b.models.length > a.models.length ? b : a));
-  if (!liveSubscription) { liveModels = widest.models; showFamilies(liveModels); }
-  if (liveSubscription) {
-    const own = livePlans.find(p => p.title === liveSubscription.plan);
-    if (own) { liveModels = own.models; showFamilies(liveModels); }
-  }
-}).catch(() => {});
-
-// Session: the dashboard keeps its refresh token in an HttpOnly cookie. Refreshing tells the page
-// whether the visitor is signed in without the page ever storing a credential.
-function setConsoleLinks() {
-  const d = I18N[document.documentElement.lang];
-  document.querySelectorAll("[data-console]").forEach(a => {
-    if (signedIn) { a.href = "/lightcode/usage"; a.querySelector("span") ? a.querySelector("span").textContent = d.consoleIn : a.textContent = d.consoleIn; }
-  });
-  document.querySelectorAll("[data-console-link]").forEach(a => {
-    const target = a.dataset.consoleLink;
-    a.href = signedIn ? target : `/sign-in?redirect=${encodeURIComponent(target)}`;
-  });
-}
-function pct(w) { const value = Number(w.used_percent); return Number.isFinite(value) ? Math.round(Math.min(100, Math.max(0, value))) : 0; }
-function resetText(ts) {
-  const d = new Date(ts * 1000), lang = document.documentElement.lang;
-  return I18N[lang].resetAt.replace("{t}", d.toLocaleString(lang === "zh" ? "zh-CN" : "en-US", { weekday: "short", hour: "2-digit", minute: "2-digit" }));
-}
-function showUsage(sub) {
-  const d = I18N[document.documentElement.lang];
-  if (!sub) {
-    document.getElementById("pvPlan").textContent = d.noSub;
-    document.getElementById("pvState").textContent = d.noSub;
-    document.getElementById("pvActive").textContent = d.noSub;
-    document.getElementById("pvReset").textContent = "";
-    document.querySelector("[data-i18n='provIsland']").textContent = d.noSub;
-    document.getElementById("pvLong").hidden = true;
-    document.getElementById("pvShort").hidden = true;
-    return;
-  }
-  const meter = (el, w) => {
-    const v = el.querySelector(".v"), bar = el.querySelector(".bar i");
-    if (!w) { v.textContent = d.noWindow; bar.style.width = "0"; return; }
-    v.textContent = pct(w) + "%"; bar.style.width = pct(w) + "%";
-  };
-  document.getElementById("pvPlan").textContent = sub.plan.replace(/^Lightcode\s+/i, "");
-  document.getElementById("pvState").textContent = d.yours;
-  document.getElementById("pvActive").textContent = d.active;
-  meter(document.getElementById("pvLong"), sub.window_long);
-  meter(document.getElementById("pvShort"), sub.window_short);
-  const next = [sub.window_short, sub.window_long].filter(Boolean).sort((a, b) => a.reset_at - b.reset_at)[0];
-  document.getElementById("pvReset").textContent = next ? resetText(next.reset_at) : "";
-  document.querySelector("[data-i18n='provIsland']").textContent =
-    `${sub.plan.replace(/^Lightcode\s+/i, "")} · ${sub.window_long ? d.w7dShort + " " + pct(sub.window_long) + "%" : d.active}`;
-}
-// Refresh rotates the cookie, so it runs under the same browser lock the dashboard uses; two
-// tabs refreshing at once would otherwise race and sign the visitor out.
-const refresh = () => getJSON("/api/user/auth/refresh", { method: "POST" });
-const withLock = fn => navigator.locks ? navigator.locks.request("new-api:auth-refresh", { mode: "exclusive" }, fn) : fn();
-(API === null ? Promise.reject(new Error("offline")) : withLock(refresh)).then(res => {
-  const token = res.data && res.data.access_token;
-  if (!token) return;
-  signedIn = true;
-  setConsoleLinks();
-  return getJSON("/api/lightcode/usage?days=1", { headers: { Accept: "application/json", Authorization: `Bearer ${token}` } })
-    .then(u => {
-      const sub = u.data && u.data.subscription;
-      // Usage lists only models already used, so the family counts keep coming from the plan catalog.
-      liveSubscription = sub || null;
-      if (sub) {
-        showUsage(sub);
-        const own = livePlans && livePlans.find(p => p.title === sub.plan);
-        if (own) { liveModels = own.models; showFamilies(liveModels); }
-      }
-      else showUsage(null);
-    });
-}).catch(() => {});
-
-function renderDownloadInfo() {
-  const d = I18N[document.documentElement.lang];
-  const el = document.getElementById("downloadMeta");
-  el.textContent = d.downloadInfo.replace("{v}", downloadInfo.version).replace("{size}", (downloadInfo.size / 1048576).toFixed(1));
-  el.hidden = false;
-}
-
-// Prefer the published installer when the gateway reports one; otherwise keep the Releases link.
-getJSON("/api/lightcode/download")
-  .then(res => {
-    const f = res && res.data;
-    if (!f || typeof f.url !== "string") return;
-    const url = new URL(f.url, location.origin);
-    const local = url.origin === location.origin && url.pathname.startsWith("/download/lightcode/");
-    const release = url.origin === "https://github.com" && /^\/(?:LightCode-AI|Lorry-San)\/lightcode-releases\/releases\//.test(url.pathname);
-    if ((!local && !release) || url.username || url.password) return;
-    document.querySelectorAll("[data-dl]").forEach(a => { a.href = url.href; });
-    if (typeof f.version === "string" && Number.isFinite(f.size) && f.size > 0) {
-      downloadInfo = { version: f.version, size: f.size };
-      renderDownloadInfo();
-    }
-  })
-  .catch(() => {});
 </script>
 </body>
 </html>

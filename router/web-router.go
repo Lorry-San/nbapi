@@ -20,36 +20,36 @@ type WebAssets struct {
 }
 
 func SetWebRouter(router *gin.Engine, assets WebAssets) {
-	// Without the product homepage the dashboard still serves.
+	// Each product page is optional; the dashboard still serves when either is absent.
+	homeIndex, _ := assets.BuildFS.ReadFile("web/dist/lightcode/home.html")
 	siteIndex, _ := assets.BuildFS.ReadFile("web/dist/lightcode/index.html")
-	setWebRouter(router, common.EmbedFolder(assets.BuildFS, "web/dist"), siteIndex, assets.IndexPage)
+	setWebRouter(router, common.EmbedFolder(assets.BuildFS, "web/dist"), homeIndex, siteIndex, assets.IndexPage)
 }
 
-func setWebRouter(router *gin.Engine, frontendFS static.ServeFileSystem, siteIndex, indexPage []byte) {
+func setWebRouter(router *gin.Engine, frontendFS static.ServeFileSystem, homeIndex, siteIndex, indexPage []byte) {
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 	router.Use(middleware.GlobalWebRateLimit())
 	router.Use(middleware.Cache())
 	// The product site shares its name with an embedded directory. Registered after static.Serve, the
 	// directory would be redirected and its page cached for a week, so these routes precede it.
-	if len(siteIndex) > 0 {
-		serveSite := func(c *gin.Context) {
+	for _, page := range []struct {
+		paths []string
+		body  []byte
+	}{
+		{[]string{"/"}, homeIndex},
+		{[]string{"/lightcode", "/lightcode/", "/lightcode/index.html"}, siteIndex},
+	} {
+		if len(page.body) == 0 {
+			continue
+		}
+		servePage := func(c *gin.Context) {
 			c.Set(middleware.RouteTagKey, "web")
 			c.Header("Cache-Control", "no-cache")
-			c.Data(http.StatusOK, "text/html; charset=utf-8", siteIndex)
+			c.Data(http.StatusOK, "text/html; charset=utf-8", page.body)
 		}
-		router.GET("/", serveSite)
-		router.HEAD("/", serveSite)
-		redirectHome := func(c *gin.Context) {
-			c.Header("Cache-Control", "no-cache")
-			target := "/"
-			if c.Request.URL.RawQuery != "" {
-				target += "?" + c.Request.URL.RawQuery
-			}
-			c.Redirect(http.StatusPermanentRedirect, target)
-		}
-		for _, path := range []string{"/lightcode", "/lightcode/", "/lightcode/index.html"} {
-			router.GET(path, redirectHome)
-			router.HEAD(path, redirectHome)
+		for _, path := range page.paths {
+			router.GET(path, servePage)
+			router.HEAD(path, servePage)
 		}
 	}
 	router.Use(static.Serve("/", frontendFS))

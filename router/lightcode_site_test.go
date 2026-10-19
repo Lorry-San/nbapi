@@ -25,7 +25,8 @@ func (d dirFS) Exists(_ string, path string) bool {
 
 func TestLightcodeSiteIsServedBeforeTheStaticDirectoryOfTheSameName(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	site := []byte("<html>lightcode site</html>")
+	home := []byte("<html>provider and agent homepage</html>")
+	site := []byte("<html>standalone agent page</html>")
 	spa := []byte("<html>dashboard</html>")
 	engine := gin.New()
 	setWebRouter(engine, dirFS{http.FS(fstest.MapFS{
@@ -34,7 +35,7 @@ func TestLightcodeSiteIsServedBeforeTheStaticDirectoryOfTheSameName(t *testing.T
 		"assets/app.js":           {Data: []byte("js")},
 		"favicon.ico":             {Data: []byte("ico")},
 		"lightcode/nested/x.html": {Data: []byte("x")},
-	})}, site, spa)
+	})}, home, site, spa)
 
 	do := func(method, path string) *httptest.ResponseRecorder {
 		recorder := httptest.NewRecorder()
@@ -44,14 +45,18 @@ func TestLightcodeSiteIsServedBeforeTheStaticDirectoryOfTheSameName(t *testing.T
 
 	got := do(http.MethodGet, "/")
 	require.Equal(t, http.StatusOK, got.Code, "the homepage must not redirect")
-	assert.Equal(t, string(site), got.Body.String())
+	assert.Equal(t, string(home), got.Body.String())
 	assert.Equal(t, "no-cache", got.Header().Get("Cache-Control"), "the page must not be cached for a week")
 	assert.Equal(t, http.StatusOK, do(http.MethodHead, "/").Code)
 	for _, path := range []string{"/lightcode", "/lightcode/", "/lightcode/index.html"} {
 		for _, method := range []string{http.MethodGet, http.MethodHead} {
 			got := do(method, path+"?lang=en")
-			assert.Equal(t, http.StatusPermanentRedirect, got.Code)
-			assert.Equal(t, "/?lang=en", got.Header().Get("Location"))
+			require.Equal(t, http.StatusOK, got.Code, "%s must serve the Agent page", path)
+			assert.Empty(t, got.Header().Get("Location"))
+			assert.Equal(t, "no-cache", got.Header().Get("Cache-Control"))
+			if method == http.MethodGet {
+				assert.Equal(t, string(site), got.Body.String())
+			}
 		}
 	}
 
@@ -70,7 +75,7 @@ func TestLightcodeSiteRoutesAreAbsentWithoutASitePage(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	spa := []byte("<html>dashboard</html>")
 	engine := gin.New()
-	setWebRouter(engine, dirFS{http.FS(fstest.MapFS{"favicon.ico": {Data: []byte("ico")}})}, nil, spa)
+	setWebRouter(engine, dirFS{http.FS(fstest.MapFS{"favicon.ico": {Data: []byte("ico")}})}, nil, nil, spa)
 
 	recorder := httptest.NewRecorder()
 	engine.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/lightcode", nil))

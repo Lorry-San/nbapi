@@ -69,7 +69,7 @@ export function useTopNavLinks(): TopNavLink[] {
   }
 
   // Lightcode product site: a static page the gateway serves itself, not an app route
-  links.push({ title: t('Lightcode'), href: '/#agent', document: true })
+  links.push({ title: t('Lightcode'), href: '/lightcode', document: true })
 
   // Console -> /dashboard (new console path)
   if (modules?.console !== false) {

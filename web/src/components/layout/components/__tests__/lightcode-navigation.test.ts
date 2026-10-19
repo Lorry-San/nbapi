@@ -9,9 +9,9 @@ import { TopNav } from '../top-nav'
 test('Lightcode product site uses same-tab document navigation', () => {
   const html = renderToStaticMarkup(
     createElement(TopNav, {
-      links: [{ title: 'Lightcode', href: '/#agent', document: true }],
+      links: [{ title: 'Lightcode', href: '/lightcode', document: true }],
     })
   )
-  assert.match(html, /href="\/#agent"/)
+  assert.match(html, /href="\/lightcode"/)
   assert.doesNotMatch(html, /target="_blank"/)
 })

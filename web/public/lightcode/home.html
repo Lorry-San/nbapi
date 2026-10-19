@@ -1,0 +1,786 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lightcode AI · 模型订阅与桌面 Agent</title>
+<link rel="icon" href="/lightcode/favicon.png">
+<link rel="canonical" href="https://lightcode.lcapi.online/">
+<style>
+:root {
+  --brand: #6799fe; --brand-soft: rgba(103,153,254,.14); --page: #0a0a0b; --panel: #121215; --panel2: #18181c;
+  --text: #f5f6f8; --text2: #c4c8ce; --muted: #8b9098; --line: rgba(255,255,255,.08); --line2: rgba(255,255,255,.14);
+  --ok: #4ade80; --warn: #fbbf24;
+  --sans: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+  --r: 16px; --pill: 999px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--page); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 6px; }
+.wrap { width: min(100% - 40px, 1160px); margin-inline: auto; }
+
+/* 灵动岛导航：顶部透明铺满，滚动后收成悬浮玻璃胶囊 */
+.island-wrap { position: fixed; top: 0; left: 0; right: 0; z-index: 50; padding-top: 10px; pointer-events: none; }
+.island { position: relative; pointer-events: auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 52px; margin-inline: auto;
+  width: min(100% - 40px, 1160px); padding: 0 4px; border-radius: var(--pill); background: transparent;
+  transition: width .6s cubic-bezier(.22,1,.36,1), padding .6s cubic-bezier(.22,1,.36,1), background-color .4s ease; }
+.island > .lg-rim { opacity: 0; transition: opacity .4s ease; }
+.island.is-scrolled { width: min(100% - 24px, 760px); padding: 0 6px 0 18px; background: rgba(14,15,20,.52); }
+/* At the top the island is plain text over the hero, so the glass only exists once it collapses. */
+.island.lg-glass:not(.is-scrolled) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.island.is-scrolled > .lg-rim { opacity: 1; }
+/* Before liquid-glass.js attaches (or without it), the scrolled island still reads as frosted glass. */
+.island.is-scrolled:not(.lg-glass) { -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 17px; letter-spacing: -.01em; white-space: nowrap; }
+.brand img { width: 24px; height: 24px; }
+.brand .tag { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: var(--pill); border: 1px solid var(--line2); color: var(--text2); }
+.links { display: flex; gap: 26px; font-size: 14px; color: var(--text2); transition: gap .6s cubic-bezier(.22,1,.36,1); }
+.links a { white-space: nowrap; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
+.links a:hover { color: var(--text); }
+.island.is-scrolled .links { gap: 20px; }
+.actions { position: relative; display: grid; justify-items: end; align-items: center; }
+.actions > * { grid-area: 1 / 1; transition: opacity .3s ease, transform .45s cubic-bezier(.22,1,.36,1), visibility 0s; }
+.island-dl { height: 38px; padding: 0 16px; font-size: 13px; opacity: 0; visibility: hidden; transform: scale(.85); transition-delay: 0s, 0s, .45s; }
+.island.is-scrolled .actions .locale { opacity: 0; visibility: hidden; transform: scale(.85); transition-delay: 0s, 0s, .45s; }
+.island.is-scrolled .island-dl { opacity: 1; visibility: visible; transform: none; transition-delay: .1s, 0s, 0s; }
+@media (max-width: 860px) { .links { display: none; } .island.is-scrolled { width: min(100% - 24px, 420px); } }
+
+/* 中英文切换：玻璃滑块在两个选项之间流动 */
+.locale { position: relative; display: flex; align-items: center; height: 38px; padding: 3px; border-radius: var(--pill); background: rgba(255,255,255,.06); box-shadow: inset 0 0 0 1px var(--line2); }
+.locale button { height: 100%; padding: 0 14px; border-radius: var(--pill); font-size: 13px; font-weight: 500; color: var(--muted); transition: color .3s ease; }
+.locale button.is-active { color: var(--text); }
+.locale .lg-thumb { top: 3px; bottom: 3px; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: var(--pill); font-size: 14px; font-weight: 500; transition: background-color .2s, border-color .2s, transform .2s; white-space: nowrap; }
+.btn svg { width: 16px; height: 16px; }
+.btn-primary { background: #fff; color: #0a0a0b; }
+.btn-primary:hover { background: #e4e6ea; }
+.btn-ghost { border: 1px solid var(--line2); color: var(--text); }
+.btn-ghost:hover { border-color: rgba(255,255,255,.4); }
+.btn-lg { height: 48px; padding: 0 24px; font-size: 15px; }
+
+/* Hero */
+.hero { position: relative; isolation: isolate; padding: 148px 0 72px; text-align: center; overflow: hidden; }
+.hero > .wrap { position: relative; z-index: 1; }
+/* WebGL fluid: fades in, blurs as it scrolls away, and fades out toward the panels. */
+.hero-bg { position: absolute; inset: 0 0 auto; height: min(100%, 1080px); z-index: 0; pointer-events: none; opacity: 0; filter: blur(20px); transition: opacity 1.6s ease-out, filter 1.6s ease-out;
+  -webkit-mask: linear-gradient(#000 0%, #000 58%, transparent 100%); mask: linear-gradient(#000 0%, #000 58%, transparent 100%); }
+.hero-bg.ready { opacity: 1; filter: none; }
+.hero-bg canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* A soft scrim keeps the headline readable over the brightest parts of the fluid. */
+.hero-bg::after { content: ""; position: absolute; inset: 0; background: radial-gradient(40% 32% at 50% 33%, rgba(10,10,11,.82), rgba(10,10,11,.45) 55%, transparent 80%); }
+.hero .lead, .hero .meta { text-shadow: 0 1px 12px rgba(0,0,0,.85), 0 0 2px rgba(0,0,0,.6); }
+.hero .lead { color: #b7bcc4; }
+.hero .meta { color: #a3a8b0; }
+.hero .eyebrow { background: rgba(10,10,11,.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.hero .btn-ghost { background: rgba(10,10,11,.45); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: var(--pill); border: 1px solid var(--line2); background: rgba(255,255,255,.03); font-size: 13px; color: var(--text2); }
+.eyebrow i { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(74,222,128,.18); }
+h1 { margin: 24px auto 0; max-width: 860px; font-size: clamp(34px, 5.4vw, 60px); line-height: 1.12; font-weight: 650; letter-spacing: -.03em; }
+h1, h1 .grad { color: #fff; background: none; -webkit-text-fill-color: #fff; }
+.lead { margin: 22px auto 0; max-width: 600px; font-size: 17px; line-height: 1.7; color: var(--muted); text-wrap: pretty; }
+.hero .cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 36px; }
+.meta { margin-top: 16px; font-size: 13px; color: var(--muted); }
+
+/* Provider + Agent 双面板 */
+.duo { position: relative; display: grid; grid-template-columns: 1fr 1.35fr; gap: 20px; margin-top: 64px; text-align: left; }
+@media (max-width: 900px) { .duo { grid-template-columns: 1fr; } }
+.card { position: relative; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); overflow: hidden; }
+.card-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--text2); }
+/* Panel islands: each panel's title floats as a glass capsule across its top edge. */
+.duo { margin-top: 84px; row-gap: 44px; }
+.duo .card { overflow: visible; }
+.duo .card > :last-child { border-radius: 0 0 var(--r) var(--r); overflow: hidden; }
+.duo .card-head { position: absolute; top: 0; left: 50%; z-index: 4; translate: -50% -50%; gap: 10px; height: 40px; padding: 0 6px 0 16px; border: 0; border-radius: var(--pill);
+  background: rgba(22,24,32,.28); white-space: nowrap; transition: padding .5s cubic-bezier(.22,1,.36,1); }
+.duo .card-head:not(.lg-glass) { -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+.duo .card-head .live { position: relative; width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--ok); }
+.duo .card-head .live.is-agent { background: var(--brand); }
+/* The pulse ring animates transform and opacity only, which stays on the compositor. */
+.duo .card-head .live::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid currentColor; color: var(--ok); opacity: 0; animation: live 2.4s ease-out infinite; }
+.duo .card-head .live.is-agent::after { color: var(--brand); }
+@keyframes live { 0% { transform: scale(.5); opacity: .7; } 70%, 100% { transform: scale(1.4); opacity: 0; } }
+.duo .card-head .meta-txt { color: var(--muted); font-size: 12px; }
+.duo .card:hover .card-head { padding-right: 8px; }
+.duo .prov { padding-top: 34px; }
+.duo .agent .chat, .duo .agent .side { padding-top: 34px; }
+@media (prefers-reduced-motion: reduce) { .duo .card-head .live::after { animation: none; } }
+.card-head b { color: var(--text); font-weight: 600; }
+.pill { font-size: 11px; padding: 3px 9px; border-radius: var(--pill); background: var(--brand-soft); color: var(--brand); }
+.pill.ok { background: rgba(74,222,128,.12); color: var(--ok); }
+.prov { padding: 18px; display: flex; flex-direction: column; gap: 18px; }
+.plan-row { display: flex; align-items: center; justify-content: space-between; }
+.plan-row .name { font-size: 15px; font-weight: 600; }
+.plan-row small { color: var(--muted); font-size: 12px; }
+.meter[hidden] { display: none; }
+.meter { display: flex; flex-direction: column; gap: 8px; }
+.meter .lbl { display: flex; justify-content: space-between; font-size: 13px; color: var(--text2); }
+.meter .lbl span:last-child { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+.bar { height: 8px; border-radius: var(--pill); background: rgba(255,255,255,.06); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #6799fe, #9f8bff); }
+.models { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.model { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--panel2); border: 1px solid var(--line); font-size: 13px; }
+.model .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.model small { margin-left: auto; color: var(--muted); font-size: 11px; }
+.console-row { margin-top: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.console-row a { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line2); font-size: 12px; color: var(--text2); background: rgba(255,255,255,.03); transition: border-color .2s, color .2s, background-color .2s; }
+.console-row a:hover { color: var(--text); border-color: rgba(103,153,254,.55); background: rgba(103,153,254,.08); }
+.console-row a b { color: var(--brand); font-weight: 500; }
+.model small { font-variant-numeric: tabular-nums; }
+.prov { flex: 1; }
+.card { display: flex; flex-direction: column; }
+/* No backdrop-filter on the card: it would make the card a backdrop root, and the glass title island would refract only the card instead of the page behind it. */
+.duo .card { background: rgba(18,18,21,.9); border-color: rgba(255,255,255,.1); box-shadow: 0 30px 90px rgba(0,0,0,.45); }
+.duo .side { background: rgba(12,12,15,.55); }
+.duo .model, .duo .step { background: rgba(255,255,255,.035); }
+
+.agent { display: flex; min-height: 420px; }
+.side { width: 190px; flex: none; padding: 14px 10px; border-right: 1px solid var(--line); background: #0f0f12; font-size: 13px; color: var(--text2); }
+@media (max-width: 640px) { .side { display: none; } }
+.side .row { padding: 7px 10px; border-radius: 8px; }
+.side .row.on { background: rgba(255,255,255,.07); color: var(--text); }
+.side h6 { margin: 14px 10px 6px; font-size: 11px; font-weight: 500; color: var(--muted); }
+.chat { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 20px; gap: 14px; font-size: 14px; }
+.msg-u { align-self: flex-end; max-width: 80%; padding: 10px 14px; border-radius: 16px; background: #26262b; }
+.step { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; background: var(--panel2); border: 1px solid var(--line); font-size: 13px; color: var(--text2); }
+.step code { font-family: var(--mono); font-size: 12px; color: var(--text); }
+.step .ok { margin-left: auto; color: var(--ok); font-size: 12px; }
+.msg-a { color: var(--text2); line-height: 1.7; }
+.msg-a b { color: var(--text); font-weight: 600; }
+.composer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 14px; background: #1d1d22; border: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.composer .send { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: #0a0a0b; font-size: 14px; flex: none; }
+
+/* 中间连接标记 */
+.link-strip { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 18px; font-size: 13px; color: var(--text2); }
+.link-strip i { font-style: normal; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--brand-soft); color: var(--brand); }
+
+/* 通用段落 */
+section.block { padding: 112px 0; border-top: 1px solid var(--line); }
+.kicker { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--brand); font-weight: 600; }
+h2 { margin: 12px 0 0; font-size: clamp(26px, 3.4vw, 38px); line-height: 1.25; font-weight: 650; letter-spacing: -.02em; }
+.sub { margin: 14px 0 0; max-width: 620px; color: var(--muted); font-size: 16px; line-height: 1.7; }
+.center { text-align: center; } .center .sub { margin-inline: auto; }
+
+/* 三栏卖点 */
+@media (max-width: 640px) { .hero { padding-top: 64px; } .lead { font-size: 15px; } .msg-u { max-width: 100%; } .composer span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .actions .btn-ghost { padding: 0 12px; } }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 56px; }
+@media (max-width: 900px) { .grid3 { grid-template-columns: 1fr; } }
+.feat { padding: 28px; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); }
+.feat .ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
+.feat .ic svg { width: 20px; height: 20px; }
+.feat h3 { margin: 18px 0 8px; font-size: 17px; font-weight: 600; }
+.feat p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
+.feat .side-tag { float: right; font-size: 11px; padding: 3px 9px; border-radius: var(--pill); border: 1px solid var(--line2); color: var(--text2); }
+
+/* 闭环流程 */
+.loop { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 56px; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+@media (max-width: 900px) { .loop { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) { .loop { grid-template-columns: 1fr; } }
+.loop > div { padding: 26px 24px; background: var(--panel); border-right: 1px solid var(--line); }
+.loop > div:last-child { border-right: 0; }
+.loop .n { font-family: var(--mono); font-size: 12px; color: var(--brand); }
+.loop h4 { margin: 10px 0 6px; font-size: 16px; font-weight: 600; }
+.loop p { margin: 0; font-size: 13px; line-height: 1.7; color: var(--muted); }
+
+/* 套餐 */
+.plans { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 56px; max-width: 880px; margin-inline: auto; }
+@media (max-width: 760px) { .plans { grid-template-columns: 1fr; } }
+.plan { padding: 32px; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); text-align: left; }
+.plan.hot { border-color: rgba(103,153,254,.5); background: linear-gradient(180deg, rgba(103,153,254,.08), var(--panel) 60%); }
+.plan .top { display: flex; align-items: center; justify-content: space-between; }
+.plan .title { font-size: 22px; font-weight: 650; }
+.plan .for { margin: 6px 0 22px; color: var(--muted); font-size: 14px; }
+.plan ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; font-size: 14px; color: var(--text2); }
+.plan li { display: flex; gap: 10px; align-items: flex-start; line-height: 1.55; }
+.plan li::before { content: ""; flex: none; width: 16px; height: 16px; margin-top: 2px; border-radius: 50%; background: var(--brand-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%236799fe' stroke-width='2'%3E%3Cpath d='M4.5 8.2 7 10.5l4.5-5'/%3E%3C/svg%3E") center/12px no-repeat; }
+.plan .note { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.plan { display: flex; flex-direction: column; }
+.plan .plan-cta { margin-top: 20px; align-self: stretch; }
+.plan .models-line { margin: 14px 0 0; font-size: 12px; color: var(--muted); }
+.plans-foot { margin-top: 20px; text-align: center; font-size: 13px; color: var(--muted); }
+
+/* FAQ */
+.faq { max-width: 760px; margin: 48px auto 0; }
+.faq details { border-bottom: 1px solid var(--line); }
+.faq summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; padding: 20px 0; font-size: 16px; font-weight: 500; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; font-size: 20px; color: var(--muted); transition: transform .2s; }
+.faq details[open] summary::after { transform: rotate(45deg); }
+.faq p { margin: 0 0 20px; color: var(--muted); font-size: 14px; line-height: 1.8; }
+
+/* 结尾 CTA */
+.final { padding: 140px 0 200px; text-align: center; border-top: 1px solid var(--line); position: relative; isolation: isolate; overflow: hidden; }
+.final > .wrap { position: relative; z-index: 1; }
+.cta-glow { position: absolute; inset: 60px 0 0; z-index: 0; pointer-events: none; opacity: 0; transform: scale(.9); transition: opacity 1.2s ease-out, transform 1.2s ease-out; }
+.final.in .cta-glow { opacity: 1; transform: none; }
+.cta-glow canvas { position: absolute; inset: 0; width: 100%; height: 100%;
+  -webkit-mask: linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent), linear-gradient(to right, transparent, #000 15%, #000 85%, transparent); -webkit-mask-composite: source-in;
+  mask: linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent), linear-gradient(to right, transparent, #000 15%, #000 85%, transparent); mask-composite: intersect; }
+.orb { position: absolute; border-radius: 50%; }
+.orb1 { bottom: -100px; left: 10%; width: 500px; height: 500px; opacity: .3; background: radial-gradient(circle, #1a3870 0%, transparent 70%); filter: blur(80px); }
+.orb2 { bottom: -50px; left: 50%; transform: translateX(-50%); width: 700px; height: 400px; opacity: .45; background: radial-gradient(ellipse at center, #2d5f9e 0%, #1a3870 40%, transparent 70%); filter: blur(100px); }
+.orb3 { bottom: -80px; right: 10%; width: 400px; height: 400px; opacity: .22; background: radial-gradient(circle, #4a8ac4 0%, #2d5f9e 30%, transparent 70%); filter: blur(60px); }
+.final.in .orb2 { animation: breathe 9s ease-in-out infinite; }
+@keyframes breathe { 50% { opacity: .62; transform: translateX(-50%) scale(1.08); } }
+.final .cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 32px; }
+
+footer { border-top: 1px solid var(--line); padding: 28px 0 40px; font-size: 13px; color: var(--muted); }
+footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; }
+footer nav { display: flex; gap: 20px; }
+footer a:hover { color: var(--text); }
+
+.reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .reveal { opacity: 1; transform: none; transition: none; } .final.in .orb2 { animation: none; } }
+</style>
+</head>
+<body>
+<header class="island-wrap">
+  <div class="island" id="island">
+    <a class="brand" href="#"><img src="/lightcode/logo-white.svg" alt="">Lightcode AI<span class="tag" data-i18n="preview"></span></a>
+    <nav class="links" aria-label="Primary">
+      <a href="#plans" data-i18n="navPlans"></a>
+      <a href="#how" data-i18n="navHow"></a>
+      <a href="/lightcode" data-i18n="navAgent"></a>
+      <a href="#faq" data-i18n="navFaq"></a>
+    </nav>
+    <div class="actions">
+      <div class="locale" id="locale" role="group" aria-label="Language">
+        <button type="button" data-value="zh">中文</button>
+        <button type="button" data-value="en">EN</button>
+      </div>
+      <a class="btn btn-primary island-dl" data-console href="/sign-in?redirect=%2Flightcode%2Fusage">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="2"/><path d="M2 6h12M5 9.5h3"/></svg>
+        <span data-i18n="console"></span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero" id="hero">
+    <div class="hero-bg" id="heroBg" aria-hidden="true"><canvas id="fluid"></canvas></div>
+    <div class="wrap">
+      <span class="eyebrow"><i></i><span data-i18n="eyebrow"></span></span>
+      <h1><span data-i18n="h1a"></span><br><span class="grad" data-i18n="h1b"></span></h1>
+      <p class="lead" data-i18n="lead"></p>
+      <div class="cta">
+        <a class="btn btn-primary btn-lg" data-console href="/sign-in?redirect=%2Flightcode%2Fusage">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="2"/><path d="M2 6h12M5 9.5h3"/></svg>
+          <span data-i18n="console"></span>
+        </a>
+        <a class="btn btn-ghost btn-lg" data-dl href="https://github.com/LightCode-AI/lightcode-releases/releases/latest">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/></svg>
+          <span data-i18n="dlWin"></span>
+        </a>
+      </div>
+      <p class="meta" data-i18n="meta"></p>
+
+      <div class="duo reveal">
+        <div class="card">
+          <div class="card-head" data-glass><span class="live" aria-hidden="true"></span><b>Lightcode Provider</b><span class="meta-txt" data-i18n="provIsland"></span><span class="pill ok" data-i18n="active"></span></div>
+          <div class="prov">
+            <div class="plan-row"><span><span class="name" id="pvPlan">Plus</span><br><small id="pvReset" data-i18n="renew"></small></span><span class="pill" id="pvState" data-i18n="sample"></span></div>
+            <div class="meter" id="pvLong"><div class="lbl"><span data-i18n="w7d"></span><span class="v">38%</span></div><div class="bar"><i style="width:38%"></i></div></div>
+            <div class="meter" id="pvShort"><div class="lbl"><span data-i18n="w5h"></span><span class="v" data-i18n="noLimit"></span></div><div class="bar"><i style="width:0"></i></div></div>
+            <div class="models" id="pvModels">
+              <div class="model"><span class="dot" style="background:#d97757"></span>Claude<small data-family="claude">5</small></div>
+              <div class="model"><span class="dot" style="background:#10a37f"></span>GPT<small data-family="gpt">5</small></div>
+              <div class="model"><span class="dot" style="background:#4285f4"></span>Gemini<small data-family="gemini">5</small></div>
+              <div class="model"><span class="dot" style="background:#6799fe"></span><span data-i18n="cnModels"></span><small data-family="cn">3</small></div>
+            </div>
+            <div class="console-row">
+              <a href="/sign-in?redirect=%2Flightcode%2Fusage" data-console-link="/lightcode/usage"><span data-i18n="cUsage"></span><b>›</b></a>
+              <a href="/sign-in?redirect=%2Flightcode%2Fdevices" data-console-link="/lightcode/devices"><span data-i18n="cDevices"></span><b>›</b></a>
+              <a href="/sign-in?redirect=%2Flightcode%2Fsubscription" data-console-link="/lightcode/subscription"><span data-i18n="cSubs"></span><b>›</b></a>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head" data-glass><span class="live is-agent" aria-hidden="true"></span><b>Lightcode Agent</b><span class="meta-txt" data-i18n="agentIsland"></span><span class="pill" data-i18n="desktop"></span></div>
+          <div class="agent">
+            <aside class="side">
+              <div class="row" data-i18n="newSession"></div>
+              <h6 data-i18n="workspace"></h6>
+              <div class="row on" data-i18n="s1"></div>
+              <div class="row" data-i18n="s2"></div>
+              <div class="row" data-i18n="s3"></div>
+            </aside>
+            <div class="chat">
+              <div class="msg-u" data-i18n="ask"></div>
+              <div class="step">📄 <code>sales-q3.xlsx</code><span data-i18n="read"></span><span class="ok">✓</span></div>
+              <div class="step">🧮 <code>analysis.py</code><span data-i18n="run"></span><span class="ok">✓</span></div>
+              <div class="step">📝 <code>report.docx</code><span data-i18n="write"></span><span class="ok">✓</span></div>
+              <div class="msg-a" data-i18n-html="answer"></div>
+              <div class="composer"><span data-i18n="ph"></span><span class="send">↑</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="link-strip reveal"><i>⇄</i><span data-i18n="linked"></span></p>
+    </div>
+  </section>
+
+  <section class="block" id="why">
+    <div class="wrap center">
+      <div class="kicker reveal" data-i18n="whyK"></div>
+      <h2 class="reveal" data-i18n="whyT"></h2>
+      <p class="sub reveal" data-i18n="whyD"></p>
+      <div class="grid3" style="text-align:left">
+        <article class="feat reveal"><span class="side-tag">Provider</span><div class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 1.5"/></svg></div><h3 data-i18n="f1t"></h3><p data-i18n="f1d"></p></article>
+        <article class="feat reveal"><span class="side-tag">Agent</span><div class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="14" height="11" rx="2"/><path d="M7 17h6"/></svg></div><h3 data-i18n="f2t"></h3><p data-i18n="f2d"></p></article>
+        <article class="feat reveal"><span class="side-tag">Provider × Agent</span><div class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h9l-3-3M16 13H7l3 3"/></svg></div><h3 data-i18n="f3t"></h3><p data-i18n="f3d"></p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="how">
+    <div class="wrap center">
+      <div class="kicker reveal" data-i18n="howK"></div>
+      <h2 class="reveal" data-i18n="howT"></h2>
+      <div class="loop reveal" style="text-align:left">
+        <div><span class="n">01</span><h4 data-i18n="l1t"></h4><p data-i18n="l1d"></p></div>
+        <div><span class="n">02</span><h4 data-i18n="l2t"></h4><p data-i18n="l2d"></p></div>
+        <div><span class="n">03</span><h4 data-i18n="l3t"></h4><p data-i18n="l3d"></p></div>
+        <div><span class="n">04</span><h4 data-i18n="l4t"></h4><p data-i18n="l4d"></p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="plans">
+    <div class="wrap center">
+      <div class="kicker reveal" data-i18n="plansK"></div>
+      <h2 class="reveal" data-i18n="plansT"></h2>
+      <p class="sub reveal" data-i18n="plansD"></p>
+      <div class="plans">
+        <article class="plan reveal" data-plan="go">
+          <div class="top"><span class="title">GO</span></div>
+          <p class="for" data-i18n="goFor"></p>
+          <ul><li data-i18n="go1"></li><li data-i18n="go2"></li><li data-i18n="go3"></li><li data-i18n="go4"></li></ul>
+          <p class="note" data-i18n="goNote"></p>
+          <a class="btn btn-ghost plan-cta" data-console-link="/lightcode/subscription" href="/sign-in?redirect=%2Flightcode%2Fsubscription" data-i18n="subscribe"></a>
+        </article>
+        <article class="plan hot reveal" data-plan="plus">
+          <div class="top"><span class="title">Plus</span><span class="pill" data-i18n="popular"></span></div>
+          <p class="for" data-i18n="plusFor"></p>
+          <ul><li data-i18n="plus1"></li><li data-i18n="plus2"></li><li data-i18n="plus3"></li><li data-i18n="plus4"></li></ul>
+          <p class="note" data-i18n="plusNote"></p>
+          <a class="btn btn-primary plan-cta" data-console-link="/lightcode/subscription" href="/sign-in?redirect=%2Flightcode%2Fsubscription" data-i18n="subscribe"></a>
+        </article>
+      </div>
+      <p class="plans-foot reveal" data-i18n="plansFoot"></p>
+    </div>
+  </section>
+
+  <section class="block" id="faq">
+    <div class="wrap center">
+      <div class="kicker reveal">FAQ</div>
+      <h2 class="reveal" data-i18n="faqT"></h2>
+      <div class="faq" style="text-align:left">
+        <details class="reveal"><summary data-i18n="q1"></summary><p data-i18n="a1"></p></details>
+        <details class="reveal"><summary data-i18n="q2"></summary><p data-i18n="a2"></p></details>
+        <details class="reveal"><summary data-i18n="q3"></summary><p data-i18n="a3"></p></details>
+        <details class="reveal"><summary data-i18n="q4"></summary><p data-i18n="a4"></p></details>
+        <details class="reveal"><summary data-i18n="q5"></summary><p data-i18n="a5"></p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="final" id="final">
+    <div class="cta-glow" aria-hidden="true"><canvas id="dots"></canvas><div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div></div>
+    <div class="wrap">
+      <h2 class="reveal" data-i18n="endT"></h2>
+      <p class="sub reveal" style="margin-inline:auto" data-i18n="endD"></p>
+      <div class="cta reveal">
+        <a class="btn btn-primary btn-lg" data-console href="/sign-up" data-i18n="signUp"></a>
+        <a class="btn btn-ghost btn-lg" data-dl href="https://github.com/LightCode-AI/lightcode-releases/releases/latest" data-i18n="dlWin"></a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span data-i18n="copy"></span>
+    <nav aria-label="Footer">
+      <a href="/lightcode" data-i18n="navAgent"></a>
+      <a href="https://github.com/LightCode-AI/lightcode-releases/releases" target="_blank" rel="noopener noreferrer">Releases</a>
+      <a href="/lightcode/usage" data-i18n="usage"></a>
+    </nav>
+  </div>
+</footer>
+<script src="/lightcode/liquid-glass.js"></script>
+<script>
+const I18N = {
+  zh: {
+    title: "Lightcode AI · 模型订阅与桌面 Agent", preview: "预览版",
+    navHow: "如何运作", navPlans: "套餐", navFaq: "常见问题", navAgent: "桌面 Agent", signIn: "登录", signUp: "注册账号", dlShort: "下载",
+    provIsland: "Plus · 7 天 38%", agentIsland: "正在执行 · 3 步",
+    console: "进入控制台", consoleIn: "打开控制台", cUsage: "用量看板", cDevices: "设备管理", cSubs: "订阅管理", subscribe: "在控制台订阅",
+    sample: "示例数据", yours: "你的订阅", noSub: "尚未订阅", resetAt: "{t} 重置", w7dShort: "7 天", nModels: "{n} 个", planModels: "包含 {n} 个模型",
+    eyebrow: "Lightcode Provider × Lightcode Agent",
+    h1a: "一个账号，", h1b: "订阅模型，也管好 Agent",
+    lead: "在 Lightcode 控制台订阅模型、查看用量、管理设备；桌面 Agent 用同一个账号登录，Claude、GPT、Gemini 和国产模型直接可用，不用申请 API 密钥。",
+    dlWin: "下载桌面 Agent", seePlans: "查看套餐", meta: "控制台在浏览器中使用 · 桌面 Agent 支持 Windows 10/11，当前为预览版",
+    linked: "同一个账号：左边的订阅额度，就是右边 Agent 正在用的模型", active: "订阅有效", renew: "下次重置：周一 08:00", subscribed: "当前套餐",
+    secure: "网页授权登录，设备自动绑定。全程不接触 API 密钥。",
+    w7d: "7 天用量", w5h: "5 小时用量", noLimit: "Plus 无此限制", ready: "可用", cnModels: "国产模型",
+    desktop: "桌面端", newSession: "+ 新建会话", workspace: "默认工作区", s1: "Q3 销售复盘", s2: "官网改版", s3: "周报自动化",
+    ask: "读一下 Q3 销售表，按区域汇总，写成一页复盘报告。",
+    read: " 读取表格", run: " 运行分析", write: " 生成文档",
+    answer: "已完成。华东环比增长 <b>18%</b>，西南下滑 <b>6%</b>。报告已保存到 <b>report.docx</b>，要我把图表也加进去吗？",
+    ph: "描述你想完成的事，@ 引用文件",
+    whyK: "Provider × Agent", whyT: "模型和 Agent 是一起做的", whyD: "很多 Agent 要你自己接模型，很多模型服务又只给一个接口。Lightcode 两边都自己做，所以登录就能用，出了问题也有人从头到尾负责。",
+    f1t: "一个订阅，多家模型", f1d: "订阅覆盖 Claude、GPT、Gemini 和主流国产模型。用量只按 5 小时和 7 天两个窗口显示百分比，看一眼就知道还剩多少。",
+    f2t: "桌面 Agent，本地工作区", f2d: "Agent 在你的电脑上运行，直接读写工作区里的文档、表格和代码。可以设置定时任务，重复的活交给它按时做。",
+    f3t: "两端联调，开箱即稳", f3d: "模型目录、思考强度和工具调用在发布前就和 Agent 一起测过。新模型上线后，Agent 在下一次对话就能用上。",
+    howK: "如何运作", howT: "四步开始，没有额外配置",
+    l1t: "在控制台订阅", l1d: "注册 Lightcode 账号，在控制台选择 GO 或 Plus。",
+    l2t: "下载桌面 Agent", l2d: "下载 Windows 桌面端，安装后打开。",
+    l3t: "用同一账号授权", l3d: "Agent 跳转到控制台确认授权，设备自动绑定，全程不接触密钥。",
+    l4t: "工作和管理", l4d: "在 Agent 里干活；用量、设备和订阅随时回控制台查看和调整。",
+    plansK: "套餐", plansT: "两档套餐，按使用强度选", plansD: "两档套餐使用同一个桌面 Agent，可用的模型相同，区别在额度和窗口限制。",
+    goFor: "日常使用、轻量任务", go1: "Claude、GPT、Gemini 与国产模型", go2: "5 小时与 7 天双窗口额度", go3: "桌面 Agent 全部功能", go4: "网页实时查看用量百分比",
+    goNote: "适合每天处理文档、问答和小型编码任务。",
+    popular: "推荐", plusFor: "高强度、长时间工作", plus1: "包含 GO 的全部内容", plus2: "7 天额度为 GO 的 5 倍", plus3: "不设 5 小时窗口，连续工作不被打断", plus4: "适合大型代码库与批量文档任务",
+    plusNote: "适合每天长时间让 Agent 连续工作的用户。",
+    plansFoot: "具体价格在登录后的订阅页面查看。",
+    faqT: "常见问题",
+    q1: "需要自己准备 API 密钥吗？", a1: "不需要。订阅后在桌面端用网页授权登录，模型直接可用。客户端和账号都不会向你发放或展示 API 密钥。",
+    q2: "用量是怎么计算的？", a2: "不同模型按各自的消耗折算到同一份额度里。客户端和网页只显示 5 小时与 7 天窗口的使用百分比及重置时间。",
+    q3: "一个账号能在几台电脑上用？", a3: "每个账号可以同时登录有限数量的设备。超出时，最早不活跃的设备会自动退出登录。",
+    q4: "我的文件会上传吗？", a4: "工作区文件保存在你的电脑上。只有你在对话中让 Agent 处理的内容，才会作为请求发送给模型。",
+    q5: "支持哪些系统？", a5: "目前提供 Windows 10/11 版本，macOS 版本正在准备中。",
+    endT: "从控制台开始", endD: "注册账号并选择套餐，再下载桌面 Agent，用同一个账号登录。",
+    usage: "用量查询", copy: "© 2026 Lightcode AI · 基于 DeepSeek Harness（MIT）"
+  },
+  en: {
+    title: "Lightcode AI · Model subscription and desktop agent", preview: "Preview",
+    navHow: "How it works", navPlans: "Plans", navFaq: "FAQ", navAgent: "Desktop agent", signIn: "Sign in", signUp: "Create account", dlShort: "Download",
+    provIsland: "Plus · 7-day 38%", agentIsland: "Working · 3 steps",
+    console: "Open the console", consoleIn: "Go to console", cUsage: "Usage", cDevices: "Devices", cSubs: "Subscription", subscribe: "Subscribe in the console",
+    sample: "Sample data", yours: "Your plan", noSub: "No plan yet", resetAt: "Resets {t}", w7dShort: "7-day", nModels: "{n}", planModels: "{n} models included",
+    eyebrow: "Lightcode Provider × Lightcode Agent",
+    h1a: "One account to subscribe,", h1b: "and one agent to do the work",
+    lead: "Subscribe to models, watch usage and manage devices in the Lightcode console. The desktop agent signs in with the same account, so Claude, GPT, Gemini and leading Chinese models are ready without an API key.",
+    dlWin: "Download the agent", seePlans: "See plans", meta: "The console runs in your browser · The desktop agent supports Windows 10/11 and is in preview",
+    linked: "One account: the allowance on the left powers the agent on the right", active: "Active", renew: "Next reset: Mon 08:00", subscribed: "Current plan",
+    secure: "Browser sign-in binds this device. You never handle an API key.",
+    w7d: "7-day usage", w5h: "5-hour usage", noLimit: "No limit on Plus", ready: "Ready", cnModels: "Chinese models",
+    desktop: "Desktop", newSession: "+ New session", workspace: "Default workspace", s1: "Q3 sales review", s2: "Website redesign", s3: "Weekly report automation",
+    ask: "Read the Q3 sales sheet, summarize by region, and write a one-page review.",
+    read: " Read sheet", run: " Run analysis", write: " Write document",
+    answer: "Done. East China grew <b>18%</b> quarter over quarter; the Southwest fell <b>6%</b>. The report is saved as <b>report.docx</b>. Want me to add the charts?",
+    ph: "Describe the task, @ to reference files",
+    whyK: "Provider × Agent", whyT: "The models and the agent are built together", whyD: "Many agents make you bring your own model, and many model services only hand you an API. Lightcode builds both sides, so signing in is all it takes, and one team owns the whole path when something breaks.",
+    f1t: "One subscription, many models", f1d: "Your plan covers Claude, GPT, Gemini and leading Chinese models. Usage shows as two percentages, a 5-hour window and a 7-day window, so you can tell what is left at a glance.",
+    f2t: "A desktop agent with a local workspace", f2d: "The agent runs on your computer and works directly with the documents, spreadsheets and code in your workspace. Schedule recurring tasks and it runs them on time.",
+    f3t: "Tested together, stable out of the box", f3d: "Model catalog, reasoning effort and tool calls are tested with the agent before each release. When a new model ships, the agent can use it in your next conversation.",
+    howK: "How it works", howT: "Four steps, nothing to configure",
+    l1t: "Subscribe in the console", l1d: "Create a Lightcode account and choose GO or Plus in the console.",
+    l2t: "Download the agent", l2d: "Install the Windows desktop app and open it.",
+    l3t: "Authorize with the same account", l3d: "The agent opens the console to confirm sign-in. The device is bound automatically and you never handle a key.",
+    l4t: "Work and manage", l4d: "Do the work in the agent. Check usage, devices and your plan back in the console at any time.",
+    plansK: "Plans", plansT: "Two plans, chosen by how hard you work", plansD: "Both plans use the same desktop agent and the same models. They differ in allowance and window limits.",
+    goFor: "Daily use and light tasks", go1: "Claude, GPT, Gemini and Chinese models", go2: "5-hour and 7-day usage windows", go3: "Every desktop agent feature", go4: "Live usage percentages on the web",
+    goNote: "Fits daily documents, questions and small coding tasks.",
+    popular: "Recommended", plusFor: "Intensive, long sessions", plus1: "Everything in GO", plus2: "5× the GO 7-day allowance", plus3: "No 5-hour window, so long sessions are not interrupted", plus4: "Built for large codebases and batch document work",
+    plusNote: "Fits people who keep the agent working for long stretches every day.",
+    plansFoot: "Prices are shown on the subscription page after you sign in.",
+    faqT: "Frequently asked questions",
+    q1: "Do I need my own API key?", a1: "No. After subscribing, sign in on the desktop app through your browser and the models are ready. Neither the app nor your account issues or shows API keys.",
+    q2: "How is usage counted?", a2: "Each model's consumption is converted into one shared allowance. The app and the website show only the percentage used in the 5-hour and 7-day windows and when each resets.",
+    q3: "How many computers can one account use?", a3: "Each account can stay signed in on a limited number of devices. Beyond that, the least recently active device is signed out automatically.",
+    q4: "Are my files uploaded?", a4: "Workspace files stay on your computer. Only the content you ask the agent to work on in a conversation is sent to the model as part of the request.",
+    q5: "Which systems are supported?", a5: "Windows 10/11 is available now. A macOS version is in preparation.",
+    endT: "Start in the console", endD: "Create an account and pick a plan, then download the desktop agent and sign in with the same account.",
+    usage: "Usage", copy: "© 2026 Lightcode AI · Built on DeepSeek Harness (MIT)"
+  }
+};
+
+let livePlans = null, liveModels = null, liveSubscription = undefined, signedIn = false;
+function setLang(lang) {
+  const d = I18N[lang];
+  document.documentElement.lang = lang;
+  document.title = d.title;
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = d[el.dataset.i18n]; });
+  document.querySelectorAll("[data-i18n-html]").forEach(el => { el.innerHTML = d[el.dataset.i18nHtml]; });
+  try { localStorage.setItem("lc-lang", lang); } catch {}
+  setConsoleLinks();
+  renderPlans();
+  if (liveModels) showFamilies(liveModels);
+  if (liveSubscription !== undefined) showUsage(liveSubscription);
+}
+let saved = null; try { saved = localStorage.getItem("lc-lang"); } catch {}
+const initialLang = saved === "zh" || saved === "en" ? saved : (navigator.language.startsWith("zh") ? "zh" : "en");
+setLang(initialLang);
+
+// Liquid Glass: the header island, the language slider and the two panel islands.
+const island = document.getElementById("island");
+const glass = window.LiquidGlass;
+if (glass) {
+  glass.attach(island, { bevel: 18, depth: 14, magnify: 1.04, frost: 2.4, aberration: 0.05 });
+  document.querySelectorAll("[data-glass]").forEach(el => glass.attach(el, { bevel: 14, depth: 11, magnify: 1.06, frost: 1, aberration: 0.06 }));
+  glass.segmented(document.getElementById("locale"), { onChange: lang => setLang(lang) }).select(initialLang, false);
+} else {
+  // Without the glass script the toggle still switches languages.
+  document.querySelectorAll("#locale [data-value]").forEach(b => {
+    b.classList.toggle("is-active", b.dataset.value === initialLang);
+    b.addEventListener("click", () => {
+      document.querySelectorAll("#locale [data-value]").forEach(o => o.classList.toggle("is-active", o === b));
+      setLang(b.dataset.value);
+    });
+  });
+}
+addEventListener("scroll", () => island.classList.toggle("is-scrolled", scrollY > 8), { passive: true });
+island.classList.toggle("is-scrolled", scrollY > 8);
+
+const io = new IntersectionObserver(entries => entries.forEach(e => {
+  if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+}), { rootMargin: "0px 0px -60px 0px" });
+document.querySelectorAll(".reveal, #final").forEach(el => io.observe(el));
+
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const hero = document.getElementById("hero");
+const heroBg = document.getElementById("heroBg");
+
+// Blur the fluid as the hero scrolls away so the content below reads cleanly.
+addEventListener("scroll", () => {
+  if (!heroBg.classList.contains("ready")) return;
+  const p = Math.min(1, Math.max(0, -hero.getBoundingClientRect().top / (0.6 * hero.offsetHeight)));
+  heroBg.style.filter = p > 0 ? `blur(${20 * p}px)` : "";
+}, { passive: true });
+
+// Hero fluid gradient (WebGL2): deep blue #204a7e and warm white #cec8bb with a light source on the right.
+(function fluid() {
+  const cv = document.getElementById("fluid");
+  const gl = cv.getContext("webgl2", { alpha: true, premultipliedAlpha: false, powerPreference: "low-power" });
+  if (!gl) {
+    heroBg.style.background = "radial-gradient(60% 50% at 80% 40%, #2d5f9e88, transparent 70%), radial-gradient(50% 40% at 30% 30%, #204a7e66, transparent 70%)";
+    heroBg.classList.add("ready");
+    return;
+  }
+  const vs = `#version 300 es
+in vec2 p; out vec2 vUv; void main(){ vUv = p*.5+.5; gl_Position = vec4(p,0.,1.); }`;
+  const fs = `#version 300 es
+precision mediump float;
+in vec2 vUv; out vec4 o;
+uniform float t; uniform vec2 res; uniform vec2 mouse;
+float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
+float n(vec2 p){ vec2 i=floor(p), f=fract(p); vec2 u=f*f*(3.-2.*f);
+  return mix(mix(h(i),h(i+vec2(1,0)),u.x), mix(h(i+vec2(0,1)),h(i+vec2(1,1)),u.x), u.y); }
+mat2 rot(float a){ return mat2(cos(a),sin(a),-sin(a),cos(a)); }
+void main(){
+  float aspect = res.x/res.y;
+  vec2 uv = vUv; vec2 p = (uv-.5)*vec2(aspect,1.);
+  p = rot(.26)*p*1.19 + vec2(-.25,-.1);
+  p += (mouse-.5)*.06;
+  float tt = t*.017*6.;
+  for(float i=1.; i<12.; i++){
+    p.x += .3/i*sin(i*p.y*1.6 + tt + n(p*.8+tt*.2)*1.2);
+    p.y += .3/i*cos(i*p.x*1.3 - tt*.8);
+  }
+  float m = clamp(.5 + .5*sin(p.x*1.4 + p.y*.9), 0., 1.);
+  vec3 c0 = vec3(0.), c1 = vec3(.125,.29,.494), c2 = vec3(.808,.784,.733);
+  vec3 col = mix(c0, c1, smoothstep(.25,.6,m));
+  col = mix(col, c2, smoothstep(.72,.98,m)*.85);
+  col = mix(col, c0, smoothstep(.98,1.,m));
+  float l = dot(col, vec3(.299,.587,.114));
+  col += (col*.85 + vec3(.15,.145,.13)) * smoothstep(.43,.79,l) * .4;
+  float ld = length((uv - vec2(.89,.46))*vec2(aspect,1.));
+  col += vec3(1.,.97,.9)*exp(-ld*ld*4.5)*.14 + vec3(.72,.8,1.)*exp(-ld*1.8)*.2;
+  col = mix(col*(1.-.38), col, 1.-smoothstep(.35,.75,length(uv-.5)));
+  col += (h(uv*res + t) - .5) * .02;
+  o = vec4(col, 1.);
+}`;
+  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); return null; } return s; };
+  const v = sh(gl.VERTEX_SHADER, vs), f = sh(gl.FRAGMENT_SHADER, fs);
+  if (!v || !f) return;
+  const pr = gl.createProgram();
+  gl.attachShader(pr, v); gl.attachShader(pr, f); gl.linkProgram(pr); gl.useProgram(pr);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(pr, "p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  const uT = gl.getUniformLocation(pr, "t"), uR = gl.getUniformLocation(pr, "res"), uM = gl.getUniformLocation(pr, "mouse");
+  let mx = .5, my = .5, tmx = .5, tmy = .5, visible = true;
+  addEventListener("pointermove", e => { tmx = e.clientX / innerWidth; tmy = 1 - e.clientY / innerHeight; }, { passive: true });
+  // Stop drawing when the hero is off screen.
+  new IntersectionObserver(([e]) => { visible = e.isIntersecting; }).observe(cv);
+  const dpr = Math.min(devicePixelRatio || 1, 1.5);
+  const t0 = performance.now();
+  function frame(now) {
+    requestAnimationFrame(frame);
+    if (!visible) return;
+    const w = cv.clientWidth * dpr | 0, hgt = cv.clientHeight * dpr | 0;
+    if (cv.width !== w || cv.height !== hgt) { cv.width = w; cv.height = hgt; gl.viewport(0, 0, w, hgt); }
+    mx += (tmx - mx) * .05; my += (tmy - my) * .05;
+    gl.uniform1f(uT, reduce ? 0 : (now - t0) / 1000);
+    gl.uniform2f(uR, w, hgt); gl.uniform2f(uM, mx, my);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+  requestAnimationFrame(frame);
+  requestAnimationFrame(() => heroBg.classList.add("ready"));
+})();
+
+// Dot grid behind the closing call to action; skipped on touch devices.
+(function dots() {
+  if (matchMedia("(hover: none), (pointer: coarse)").matches) return;
+  const cv = document.getElementById("dots"), c = cv.getContext("2d");
+  const dpr = Math.min(devicePixelRatio || 1, 2), G = 90;
+  function draw() {
+    const w = cv.clientWidth, h = cv.clientHeight;
+    cv.width = w * dpr; cv.height = h * dpr; c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const cols = Math.ceil(w / G) + 1, rows = Math.ceil(h / G) + 1;
+    const ox = (w - (cols - 1) * G) / 2, oy = (h - (rows - 1) * G) / 2;
+    c.clearRect(0, 0, w, h);
+    c.strokeStyle = "rgba(255,255,255,.05)"; c.lineWidth = .5; c.beginPath();
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+      const px = ox + x * G, py = oy + y * G;
+      if (x < cols - 1) { c.moveTo(px + 10, py); c.lineTo(px + G - 10, py); }
+      if (y < rows - 1) { c.moveTo(px, py + 10); c.lineTo(px, py + G - 10); }
+    }
+    c.stroke();
+    c.fillStyle = "rgba(255,255,255,.12)";
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) c.fillRect(ox + x * G - 1.8, oy + y * G - 1.8, 3.6, 3.6);
+  }
+  draw();
+  let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(draw, 150); });
+})();
+
+// ---- nbapi integration -------------------------------------------------------------------------
+// The page runs on the nbapi origin. Opened as a local file, every request fails and the sample
+// figures above stay in place.
+const API = location.protocol === "file:" ? null : "";
+const getJSON = (path, init) => API === null ? Promise.reject(new Error("offline")) :
+  fetch(API + path, { credentials: "same-origin", headers: { Accept: "application/json" }, ...init })
+    .then(r => r.ok ? r.json() : Promise.reject(new Error(String(r.status))))
+    .then(body => body && body.success !== false ? body : Promise.reject(new Error(body.message || "failed")));
+
+// Group catalog model ids into the four families the panel shows.
+function family(id) {
+  const m = id.toLowerCase();
+  if (m.startsWith("claude")) return "claude";
+  if (m.startsWith("gpt") || /^o\d/.test(m)) return "gpt";
+  if (m.startsWith("gemini")) return "gemini";
+  return "cn";
+}
+function showFamilies(models) {
+  liveModels = models;
+  const counts = { claude: 0, gpt: 0, gemini: 0, cn: 0 };
+  for (const id of models) if (typeof id === "string") counts[family(id)]++;
+  document.querySelectorAll("#pvModels [data-family]").forEach(el => {
+    const n = counts[el.dataset.family];
+    el.textContent = I18N[document.documentElement.lang].nModels.replace("{n}", n);
+    el.closest(".model").classList.toggle("is-empty", n === 0);
+  });
+}
+
+// Plans: titles, subtitles and model families come from the gateway; prices are never shown here.
+function renderPlans() {
+  if (!livePlans) return;
+  const d = I18N[document.documentElement.lang];
+  for (const p of livePlans) {
+    const card = document.querySelector(`[data-plan="${/plus/i.test(p.title) ? "plus" : "go"}"]`);
+    if (!card) continue;
+    card.querySelector(".title").textContent = p.title.replace(/^Lightcode\s+/i, "");
+    let line = card.querySelector(".models-line");
+    if (!line) { line = document.createElement("p"); line.className = "models-line"; card.querySelector(".for").after(line); }
+    line.textContent = d.planModels.replace("{n}", p.models.length);
+  }
+}
+getJSON("/api/lightcode/plans").then(res => {
+  livePlans = Array.isArray(res.data) ? res.data : null;
+  if (!livePlans || !livePlans.length) return;
+  renderPlans();
+  // The preview shows the plan with the widest catalog until the visitor's own usage arrives.
+  const widest = livePlans.reduce((a, b) => (b.models.length > a.models.length ? b : a));
+  const own = liveSubscription && livePlans.find(p => p.title === liveSubscription.plan);
+  showFamilies(own ? own.models : widest.models);
+}).catch(() => {});
+
+// Session: the dashboard keeps its refresh token in an HttpOnly cookie. Refreshing tells the page
+// whether the visitor is signed in without the page ever storing a credential.
+function setConsoleLinks() {
+  const d = I18N[document.documentElement.lang];
+  document.querySelectorAll("[data-console]").forEach(a => {
+    if (signedIn) { a.href = "/lightcode/usage"; a.querySelector("span") ? a.querySelector("span").textContent = d.consoleIn : a.textContent = d.consoleIn; }
+  });
+  document.querySelectorAll("[data-console-link]").forEach(a => {
+    const target = a.dataset.consoleLink;
+    a.href = signedIn ? target : `/sign-in?redirect=${encodeURIComponent(target)}`;
+  });
+}
+function pct(w) { return Math.round(Math.min(100, Math.max(0, w.used_percent))); }
+function resetText(ts) {
+  const d = new Date(ts * 1000), lang = document.documentElement.lang;
+  return I18N[lang].resetAt.replace("{t}", d.toLocaleString(lang === "zh" ? "zh-CN" : "en-US", { weekday: "short", hour: "2-digit", minute: "2-digit" }));
+}
+function showUsage(sub) {
+  liveSubscription = sub || null;
+  const d = I18N[document.documentElement.lang];
+  document.getElementById("pvLong").hidden = !sub;
+  document.getElementById("pvShort").hidden = !sub;
+  if (!sub) {
+    document.getElementById("pvPlan").textContent = d.noSub;
+    document.getElementById("pvState").textContent = d.noSub;
+    document.getElementById("pvReset").textContent = "";
+    document.querySelector("[data-i18n='provIsland']").textContent = d.noSub;
+    return;
+  }
+  const meter = (el, w) => {
+    const v = el.querySelector(".v"), bar = el.querySelector(".bar i");
+    if (!w) { v.textContent = d.noLimit; bar.style.width = "0"; return; }
+    v.textContent = pct(w) + "%"; bar.style.width = pct(w) + "%";
+  };
+  document.getElementById("pvPlan").textContent = sub.plan.replace(/^Lightcode\s+/i, "");
+  document.getElementById("pvState").textContent = d.yours;
+  meter(document.getElementById("pvLong"), sub.window_long);
+  meter(document.getElementById("pvShort"), sub.window_short);
+  const next = [sub.window_short, sub.window_long].filter(Boolean).sort((a, b) => a.reset_at - b.reset_at)[0];
+  document.getElementById("pvReset").textContent = next ? resetText(next.reset_at) : "";
+  document.querySelector("[data-i18n='provIsland']").textContent =
+    `${sub.plan.replace(/^Lightcode\s+/i, "")} · ${sub.window_long ? d.w7dShort + " " + pct(sub.window_long) + "%" : d.active}`;
+}
+// Refresh rotates the cookie, so it runs under the same browser lock the dashboard uses; two
+// tabs refreshing at once would otherwise race and sign the visitor out.
+const refresh = () => getJSON("/api/user/auth/refresh", { method: "POST" });
+const withLock = fn => navigator.locks ? navigator.locks.request("new-api:auth-refresh", { mode: "exclusive" }, fn) : fn();
+(API === null ? Promise.reject(new Error("offline")) : withLock(refresh)).then(res => {
+  const token = res.data && res.data.access_token;
+  if (!token) return;
+  signedIn = true;
+  setConsoleLinks();
+  return getJSON("/api/lightcode/usage?days=1", { headers: { Accept: "application/json", Authorization: `Bearer ${token}` } })
+    .then(u => {
+      const sub = u.data && u.data.subscription;
+      // Usage lists only models already used, so the family counts keep coming from the plan catalog.
+      if (sub) {
+        showUsage(sub);
+        const own = livePlans && livePlans.find(p => p.title === sub.plan);
+        if (own) showFamilies(own.models);
+      }
+      else showUsage(null);
+    });
+}).catch(() => {});
+
+
+// Prefer the published installer when the gateway reports one; otherwise keep the Releases link.
+getJSON("/api/lightcode/download")
+  .then(res => {
+    const f = res && res.data;
+    if (!f || typeof f.url !== "string") return;
+    const url = new URL(f.url, location.origin);
+    const local = url.origin === location.origin && url.pathname.startsWith("/download/lightcode/");
+    const release = url.origin === "https://github.com" && /^\/(?:LightCode-AI|Lorry-San)\/lightcode-releases\/releases\//.test(url.pathname);
+    if ((!local && !release) || url.username || url.password) return;
+    document.querySelectorAll("[data-dl]").forEach(a => { a.href = url.href; });
+  })
+  .catch(() => {});
+</script>
+</body>
+</html>

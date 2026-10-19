@@ -49,7 +49,13 @@ sleep 30
 systemctl is-active --quiet lightcone
 curl -fsS http://127.0.0.1:3000/api/status | EXPECTED_VERSION="$version" python3 -c 'import json,os,sys; data=json.load(sys.stdin); actual=data["data"]["version"]; assert actual==os.environ["EXPECTED_VERSION"],actual; print("Healthy gateway:",actual)'
 status=$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/lightcode)
-[[ "$status" == 308 ]]
+[[ "$status" == 200 ]]
+# Both entry pages must match their distinct source documents.
+curl -fsS http://127.0.0.1:3000/ -o "$release/served-home.html"
+curl -fsS http://127.0.0.1:3000/lightcode -o "$release/served-agent.html"
+cmp "$release/served-home.html" web/public/lightcode/home.html
+cmp "$release/served-agent.html" web/public/lightcode/index.html
+! cmp -s "$release/served-home.html" "$release/served-agent.html"
 trap - ERR
 sha256sum /opt/lightcone/bin/lightcone-ai
 printf 'Deployment verified. Executable backup: %s\nDatabase backup: /opt/lightcone/data/lightcone.db.bak-%s\n' "$backup" "$stamp"
