@@ -42,7 +42,7 @@ func TestLightcodeSiteIsServedBeforeTheStaticDirectoryOfTheSameName(t *testing.T
 		return recorder
 	}
 
-	for _, path := range []string{"/lightcode", "/lightcode/"} {
+	for _, path := range []string{"/", "/lightcode", "/lightcode/"} {
 		got := do(http.MethodGet, path)
 		require.Equal(t, http.StatusOK, got.Code, "%s must not redirect", path)
 		assert.Equal(t, string(site), got.Body.String())

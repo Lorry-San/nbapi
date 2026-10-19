@@ -21,5 +21,16 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Home } from '@/features/home'
 
 export const Route = createFileRoute('/')({
+  // In production the server answers "/" with the static Lightcode site, so in-app
+  // navigation to the homepage reloads the page instead of rendering the SPA home.
+  // If the server still serves the SPA at "/", the guard stops a reload loop.
+  beforeLoad: () => {
+    if (!import.meta.env.PROD) return
+    const key = 'lightcode-home-reload'
+    const last = Number(sessionStorage.getItem(key) || 0)
+    if (Date.now() - last < 10_000) return
+    sessionStorage.setItem(key, String(Date.now()))
+    window.location.assign('/')
+  },
   component: Home,
 })

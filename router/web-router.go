@@ -37,7 +37,8 @@ func setWebRouter(router *gin.Engine, frontendFS static.ServeFileSystem, siteInd
 			c.Header("Cache-Control", "no-cache")
 			c.Data(http.StatusOK, "text/html; charset=utf-8", siteIndex)
 		}
-		for _, path := range []string{"/lightcode", "/lightcode/"} {
+		// The product site is also the homepage.
+		for _, path := range []string{"/", "/lightcode", "/lightcode/"} {
 			router.GET(path, serveSite)
 			router.HEAD(path, serveSite)
 		}

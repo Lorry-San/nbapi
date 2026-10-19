@@ -30,6 +30,7 @@ import {
   type LightcodeProfileData,
   type LightcodeUsageWindow,
 } from '@/features/lightcode/api'
+import { toIntlLocale } from '@/i18n/languages'
 import { cn } from '@/lib/utils'
 
 import {
@@ -180,7 +181,7 @@ function ActivityHeatmap(props: { days: LightcodeProfileData['days'] }) {
   const map = useMemo(() => buildHeatmap(props.days, mode), [props.days, mode])
   const monthFmt = useMemo(
     () =>
-      new Intl.DateTimeFormat(i18n.language, {
+      new Intl.DateTimeFormat(toIntlLocale(i18n.language), {
         month: 'short',
         timeZone: 'UTC',
       }),
