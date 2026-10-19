@@ -65,6 +65,31 @@ func TestLightcodeShortAndLongWindowsLimitIndependently(t *testing.T) {
 	assert.Zero(t, lapsed.ResetAt)
 }
 
+func TestLightcodeWindowStatusExcludesInFlightPreConsumes(t *testing.T) {
+	truncateTables(t)
+	require.NoError(t, DB.AutoMigrate(&SubscriptionPreConsumeRecord{}, &LightcodeGroupModel{}))
+	user := User{Username: "lightcode-in-flight", Group: "default", Status: common.UserStatusEnabled}
+	require.NoError(t, DB.Create(&user).Error)
+	plan := SubscriptionPlan{
+		Title: "In-flight", Pool: SubscriptionPoolLightcode, RoutingGroup: "g", AllowedModels: []string{"m"},
+		WindowLongSeconds: 7 * 86400, WindowLongAmount: 200,
+	}
+	planJSON, err := common.Marshal(plan)
+	require.NoError(t, err)
+	sub := UserSubscription{UserId: user.Id, PlanId: plan.Id, Pool: SubscriptionPoolLightcode,
+		PlanSnapshot: string(planJSON), Status: "active", WindowLongStart: 100, WindowLongUsed: 200}
+	require.NoError(t, DB.Create(&sub).Error)
+	require.NoError(t, DB.Create(&[]SubscriptionPreConsumeRecord{
+		{Pool: SubscriptionPoolLightcode, RequestId: "settled-request", UserId: user.Id, UserSubscriptionId: sub.Id, PreConsumed: 100, Status: "consumed", CreatedAt: 100},
+		{Pool: SubscriptionPoolLightcode, RequestId: "in-flight-request", UserId: user.Id, UserSubscriptionId: sub.Id, PreConsumed: 100, Status: "consumed", CreatedAt: 100},
+	}).Error)
+	require.NoError(t, LOG_DB.Create(&Log{UserId: user.Id, Type: LogTypeConsume, CreatedAt: 101, RequestId: "settled-request"}).Error)
+	_, long := LightcodeWindowStatus(&sub, 101)
+	require.NotNil(t, long)
+	assert.EqualValues(t, 100, long.Used, "the in-flight reservation must not appear in the dashboard")
+	assert.Equal(t, 50, long.UsedPercent)
+}
+
 func TestLightcodeWindowStatusPublishesPercentageWithoutRawQuota(t *testing.T) {
 	plan := SubscriptionPlan{WindowShortSeconds: 18000, WindowShortAmount: 100, WindowLongSeconds: 604800, WindowLongAmount: 200}
 	data, err := common.Marshal(plan)
