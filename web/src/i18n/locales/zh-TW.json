@@ -5270,7 +5270,8 @@
     "Cumulative": "累計",
     "View plans": "查看方案",
     "Token activity": "Token 活動",
-    "Token activity over the last year": "過去一年的 Token 活動",
+    "Token activity over the last 90 days": "最近 90 天的 Token 活動",
+    "Last 90 days": "最近 90 天",
     "No Lightcode usage yet": "尚無 Lightcode 使用紀錄",
     "Some older usage records were not counted.": "部分較早的使用紀錄未計入統計。"
   }

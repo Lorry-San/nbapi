@@ -5283,7 +5283,8 @@
     "Cumulative": "Накопительно",
     "View plans": "Посмотреть тарифы",
     "Token activity": "Активность токенов",
-    "Token activity over the last year": "Активность токенов за последний год",
+    "Token activity over the last 90 days": "Активность токенов за последние 90 дней",
+    "Last 90 days": "Последние 90 дней",
     "No Lightcode usage yet": "Использования Lightcode пока нет",
     "Some older usage records were not counted.": "Некоторые старые записи использования не учтены."
   }

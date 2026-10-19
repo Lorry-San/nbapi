@@ -5294,7 +5294,8 @@
     "Cumulative": "Cumulative",
     "View plans": "View plans",
     "Token activity": "Token activity",
-    "Token activity over the last year": "Token activity over the last year",
+    "Token activity over the last 90 days": "Token activity over the last 90 days",
+    "Last 90 days": "Last 90 days",
     "No Lightcode usage yet": "No Lightcode usage yet",
     "Some older usage records were not counted.": "Some older usage records were not counted."
   }

@@ -26,7 +26,6 @@ import {
   initials,
   levelOf,
   levelThresholds,
-  modeValues,
 } from '../activity'
 
 function makeDays(start: string, count: number, tokens: (i: number) => number) {
@@ -46,14 +45,6 @@ test('formatTokens is compact with a number', () => {
   assert.equal(formatTokens(250_000), '250K')
 })
 
-test('modeValues weekly sums Sunday-first weeks and cumulative runs', () => {
-  // 2026-10-03 is Saturday, 2026-10-04 Sunday
-  const days = makeDays('2026-10-03', 9, () => 1)
-  assert.deepEqual(modeValues(days, 'weekly'), [1, 7, 7, 7, 7, 7, 7, 7, 1])
-  assert.deepEqual(modeValues(days, 'cumulative'), [1, 2, 3, 4, 5, 6, 7, 8, 9])
-  assert.deepEqual(modeValues(days, 'daily'), [1, 1, 1, 1, 1, 1, 1, 1, 1])
-})
-
 test('levels: zero is empty, quartiles map to 1..4', () => {
   const values = [0, 1, 2, 3, 4, 5, 6, 7, 8]
   const th = levelThresholds(values)
@@ -63,17 +54,28 @@ test('levels: zero is empty, quartiles map to 1..4', () => {
   assert.deepEqual(levelThresholds([0, 0]), [])
 })
 
-test('buildHeatmap gives 53 Sunday-aligned columns for 371 days', () => {
-  // 371 days ending on Sunday 2026-10-18
-  const days = makeDays('2025-10-13', 371, (i) => i % 3)
-  assert.equal(days.at(-1)?.date, '2026-10-18')
-  const map = buildHeatmap(days, 'daily')
-  assert.equal(map.columns.length, 53)
-  for (const c of map.columns) assert.equal(c.length, 7)
-  const lastCol = map.columns.at(-1)
-  assert.equal(lastCol?.[0]?.date, '2026-10-18')
-  assert.equal(lastCol?.[1], null)
-  assert.ok(map.months.length >= 12)
+test('buildHeatmap keeps exactly the last 90 daily values and includes the latest day', () => {
+  const days = makeDays('2025-10-13', 371, (i) => i)
+  const map = buildHeatmap(days)
+  const cells = map.columns.flat().filter((cell) => cell !== null)
+  assert.equal(cells.length, 90)
+  assert.equal(cells[0].date, '2026-07-21')
+  assert.equal(cells[0].tokens, 281)
+  assert.equal(cells.at(-1)?.date, '2026-10-18')
+  assert.equal(cells.at(-1)?.tokens, 370)
+  for (const column of map.columns) assert.equal(column.length, 7)
+  assert.equal(map.columns.at(-1)?.[0]?.date, '2026-10-18')
+  assert.equal(map.columns.at(-1)?.[1], null)
+  assert.ok(map.months.length <= 4)
+})
+
+test('buildHeatmap handles no history and shorter history without inventing days', () => {
+  assert.deepEqual(buildHeatmap([]), { columns: [], months: [] })
+  const map = buildHeatmap(makeDays('2026-10-03', 2, (i) => 10 + i))
+  const cells = map.columns.flat().filter((cell) => cell !== null)
+  assert.equal(cells.length, 2)
+  assert.equal(map.columns[0][6]?.tokens, 10)
+  assert.equal(map.columns[1][0]?.tokens, 11)
 })
 
 test('avatar helpers are deterministic', () => {

@@ -5283,7 +5283,8 @@
     "Cumulative": "累計",
     "View plans": "プランを見る",
     "Token activity": "トークンアクティビティ",
-    "Token activity over the last year": "過去1年間のトークンアクティビティ",
+    "Token activity over the last 90 days": "過去90日間のトークンアクティビティ",
+    "Last 90 days": "過去90日間",
     "No Lightcode usage yet": "Lightcode の利用はまだありません",
     "Some older usage records were not counted.": "一部の古い利用記録は集計されていません。"
   }

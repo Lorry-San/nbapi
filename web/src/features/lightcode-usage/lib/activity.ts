@@ -17,8 +17,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-export type ActivityMode = 'daily' | 'weekly' | 'cumulative'
-
 export interface ActivityDay {
   date: string
   total_tokens: number
@@ -26,8 +24,6 @@ export interface ActivityDay {
 
 export interface HeatmapCell {
   date: string
-  /** Value used for coloring in the selected mode. */
-  value: number
   /** The day's own tokens, for the tooltip. */
   tokens: number
   level: number
@@ -40,7 +36,7 @@ export interface Heatmap {
   months: { column: number; month: number }[]
 }
 
-export const HEATMAP_WEEKS = 53
+const HEATMAP_DAYS = 90
 
 /** Compact token format: 1234 -> 1.2K, 5600000 -> 5.6M. */
 export function formatTokens(n: number): string {
@@ -63,29 +59,6 @@ function weekdayOf(date: string): number {
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay()
 }
 
-/** Value per day for the given mode, aligned with `days`. */
-export function modeValues(days: ActivityDay[], mode: ActivityMode): number[] {
-  if (mode === 'daily') return days.map((d) => d.total_tokens)
-  if (mode === 'cumulative') {
-    let sum = 0
-    return days.map((d) => (sum += d.total_tokens))
-  }
-  // weekly: weeks start on Sunday
-  const out: number[] = days.map(() => 0)
-  let start = 0
-  while (start < days.length) {
-    let end = start
-    let sum = days[start].total_tokens
-    while (end + 1 < days.length && weekdayOf(days[end + 1].date) !== 0) {
-      end++
-      sum += days[end].total_tokens
-    }
-    for (let i = start; i <= end; i++) out[i] = sum
-    start = end + 1
-  }
-  return out
-}
-
 /** Quartile thresholds over the non-zero values. */
 export function levelThresholds(values: number[]): number[] {
   const nz = values.filter((v) => v > 0).sort((a, b) => a - b)
@@ -103,22 +76,21 @@ export function levelOf(value: number, thresholds: number[]): number {
   return Math.min(4, level)
 }
 
-/** Lay days (oldest first) out as Sunday-first week columns, keeping the last HEATMAP_WEEKS. */
-export function buildHeatmap(days: ActivityDay[], mode: ActivityMode): Heatmap {
+/** Show the last 90 supplied days, oldest first, in Sunday-first week columns. */
+export function buildHeatmap(history: ActivityDay[]): Heatmap {
+  const days = history.slice(-HEATMAP_DAYS)
   if (days.length === 0) return { columns: [], months: [] }
-  const values = modeValues(days, mode)
-  const thresholds = levelThresholds(values)
+  const thresholds = levelThresholds(days.map((day) => day.total_tokens))
   const columns: (HeatmapCell | null)[][] = []
   let col: (HeatmapCell | null)[] = Array.from(
     { length: weekdayOf(days[0].date) },
     () => null
   )
-  days.forEach((d, i) => {
+  days.forEach((d) => {
     col.push({
       date: d.date,
-      value: values[i],
       tokens: d.total_tokens,
-      level: levelOf(values[i], thresholds),
+      level: levelOf(d.total_tokens, thresholds),
     })
     if (col.length === 7) {
       columns.push(col)
@@ -129,21 +101,18 @@ export function buildHeatmap(days: ActivityDay[], mode: ActivityMode): Heatmap {
     while (col.length < 7) col.push(null)
     columns.push(col)
   }
-  const kept = columns.slice(-HEATMAP_WEEKS)
   const months: Heatmap['months'] = []
   let last = -1
-  kept.forEach((c, i) => {
+  columns.forEach((c, i) => {
     const first = c.find((cell) => cell !== null)
     if (!first) return
     const month = Number(first.date.slice(5, 7)) - 1
     if (month !== last) {
-      if (last !== -1 || first.date.slice(8) <= '07') {
-        months.push({ column: i, month })
-      }
+      months.push({ column: i, month })
       last = month
     }
   })
-  return { columns: kept, months }
+  return { columns, months }
 }
 
 /** Deterministic avatar hue from the user id. */

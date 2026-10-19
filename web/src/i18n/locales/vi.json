@@ -5283,7 +5283,8 @@
     "Cumulative": "Tích lũy",
     "View plans": "Xem gói",
     "Token activity": "Hoạt động token",
-    "Token activity over the last year": "Hoạt động token trong năm qua",
+    "Token activity over the last 90 days": "Hoạt động token trong 90 ngày qua",
+    "Last 90 days": "90 ngày qua",
     "No Lightcode usage yet": "Chưa có lượt sử dụng Lightcode",
     "Some older usage records were not counted.": "Một số bản ghi sử dụng cũ chưa được tính."
   }

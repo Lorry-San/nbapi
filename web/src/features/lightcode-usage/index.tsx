@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { SectionPageLayout } from '@/components/layout'
@@ -33,13 +33,7 @@ import {
 import { toIntlLocale } from '@/i18n/languages'
 import { cn } from '@/lib/utils'
 
-import {
-  avatarHue,
-  buildHeatmap,
-  formatTokens,
-  initials,
-  type ActivityMode,
-} from './lib/activity'
+import { avatarHue, buildHeatmap, formatTokens, initials } from './lib/activity'
 
 const LEVEL_ALPHA = [0, 0.3, 0.5, 0.75, 1]
 
@@ -156,6 +150,8 @@ function PlanCard(props: { sub: LightcodeProfileData['subscription'] }) {
           <div className='grid gap-3 sm:grid-cols-2'>
             <WindowCard window={sub.window_short} />
             <WindowCard window={sub.window_long} />
+            {/* Reserved for reset-card controls; hidden until the feature is available. */}
+            <div hidden data-slot='lightcode-reset-card' />
           </div>
         </div>
       ) : (
@@ -177,8 +173,7 @@ const GAP = 3
 
 function ActivityHeatmap(props: { days: LightcodeProfileData['days'] }) {
   const { t, i18n } = useTranslation()
-  const [mode, setMode] = useState<ActivityMode>('daily')
-  const map = useMemo(() => buildHeatmap(props.days, mode), [props.days, mode])
+  const map = useMemo(() => buildHeatmap(props.days), [props.days])
   const monthFmt = useMemo(
     () =>
       new Intl.DateTimeFormat(toIntlLocale(i18n.language), {
@@ -187,11 +182,6 @@ function ActivityHeatmap(props: { days: LightcodeProfileData['days'] }) {
       }),
     [i18n.language]
   )
-  const modes: [ActivityMode, string][] = [
-    ['daily', t('Daily')],
-    ['weekly', t('Weekly')],
-    ['cumulative', t('Cumulative')],
-  ]
   const width = map.columns.length * (CELL + GAP) - GAP
   const cells = map.columns.flatMap((col, ci) =>
     col.map((cell, ri) => ({ cell, id: cell?.date ?? `pad-${ci}-${ri}` }))
@@ -201,34 +191,15 @@ function ActivityHeatmap(props: { days: LightcodeProfileData['days'] }) {
     <div className='rounded-xl border p-4'>
       <div className='mb-3 flex flex-wrap items-center justify-between gap-2'>
         <h2 className='text-sm font-semibold'>{t('Token activity')}</h2>
-        <div
-          className='bg-muted flex rounded-md p-0.5'
-          role='group'
-          aria-label={t('Token activity')}
-        >
-          {modes.map(([value, label]) => (
-            <button
-              key={value}
-              type='button'
-              aria-pressed={mode === value}
-              onClick={() => setMode(value)}
-              className={cn(
-                'rounded px-2.5 py-1 text-xs transition-colors',
-                mode === value
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <span className='text-muted-foreground text-xs'>
+          {t('Last 90 days')}
+        </span>
       </div>
       <div className='no-scrollbar overflow-x-auto pb-1'>
         <div style={{ width }} className='mx-auto'>
           <div
             role='img'
-            aria-label={t('Token activity over the last year')}
+            aria-label={t('Token activity over the last 90 days')}
             className='grid grid-flow-col'
             style={{
               gridTemplateRows: `repeat(7, ${CELL}px)`,
@@ -240,11 +211,7 @@ function ActivityHeatmap(props: { days: LightcodeProfileData['days'] }) {
               cell ? (
                 <div
                   key={id}
-                  title={`${cell.date} · ${cell.tokens.toLocaleString()} ${t('tokens')}${
-                    mode === 'daily'
-                      ? ''
-                      : ` (${modes.find((m) => m[0] === mode)?.[1]}: ${cell.value.toLocaleString()})`
-                  }`}
+                  title={`${cell.date} · ${cell.tokens.toLocaleString()} ${t('tokens')}`}
                   className={cn(
                     'rounded-[3px]',
                     cell.level === 0 && 'bg-muted'

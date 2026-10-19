@@ -169,14 +169,27 @@ describe('Lightcode usage page', () => {
       assert.match(text, /DeepSeek V4\.1 Flash/)
       assert.doesNotMatch(text, /deepseek-v4\.1-flash/)
       const heatmap = container.querySelector(
-        '[role="img"][aria-label="Token activity over the last year"]'
+        '[role="img"][aria-label="Token activity over the last 90 days"]'
       )
       assert.ok(heatmap)
+      const dates = Array.from(heatmap.querySelectorAll('[title]')).map(
+        (cell) => cell.getAttribute('title')?.slice(0, 10)
+      )
+      assert.equal(dates.length, 90)
+      assert.equal(dates[0], '2026-07-22')
+      assert.equal(dates.at(-1), '2026-10-19')
+      assert.equal(container.querySelectorAll('[aria-pressed]').length, 0)
       const scrollArea = heatmap.parentElement?.parentElement
       assert.ok(
         scrollArea?.classList.contains('no-scrollbar'),
-        'year activity must hide the native horizontal scrollbar'
+        'activity must hide the native horizontal scrollbar'
       )
+      const resetCard = container.querySelector<HTMLElement>(
+        '[data-slot="lightcode-reset-card"]'
+      )
+      assert.ok(resetCard)
+      assert.equal(resetCard.hidden, true)
+      assert.equal(resetCard.querySelector('button'), null)
     } finally {
       console.error = originalError
       act(() => root.unmount())

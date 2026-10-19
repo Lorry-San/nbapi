@@ -5283,7 +5283,8 @@
     "Cumulative": "Cumulé",
     "View plans": "Voir les offres",
     "Token activity": "Activité des tokens",
-    "Token activity over the last year": "Activité des tokens sur l'année écoulée",
+    "Token activity over the last 90 days": "Activité des tokens sur les 90 derniers jours",
+    "Last 90 days": "90 derniers jours",
     "No Lightcode usage yet": "Aucune utilisation de Lightcode pour l'instant",
     "Some older usage records were not counted.": "Certains enregistrements d'utilisation anciens n'ont pas été comptés."
   }
