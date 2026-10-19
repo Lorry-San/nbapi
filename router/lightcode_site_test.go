@@ -42,13 +42,18 @@ func TestLightcodeSiteIsServedBeforeTheStaticDirectoryOfTheSameName(t *testing.T
 		return recorder
 	}
 
-	for _, path := range []string{"/", "/lightcode", "/lightcode/"} {
-		got := do(http.MethodGet, path)
-		require.Equal(t, http.StatusOK, got.Code, "%s must not redirect", path)
-		assert.Equal(t, string(site), got.Body.String())
-		assert.Equal(t, "no-cache", got.Header().Get("Cache-Control"), "the page must not be cached for a week")
+	got := do(http.MethodGet, "/")
+	require.Equal(t, http.StatusOK, got.Code, "the homepage must not redirect")
+	assert.Equal(t, string(site), got.Body.String())
+	assert.Equal(t, "no-cache", got.Header().Get("Cache-Control"), "the page must not be cached for a week")
+	assert.Equal(t, http.StatusOK, do(http.MethodHead, "/").Code)
+	for _, path := range []string{"/lightcode", "/lightcode/", "/lightcode/index.html"} {
+		for _, method := range []string{http.MethodGet, http.MethodHead} {
+			got := do(method, path+"?lang=en")
+			assert.Equal(t, http.StatusPermanentRedirect, got.Code)
+			assert.Equal(t, "/?lang=en", got.Header().Get("Location"))
+		}
 	}
-	assert.Equal(t, http.StatusOK, do(http.MethodHead, "/lightcode").Code)
 
 	asset := do(http.MethodGet, "/lightcode/favicon.png")
 	assert.Equal(t, http.StatusOK, asset.Code)

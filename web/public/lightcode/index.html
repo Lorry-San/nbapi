@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lightcode AI · 模型订阅与桌面 Agent</title>
 <link rel="icon" href="/lightcode/favicon.png">
+<link rel="canonical" href="https://lightcode.lcapi.online/">
+<meta name="description" content="Lightcode 连接模型订阅与桌面 Agent。一个账号，处理文档、表格、代码与日常工作。">
 <style>
 :root {
   --brand: #6799fe; --brand-soft: rgba(103,153,254,.14); --page: #0a0a0b; --panel: #121215; --panel2: #18181c;
@@ -80,7 +82,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: var(--pill); border: 1px solid var(--line2); background: rgba(255,255,255,.03); font-size: 13px; color: var(--text2); }
 .eyebrow i { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(74,222,128,.18); }
 h1 { margin: 24px auto 0; max-width: 860px; font-size: clamp(34px, 5.4vw, 60px); line-height: 1.12; font-weight: 650; letter-spacing: -.03em; }
-h1 .grad { background: linear-gradient(90deg, #8fb4ff, #b9a6ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
 .lead { margin: 22px auto 0; max-width: 600px; font-size: 17px; line-height: 1.7; color: var(--muted); text-wrap: pretty; }
 .hero .cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 36px; }
 .meta { margin-top: 16px; font-size: 13px; color: var(--muted); }
@@ -234,16 +236,130 @@ footer a:hover { color: var(--text); }
 .reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
 .reveal.in { opacity: 1; transform: none; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .reveal { opacity: 1; transform: none; transition: none; } .final.in .orb2 { animation: none; } }
+
+/* Agent homepage: original large preview and detailed capability illustrations. */
+/* 桌面预览窗口 */
+.agent-preview { width: 100%; max-width: 1020px; margin: 80px auto 0; position: relative; scroll-margin-top: 100px; }
+.agent-preview .win { --u: .9px; position: relative; display: flex; height: calc(var(--u) * 680); overflow: hidden; border-radius: var(--r); text-align: left; color: #f9fafb; font-size: calc(var(--u) * 14); line-height: 1.4; user-select: none;
+  box-shadow: 0 0 0 1px hsla(0,0%,100%,.12), 0 24px 72px rgba(0,0,0,.2); font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+.agent-preview .side { width: calc(var(--u) * 260); flex: none; display: flex; flex-direction: column; padding: 0 calc(var(--u) * 8);
+  background: linear-gradient(180deg, rgba(122,155,240,.08), rgba(122,155,240,0) 35%, rgba(143,137,184,0) 68%, rgba(143,137,184,.07)), rgba(95,102,114,.42);
+  backdrop-filter: blur(32px) saturate(125%); -webkit-backdrop-filter: blur(32px) saturate(125%); box-shadow: inset -.5px 0 hsla(0,0%,100%,.1); }
+.agent-preview .lights { display: flex; gap: 8px; height: calc(var(--u) * 52); align-items: center; padding: 0 4px; }
+.agent-preview .lights i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; }
+.agent-preview .lights i:nth-child(2) { background: #febc2e; } .agent-preview .lights i:nth-child(3) { background: #28c840; }
+.agent-preview .side .logo { display: flex; align-items: center; gap: 8px; padding: 4px 8px 12px; font-weight: 600; font-size: calc(var(--u) * 16); }
+.agent-preview .side .logo img { width: 20px; height: 20px; }
+.agent-preview .row { display: flex; align-items: center; gap: calc(var(--u) * 8); height: calc(var(--u) * 36); padding: 0 calc(var(--u) * 8); border-radius: 8px; color: #e7e9ec; }
+.agent-preview .row svg { width: 16px; height: 16px; flex: none; opacity: .85; }
+.agent-preview .row.on { background: hsla(0,0%,100%,.1); }
+.agent-preview .side h5 { margin: calc(var(--u) * 14) 0 4px; padding: 0 calc(var(--u) * 8); font-size: calc(var(--u) * 13); font-weight: 400; color: #adb2b8; }
+.agent-preview .row.sess { padding-left: calc(var(--u) * 32); height: calc(var(--u) * 32); color: #cfd3d6; }
+.agent-preview .main { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; background: #151517; }
+.agent-preview .main-bar { height: calc(var(--u) * 50); padding: 0 20px; display: flex; align-items: center; flex: none; box-shadow: inset 0 -.5px hsla(0,0%,100%,.1); color: #cfd3d6; font-weight: 500; }
+.agent-preview .thread { flex: 1; overflow: hidden; width: calc(100% - 32px); max-width: calc(var(--u) * 762); margin: 0 auto; padding-top: calc(var(--u) * 28); }
+.agent-preview .umsg { width: fit-content; max-width: 70%; margin: 0 0 calc(var(--u) * 20) auto; padding: calc(var(--u) * 10) calc(var(--u) * 16); border-radius: calc(var(--u) * 22); background: #2c2c2e; }
+.agent-preview .thought { display: flex; align-items: center; gap: 6px; color: #adb2b8; font-size: calc(var(--u) * 13); margin-bottom: 12px; }
+.agent-preview .reply p { margin: 0 0 10px; line-height: 1.6; color: #e7e9ec; }
+.agent-preview .reply ol { margin: 0 0 10px; padding-left: 20px; line-height: 1.7; color: #e7e9ec; }
+.agent-preview .reply strong { color: #fff; }
+.agent-preview .dock { width: calc(100% - 32px); max-width: calc(var(--u) * 762); margin: 0 auto; padding: calc(var(--u) * 16) 0 calc(var(--u) * 20); }
+.agent-preview .composer { display: block; margin-top: 0; padding: 8px; border-radius: calc(var(--u) * 22); background: #2c2c2e; box-shadow: 0 0 0 .5px hsla(0,0%,100%,.12), 0 4px 16px rgba(0,0,0,.06); }
+.agent-preview .ph { padding: 6px 8px; color: #8e9399; }
+.agent-preview .tools { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; font-size: calc(var(--u) * 13); color: #cfd3d6; }
+.agent-preview .tools span { display: inline-flex; align-items: center; gap: 6px; }
+.agent-preview .tools .l, .agent-preview .tools .r { display: flex; gap: 10px; align-items: center; }
+.agent-preview .plus, .agent-preview .send { width: 28px; height: 28px; border-radius: 50%; display: grid !important; place-items: center; line-height: 1; font-size: 16px; background: hsla(0,0%,100%,.08); }
+.agent-preview .send { background: #fff; color: #151517; }
+.agent-preview .dim { color: #8e9399; }
+@media (max-width: 760px) { .agent-preview .side { display: none; } .agent-preview .win { height: calc(var(--u) * 560); } .agent-preview .umsg { max-width: 90%; } }
+
+
+/* 能力卡片 */
+.capabilities { padding: 160px 0; }
+.capabilities h2 { margin: 0; font-family: "Montserrat", var(--sans); font-size: 28px; font-weight: 500; letter-spacing: -.02em; line-height: 150%; text-align: center; }
+@media (min-width: 768px) { .capabilities h2 { font-size: 36px; } }
+.capabilities .grid { display: grid; grid-template-columns: 1fr; gap: 32px; margin-top: 80px; }
+@media (min-width: 1024px) { .capabilities .grid { grid-template-columns: 1fr 1fr; } }
+.capabilities .card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; padding: 40px 40px 0; border: 1px solid var(--line); border-radius: var(--r); background: rgba(255,255,255,.025); }
+.capabilities .card h3 { margin: 0; font-size: 20px; font-weight: 500; letter-spacing: -.01em; line-height: 150%; }
+.capabilities .copy { display: flex; flex-direction: column; gap: 8px; padding-bottom: 32px; }
+.capabilities .media { position: relative; margin-top: auto; min-height: 280px; overflow: hidden; border: 1px solid var(--line); border-bottom: 0; border-radius: 10px 10px 0 0; background: #101113; padding: 20px; font-size: 13px; color: #cfd3d6; }
+.capabilities .plug { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 10px; background: hsla(0,0%,100%,.03); margin-bottom: 8px; }
+.capabilities .plug .ic { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: #2c2c2e; font-size: 15px; flex: none; }
+.capabilities .plug b { display: block; color: #f9fafb; font-weight: 500; }
+.capabilities .plug small { color: #8e9399; }
+.capabilities .plug .tag { margin-left: auto; font-size: 11px; padding: 3px 8px; border-radius: 6px; background: hsla(0,0%,100%,.06); color: #adb2b8; white-space: nowrap; }
+.capabilities .plug .tag.on { background: rgba(103,153,254,.16); color: var(--brand); }
+.capabilities .flow { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px 14px; align-items: center; }
+.capabilities .node { padding: 12px; border-radius: 10px; background: hsla(0,0%,100%,.04); border: .5px solid hsla(0,0%,100%,.1); }
+.capabilities .node b { display: block; color: #f9fafb; font-weight: 500; margin-bottom: 2px; }
+.capabilities .node small { color: #8e9399; font-family: var(--mono); font-size: 11px; }
+.capabilities .arrow { color: var(--brand); text-align: center; font-family: var(--mono); }
+.capabilities .files { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.capabilities .file { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; background: hsla(0,0%,100%,.04); border: .5px solid hsla(0,0%,100%,.1); }
+.capabilities .file i { width: 18px; height: 22px; border-radius: 3px; display: block; }
+.capabilities .code { font-family: var(--mono); font-size: 12px; line-height: 1.8; padding: 14px; border-radius: 8px; background: #151517; border: .5px solid hsla(0,0%,100%,.1); }
+.capabilities .code .a { color: #7ee787; } .capabilities .code .k { color: #ff7b72; } .capabilities .code .s { color: #a5d6ff; }
+.capabilities .task { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 12px; background: #1c1c1e; border: .5px solid hsla(0,0%,100%,.12); margin-top: 12px; }
+.capabilities .task .clk { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: rgba(103,153,254,.16); color: var(--brand); flex: none; }
+.capabilities .task b { display: block; color: #f9fafb; font-weight: 500; }
+.capabilities .task small { color: #8e9399; }
+.capabilities .task .open { margin-left: auto; color: var(--brand); }
+
+
+.hero h1, .hero h1 span { color: #fff; background: none; -webkit-text-fill-color: #fff; }
+.hero h1 { font-weight: 500; line-height: 1.3; }
+.preview-island { position: absolute; left: 50%; top: 0; translate: -50% -50%; z-index: 4; display: flex; align-items: center; gap: 10px; height: 42px; padding: 0 18px; border-radius: var(--pill); background: rgba(22,24,32,.3); white-space: nowrap; font-size: 13px; }
+.preview-island > [data-i18n="agentPreview"] { color: var(--muted); font-size: 12px; }
+.preview-island:not(.lg-glass) { backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%); }
+.preview-island .live { width: 7px; height: 7px; border-radius: 50%; background: var(--brand); }
+.agent-preview .win { min-width: 0; }
+.agent-preview .tools .r { min-width: 0; }
+.agent-preview .tools .r > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-preview .side .logo img { flex: none; }
+.agent-preview .ph { font-size: 12px; }
+.capabilities { padding-block: 112px; }
+.capabilities .grid { margin-top: 56px; }
+.capabilities .card { background: rgba(255,255,255,.025); }
+.capabilities .body { margin: 0; color: var(--text2); font-size: 14px; line-height: 1.8; }
+.capabilities .copy h3 { text-align: left; }
+.capabilities .plug > span:nth-child(2), .capabilities .task > span:nth-child(2) { min-width: 0; }
+.capabilities .plug small, .capabilities .task small { display: block; }
+.capabilities .flow { grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); }
+.capabilities .node { min-width: 0; overflow-wrap: anywhere; }
+section[id], #agent { scroll-margin-top: 100px; }
+.download-meta[hidden], .meter[hidden] { display: none; }
+footer .wrap { gap: 24px; }
+footer nav { flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .hero { padding-top: 126px; }
+  .hero h1 { font-size: clamp(30px,8vw,42px); }
+  .agent-preview { margin-top: 64px; }
+  .agent-preview .win { --u: .8px; }
+  .agent-preview .tools .r { max-width: 48%; }
+  .preview-island { padding-inline: 14px; max-width: calc(100% - 20px); }
+  .preview-island > [data-i18n="agentPreview"] { display: none; }
+  .capabilities { padding-block: 72px; }
+  .capabilities .card { padding: 24px 20px 0; }
+  .capabilities .media { padding: 14px; }
+  .capabilities .plug { gap: 8px; padding: 10px; }
+  .capabilities .plug .tag { font-size: 10px; padding-inline: 5px; }
+  .duo .card-head .meta-txt { display: none; }
+  .console-row { grid-template-columns: 1fr; }
+  .brand .tag { display: none; }
+  section.block { padding-block: 72px; }
+}
 </style>
 </head>
 <body>
 <header class="island-wrap">
   <div class="island" id="island">
-    <a class="brand" href="#"><img src="/lightcode/logo-white.svg" alt="">Lightcode AI<span class="tag" data-i18n="preview"></span></a>
+    <a class="brand" href="/"><img src="/lightcode/logo-white.svg" alt="">Lightcode AI<span class="tag" data-i18n="preview"></span></a>
     <nav class="links" aria-label="Primary">
       <a href="#plans" data-i18n="navPlans"></a>
       <a href="#how" data-i18n="navHow"></a>
-      <a href="/lightcode" data-i18n="navAgent"></a>
+      <a href="/#agent" data-i18n="navAgent"></a>
       <a href="#faq" data-i18n="navFaq"></a>
     </nav>
     <div class="actions">
@@ -264,7 +380,7 @@ footer a:hover { color: var(--text); }
     <div class="hero-bg" id="heroBg" aria-hidden="true"><canvas id="fluid"></canvas></div>
     <div class="wrap">
       <span class="eyebrow"><i></i><span data-i18n="eyebrow"></span></span>
-      <h1><span data-i18n="h1a"></span><br><span class="grad" data-i18n="h1b"></span></h1>
+      <h1><span data-i18n="h1a"></span><br><span data-i18n="h1b"></span></h1>
       <p class="lead" data-i18n="lead"></p>
       <div class="cta">
         <a class="btn btn-primary btn-lg" data-console href="/sign-in?redirect=%2Flightcode%2Fusage">
@@ -277,10 +393,109 @@ footer a:hover { color: var(--text); }
         </a>
       </div>
       <p class="meta" data-i18n="meta"></p>
+      <p class="meta download-meta" id="downloadMeta" hidden aria-live="polite"></p>
 
+      <div class="agent-preview" id="agent">
+        <div class="preview-island" data-glass><span class="live is-agent" aria-hidden="true"></span><b>Lightcode Agent</b><span data-i18n="agentPreview"></span></div>
+        <div class="win" role="img" data-i18n-label="agentWinLabel">
+          <aside class="side">
+            <div class="lights"><i></i><i></i><i></i></div>
+            <div class="logo"><img src="/lightcode/logo-white.svg" alt="">Lightcode</div>
+            <div class="row"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M8 3v10M3 8h10"/></svg><span data-i18n="agentSNew"></span></div>
+            <div class="row"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M6 2.5h4v3h3v4h-3v4H6v-4H3v-4h3z"/></svg><span data-i18n="agentSPlug"></span></div>
+            <div class="row"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="11" cy="11" r="2"/><path d="M6.5 6.5l3 3"/></svg><span data-i18n="agentSProv"></span></div>
+            <div class="row"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v3l2 1.5"/></svg><span data-i18n="agentSAuto"></span></div>
+            <h5 data-i18n="agentSWs"></h5>
+            <div class="row"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M2.5 4.5h4l1.5 1.5h5.5v6.5h-11z"/></svg><span data-i18n="agentSWs2"></span></div>
+            <div class="row sess on" data-i18n="agentSs1"></div>
+            <div class="row sess" data-i18n="agentSs2"></div>
+            <div class="row sess" data-i18n="agentSs3"></div>
+            <div class="row sess" data-i18n="agentSs4"></div>
+            <div class="row sess" data-i18n="agentSs5"></div>
+          </aside>
+          <div class="main">
+            <div class="main-bar">Lightcode</div>
+            <div class="thread">
+              <div class="umsg" data-i18n="agentQ"></div>
+              <div class="thought"><span data-i18n="agentThought"></span> ›</div>
+              <div class="reply">
+                <p data-i18n="agentA0"></p>
+                <ol>
+                  <li data-i18n-html="agentA1"></li>
+                  <li data-i18n-html="agentA2"></li>
+                  <li data-i18n-html="agentA3"></li>
+                  <li data-i18n-html="agentA4"></li>
+                </ol>
+                <p data-i18n="agentMore"></p>
+              </div>
+            </div>
+            <div class="dock">
+              <div class="composer">
+                <div class="ph" data-i18n="agentPh"></div>
+                <div class="tools">
+                  <div class="l"><span class="plus">+</span><span>🛡 <span data-i18n="agentPerm"></span> ⌄</span></div>
+                  <div class="r"><span><span class="dim">Lightcode ·</span> GPT <span class="dim">High</span> ⌄</span><span class="send">↑</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap capabilities" id="capabilities">
+    <h2 class="reveal"><span data-i18n="agentCapA"></span><br><span data-i18n="agentCapB"></span></h2>
+    <div class="grid">
+      <article class="card reveal">
+        <div class="copy"><h3 data-i18n="agentC1t"></h3><p class="body" data-i18n="agentC1d"></p></div>
+        <div class="media">
+          <div class="plug"><span class="ic">🧩</span><span><b>Scheduled tasks</b><small data-i18n="agentP1"></small></span><span class="tag on" data-i18n="agentEnabled"></span></div>
+          <div class="plug"><span class="ic">📊</span><span><b>Office</b><small data-i18n="agentP2"></small></span><span class="tag on" data-i18n="agentEnabled"></span></div>
+          <div class="plug"><span class="ic">🔍</span><span><b>Web search</b><small data-i18n="agentP3"></small></span><span class="tag" data-i18n="agentCommunity"></span></div>
+          <div class="plug"><span class="ic">✨</span><span><b data-i18n="agentP4t"></b><small data-i18n="agentP4"></small></span><span class="tag" data-i18n="agentCreator"></span></div>
+        </div>
+      </article>
+      <article class="card reveal">
+        <div class="copy"><h3 data-i18n="agentC2t"></h3><p class="body" data-i18n="agentC2d"></p></div>
+        <div class="media">
+          <div class="flow">
+            <div class="node"><b>Lightcode Agent</b><small data-i18n="agentN1"></small></div><div class="arrow">⇄</div><div class="node"><b data-i18n="agentN2t"></b><small data-i18n="agentN2"></small></div>
+          </div>
+          <div class="task"><span class="clk">✓</span><span><b data-i18n="agentSw1"></b><small data-i18n="agentSw2"></small></span></div>
+          <div class="task"><span class="clk">⇄</span><span><b data-i18n="agentSw3"></b><small data-i18n="agentSw4"></small></span></div>
+        </div>
+      </article>
+      <article class="card reveal">
+        <div class="copy"><h3 data-i18n="agentC3t"></h3><p class="body" data-i18n="agentC3d"></p></div>
+        <div class="media">
+          <div class="files">
+            <span class="file"><i style="background:#2b579a"></i>report.docx</span>
+            <span class="file"><i style="background:#217346"></i>sales.xlsx</span>
+            <span class="file"><i style="background:#e44d26"></i>index.html</span>
+            <span class="file"><i style="background:#3178c6"></i>app.ts</span>
+          </div>
+          <div class="code"><span class="k">export function</span> <span class="a">summarize</span>(rows) {<br>&nbsp;&nbsp;<span class="k">return</span> rows.<span class="a">reduce</span>((s, r) =&gt; s + r.total, <span class="s">0</span>);<br>}</div>
+        </div>
+      </article>
+      <article class="card reveal">
+        <div class="copy"><h3 data-i18n="agentC4t"></h3><p class="body" data-i18n="agentC4d"></p></div>
+        <div class="media">
+          <p style="margin:0;color:#e7e9ec" data-i18n="agentT0"></p>
+          <div class="task"><span class="clk">◷</span><span><b data-i18n="agentT1"></b><small data-i18n="agentT2"></small></span><span class="open" data-i18n="agentOpen"></span></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="block" id="provider">
+    <div class="wrap center">
+      <div class="kicker reveal" data-i18n="whyK"></div>
+      <h2 class="reveal" data-i18n="whyT"></h2>
+      <p class="sub reveal" data-i18n="whyD"></p>
       <div class="duo reveal">
         <div class="card">
-          <div class="card-head" data-glass><span class="live" aria-hidden="true"></span><b>Lightcode Provider</b><span class="meta-txt" data-i18n="provIsland"></span><span class="pill ok" data-i18n="active"></span></div>
+          <div class="card-head" data-glass><span class="live" aria-hidden="true"></span><b>Lightcode Provider</b><span class="meta-txt" data-i18n="provIsland"></span><span class="pill ok" id="pvActive" data-i18n="active"></span></div>
           <div class="prov">
             <div class="plan-row"><span><span class="name" id="pvPlan">Plus</span><br><small id="pvReset" data-i18n="renew"></small></span><span class="pill" id="pvState" data-i18n="sample"></span></div>
             <div class="meter" id="pvLong"><div class="lbl"><span data-i18n="w7d"></span><span class="v">38%</span></div><div class="bar"><i style="width:38%"></i></div></div>
@@ -294,7 +509,7 @@ footer a:hover { color: var(--text); }
             <div class="console-row">
               <a href="/sign-in?redirect=%2Flightcode%2Fusage" data-console-link="/lightcode/usage"><span data-i18n="cUsage"></span><b>›</b></a>
               <a href="/sign-in?redirect=%2Flightcode%2Fdevices" data-console-link="/lightcode/devices"><span data-i18n="cDevices"></span><b>›</b></a>
-              <a href="/sign-in?redirect=%2Fsubscriptions" data-console-link="/subscriptions"><span data-i18n="cSubs"></span><b>›</b></a>
+              <a href="/sign-in?redirect=%2Flightcode%2Fsubscription" data-console-link="/lightcode/subscription"><span data-i18n="cSubs"></span><b>›</b></a>
             </div>
           </div>
         </div>
@@ -323,19 +538,6 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="block" id="why">
-    <div class="wrap center">
-      <div class="kicker reveal" data-i18n="whyK"></div>
-      <h2 class="reveal" data-i18n="whyT"></h2>
-      <p class="sub reveal" data-i18n="whyD"></p>
-      <div class="grid3" style="text-align:left">
-        <article class="feat reveal"><span class="side-tag">Provider</span><div class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 1.5"/></svg></div><h3 data-i18n="f1t"></h3><p data-i18n="f1d"></p></article>
-        <article class="feat reveal"><span class="side-tag">Agent</span><div class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="14" height="11" rx="2"/><path d="M7 17h6"/></svg></div><h3 data-i18n="f2t"></h3><p data-i18n="f2d"></p></article>
-        <article class="feat reveal"><span class="side-tag">Provider × Agent</span><div class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h9l-3-3M16 13H7l3 3"/></svg></div><h3 data-i18n="f3t"></h3><p data-i18n="f3d"></p></article>
-      </div>
-    </div>
-  </section>
-
   <section class="block" id="how">
     <div class="wrap center">
       <div class="kicker reveal" data-i18n="howK"></div>
@@ -360,14 +562,14 @@ footer a:hover { color: var(--text); }
           <p class="for" data-i18n="goFor"></p>
           <ul><li data-i18n="go1"></li><li data-i18n="go2"></li><li data-i18n="go3"></li><li data-i18n="go4"></li></ul>
           <p class="note" data-i18n="goNote"></p>
-          <a class="btn btn-ghost plan-cta" data-console-link="/subscriptions" href="/sign-in?redirect=%2Fsubscriptions" data-i18n="subscribe"></a>
+          <a class="btn btn-ghost plan-cta" data-console-link="/lightcode/subscription" href="/sign-in?redirect=%2Flightcode%2Fsubscription" data-i18n="subscribe"></a>
         </article>
         <article class="plan hot reveal" data-plan="plus">
           <div class="top"><span class="title">Plus</span><span class="pill" data-i18n="popular"></span></div>
           <p class="for" data-i18n="plusFor"></p>
           <ul><li data-i18n="plus1"></li><li data-i18n="plus2"></li><li data-i18n="plus3"></li><li data-i18n="plus4"></li></ul>
           <p class="note" data-i18n="plusNote"></p>
-          <a class="btn btn-primary plan-cta" data-console-link="/subscriptions" href="/sign-in?redirect=%2Fsubscriptions" data-i18n="subscribe"></a>
+          <a class="btn btn-primary plan-cta" data-console-link="/lightcode/subscription" href="/sign-in?redirect=%2Flightcode%2Fsubscription" data-i18n="subscribe"></a>
         </article>
       </div>
       <p class="plans-foot reveal" data-i18n="plansFoot"></p>
@@ -405,108 +607,339 @@ footer a:hover { color: var(--text); }
   <div class="wrap">
     <span data-i18n="copy"></span>
     <nav aria-label="Footer">
-      <a href="/lightcode" data-i18n="navAgent"></a>
+      <a href="/#agent" data-i18n="navAgent"></a>
       <a href="https://github.com/LightCode-AI/lightcode-releases/releases" target="_blank" rel="noopener noreferrer">Releases</a>
       <a href="/lightcode/usage" data-i18n="usage"></a>
+      <a href="/privacy-policy" data-i18n="privacy"></a>
+      <a href="/terms-of-service" data-i18n="terms"></a>
+      <a href="https://github.com/LightCode-AI/lightcode-releases/blob/main/LICENSE" data-i18n="licenses"></a>
     </nav>
   </div>
 </footer>
 <script src="/lightcode/liquid-glass.js"></script>
 <script>
+let livePlans = null, liveSubscription, liveModels = null, downloadInfo = null;
+let signedIn = false;
 const I18N = {
-  zh: {
-    title: "Lightcode AI · 模型订阅与桌面 Agent", preview: "预览版",
-    navHow: "如何运作", navPlans: "套餐", navFaq: "常见问题", navAgent: "桌面 Agent", signIn: "登录", signUp: "注册账号", dlShort: "下载",
-    provIsland: "Plus · 7 天 38%", agentIsland: "正在执行 · 3 步",
-    console: "进入控制台", consoleIn: "打开控制台", cUsage: "用量看板", cDevices: "设备管理", cSubs: "订阅管理", subscribe: "在控制台订阅",
-    sample: "示例数据", yours: "你的订阅", noSub: "尚未订阅", resetAt: "{t} 重置", w7dShort: "7 天", nModels: "{n} 个", planModels: "包含 {n} 个模型",
-    eyebrow: "Lightcode Provider × Lightcode Agent",
-    h1a: "一个账号，", h1b: "订阅模型，也管好 Agent",
-    lead: "在 Lightcode 控制台订阅模型、查看用量、管理设备；桌面 Agent 用同一个账号登录，Claude、GPT、Gemini 和国产模型直接可用，不用申请 API 密钥。",
-    dlWin: "下载桌面 Agent", seePlans: "查看套餐", meta: "控制台在浏览器中使用 · 桌面 Agent 支持 Windows 10/11，当前为预览版",
-    linked: "同一个账号：左边的订阅额度，就是右边 Agent 正在用的模型", active: "订阅有效", renew: "下次重置：周一 08:00", subscribed: "当前套餐",
-    secure: "网页授权登录，设备自动绑定。全程不接触 API 密钥。",
-    w7d: "7 天用量", w5h: "5 小时用量", noLimit: "Plus 无此限制", ready: "可用", cnModels: "国产模型",
-    desktop: "桌面端", newSession: "+ 新建会话", workspace: "默认工作区", s1: "Q3 销售复盘", s2: "官网改版", s3: "周报自动化",
-    ask: "读一下 Q3 销售表，按区域汇总，写成一页复盘报告。",
-    read: " 读取表格", run: " 运行分析", write: " 生成文档",
-    answer: "已完成。华东环比增长 <b>18%</b>，西南下滑 <b>6%</b>。报告已保存到 <b>report.docx</b>，要我把图表也加进去吗？",
-    ph: "描述你想完成的事，@ 引用文件",
-    whyK: "Provider × Agent", whyT: "模型和 Agent 是一起做的", whyD: "很多 Agent 要你自己接模型，很多模型服务又只给一个接口。Lightcode 两边都自己做，所以登录就能用，出了问题也有人从头到尾负责。",
-    f1t: "一个订阅，多家模型", f1d: "订阅覆盖 Claude、GPT、Gemini 和主流国产模型。用量只按 5 小时和 7 天两个窗口显示百分比，看一眼就知道还剩多少。",
-    f2t: "桌面 Agent，本地工作区", f2d: "Agent 在你的电脑上运行，直接读写工作区里的文档、表格和代码。可以设置定时任务，重复的活交给它按时做。",
-    f3t: "两端联调，开箱即稳", f3d: "模型目录、思考强度和工具调用在发布前就和 Agent 一起测过。新模型上线后，Agent 在下一次对话就能用上。",
-    howK: "如何运作", howT: "四步开始，没有额外配置",
-    l1t: "在控制台订阅", l1d: "注册 Lightcode 账号，在控制台选择 GO 或 Plus。",
-    l2t: "下载桌面 Agent", l2d: "下载 Windows 桌面端，安装后打开。",
-    l3t: "用同一账号授权", l3d: "Agent 跳转到控制台确认授权，设备自动绑定，全程不接触密钥。",
-    l4t: "工作和管理", l4d: "在 Agent 里干活；用量、设备和订阅随时回控制台查看和调整。",
-    plansK: "套餐", plansT: "两档套餐，按使用强度选", plansD: "两档套餐使用同一个桌面 Agent，可用的模型相同，区别在额度和窗口限制。",
-    goFor: "日常使用、轻量任务", go1: "Claude、GPT、Gemini 与国产模型", go2: "5 小时与 7 天双窗口额度", go3: "桌面 Agent 全部功能", go4: "网页实时查看用量百分比",
-    goNote: "适合每天处理文档、问答和小型编码任务。",
-    popular: "推荐", plusFor: "高强度、长时间工作", plus1: "包含 GO 的全部内容", plus2: "7 天额度为 GO 的 5 倍", plus3: "不设 5 小时窗口，连续工作不被打断", plus4: "适合大型代码库与批量文档任务",
-    plusNote: "适合每天长时间让 Agent 连续工作的用户。",
-    plansFoot: "具体价格在登录后的订阅页面查看。",
-    faqT: "常见问题",
-    q1: "需要自己准备 API 密钥吗？", a1: "不需要。订阅后在桌面端用网页授权登录，模型直接可用。客户端和账号都不会向你发放或展示 API 密钥。",
-    q2: "用量是怎么计算的？", a2: "不同模型按各自的消耗折算到同一份额度里。客户端和网页只显示 5 小时与 7 天窗口的使用百分比及重置时间。",
-    q3: "一个账号能在几台电脑上用？", a3: "每个账号可以同时登录有限数量的设备。超出时，最早不活跃的设备会自动退出登录。",
-    q4: "我的文件会上传吗？", a4: "工作区文件保存在你的电脑上。只有你在对话中让 Agent 处理的内容，才会作为请求发送给模型。",
-    q5: "支持哪些系统？", a5: "目前提供 Windows 10/11 版本，macOS 版本正在准备中。",
-    endT: "从控制台开始", endD: "注册账号并选择套餐，再下载桌面 Agent，用同一个账号登录。",
-    usage: "用量查询", copy: "© 2026 Lightcode AI · 基于 DeepSeek Harness（MIT）"
+  "zh": {
+    "title": "Lightcode AI · 模型订阅与桌面 Agent",
+    "preview": "预览版",
+    "navHow": "如何运作",
+    "navPlans": "套餐",
+    "navFaq": "常见问题",
+    "navAgent": "桌面 Agent",
+    "signUp": "注册账号",
+    "provIsland": "Plus · 7 天 38%",
+    "agentIsland": "正在执行 · 3 步",
+    "console": "进入控制台",
+    "consoleIn": "打开控制台",
+    "cUsage": "用量看板",
+    "cDevices": "设备管理",
+    "cSubs": "订阅管理",
+    "subscribe": "在控制台订阅",
+    "sample": "示例数据",
+    "yours": "你的订阅",
+    "noSub": "尚未订阅",
+    "resetAt": "{t} 重置",
+    "w7dShort": "7 天",
+    "nModels": "{n} 个",
+    "planModels": "包含 {n} 个模型",
+    "eyebrow": "Lightcode Provider × Lightcode Agent",
+    "h1a": "Lightcode",
+    "h1b": "即开即用，立刻上手。",
+    "lead": "日常任务、编程开发，还是打造你自己的 Agent，从这里开始。一个账号连接模型订阅与桌面 Agent，登录即可开始工作。",
+    "dlWin": "下载桌面 Agent",
+    "meta": "控制台在浏览器中使用 · 桌面 Agent 支持 Windows 10/11，当前为预览版",
+    "linked": "同一个账号，连接模型订阅、桌面 Agent 和你的本地工作区。",
+    "active": "订阅有效",
+    "renew": "下次重置：周一 08:00",
+    "w7d": "7 天用量",
+    "w5h": "5 小时用量",
+    "noLimit": "Plus 无此限制",
+    "cnModels": "国产模型",
+    "desktop": "桌面端",
+    "newSession": "+ 新建会话",
+    "workspace": "未分组",
+    "s1": "Q3 销售复盘",
+    "s2": "官网改版",
+    "s3": "周报自动化",
+    "ask": "读一下 Q3 销售表，按区域汇总，写成一页复盘报告。",
+    "read": " 读取表格",
+    "run": " 运行分析",
+    "write": " 生成文档",
+    "answer": "已完成。华东环比增长 <b>18%</b>，西南下滑 <b>6%</b>。报告已保存到 <b>report.docx</b>，要我把图表也加进去吗？",
+    "ph": "描述你想完成的事，@ 引用文件",
+    "whyK": "Provider × Agent",
+    "whyT": "模型和 Agent 是一起做的",
+    "whyD": "很多 Agent 要你自己接模型，很多模型服务又只给一个接口。Lightcode 两边都自己做，所以登录就能用，出了问题也有人从头到尾负责。",
+    "howK": "如何运作",
+    "howT": "四步开始，没有额外配置",
+    "l1t": "在控制台订阅",
+    "l1d": "注册 Lightcode 账号，在控制台选择 GO 或 Plus。",
+    "l2t": "下载桌面 Agent",
+    "l2d": "下载 Windows 桌面端，安装后打开。",
+    "l3t": "用同一账号授权",
+    "l3d": "Agent 跳转到控制台确认授权，设备自动绑定，全程不接触密钥。",
+    "l4t": "工作和管理",
+    "l4d": "在 Agent 里干活；用量、设备和订阅随时回控制台查看和调整。",
+    "plansK": "套餐",
+    "plansT": "两档套餐，按使用强度选",
+    "plansD": "两档套餐使用同一个桌面 Agent，可用的模型相同，区别在额度和窗口限制。",
+    "goFor": "日常使用、轻量任务",
+    "go1": "Claude、GPT、Gemini 与国产模型",
+    "go2": "5 小时与 7 天双窗口额度",
+    "go3": "桌面 Agent 全部功能",
+    "go4": "网页实时查看用量百分比",
+    "goNote": "适合每天处理文档、问答和小型编码任务。",
+    "popular": "推荐",
+    "plusFor": "高强度、长时间工作",
+    "plus1": "包含 GO 的全部内容",
+    "plus2": "7 天额度为 GO 的 5 倍",
+    "plus3": "不设 5 小时窗口，连续工作不被打断",
+    "plus4": "适合大型代码库与批量文档任务",
+    "plusNote": "适合每天长时间让 Agent 连续工作的用户。",
+    "plansFoot": "具体价格在登录后的订阅页面查看。",
+    "faqT": "常见问题",
+    "q1": "需要自己准备 API 密钥吗？",
+    "a1": "不需要。订阅后在桌面端用网页授权登录，模型直接可用。客户端和账号都不会向你发放或展示 API 密钥。",
+    "q2": "用量是怎么计算的？",
+    "a2": "不同模型按各自的消耗折算到同一份额度里。客户端和网页只显示 5 小时与 7 天窗口的使用百分比及重置时间。",
+    "q3": "一个账号能在几台电脑上用？",
+    "a3": "每个账号可以同时登录有限数量的设备。超出时，最早不活跃的设备会自动退出登录。",
+    "q4": "我的文件会上传吗？",
+    "a4": "工作区文件保存在你的电脑上。只有你在对话中让 Agent 处理的内容，才会作为请求发送给模型。",
+    "q5": "支持哪些系统？",
+    "a5": "目前提供 Windows 10/11 版本，macOS 版本正在准备中。",
+    "endT": "从控制台开始",
+    "endD": "注册账号并选择套餐，再下载桌面 Agent，用同一个账号登录。",
+    "usage": "用量查询",
+    "copy": "© 2026 Lightcode AI · 基于 DeepSeek Harness（MIT）",
+    "agentWinLabel": "LightCode 对话预览",
+    "agentSNew": "新建会话",
+    "agentSPlug": "插件",
+    "agentSProv": "模型",
+    "agentSAuto": "自动化",
+    "agentSWs": "会话",
+    "agentSWs2": "未分组",
+    "agentSs1": "认识 LightCode",
+    "agentSs2": "Q3 总结幻灯片",
+    "agentSs3": "评审准备",
+    "agentSs4": "多 Agent 重构",
+    "agentSs5": "DSH 插件迁移",
+    "agentQ": "介绍一下你自己？",
+    "agentThought": "已思考片刻",
+    "agentA0": "我是 LightCode，一个基于 DeepSeek Harness 打造的 Agent，桌面端开箱即用。",
+    "agentA1": "<strong>插件与技能</strong> —— 按任务扩展工具和工作方式。",
+    "agentA2": "<strong>Provider 联动</strong> —— 一个账号连接模型订阅与 Agent。",
+    "agentA3": "<strong>各类任务</strong> —— 文档、表格、代码与实时预览。",
+    "agentA4": "<strong>工作流</strong> —— 定时任务与进度追踪。",
+    "agentMore": "以及更多……",
+    "agentPh": "描述你想做的事，/ 调用命令，@ 引用文件或会话",
+    "agentPerm": "工作区可写",
+    "agentCapA": "能力不断扩展。",
+    "agentCapB": "按你的方式工作。",
+    "agentC1t": "兼容 DSH 插件生态",
+    "agentC1d": "在 DeepSeek Harness 的插件架构上扩展工具、技能和界面。按任务选用文件处理、联网搜索与定时任务，也可以通过 Creator 模式对话创建自己的插件。",
+    "agentP1": "定时任务 · 官方",
+    "agentP2": "文档与表格 · 官方",
+    "agentP3": "联网搜索 · 社区",
+    "agentP4t": "通过对话创建插件",
+    "agentP4": "Creator 模式",
+    "agentEnabled": "已启用",
+    "agentCommunity": "社区",
+    "agentCreator": "Creator",
+    "agentC2t": "Provider 与 Agent 联动",
+    "agentC2d": "模型目录、思考强度与工具调用由 Provider 和 Agent 两端协同适配。用同一账号订阅、授权和工作，不必逐一填写供应商地址或 API 密钥。",
+    "agentN1": "客户端",
+    "agentN2t": "LightCode Provider",
+    "agentN2": "模型供应商 · 一体化开发",
+    "agentSw1": "模型与工具调用协同适配",
+    "agentSw2": "模型目录、流式输出与思考强度统一接入",
+    "agentSw3": "模型目录持续同步",
+    "agentSw4": "每轮对话结束后同步模型与用量",
+    "agentC3t": "完成各类任务",
+    "agentC3d": "整理文档、分析表格、编写代码。直接预览结果，并通过对话持续完善。",
+    "agentC4t": "适配你的工作流",
+    "agentC4d": "启用定时任务插件，随时启动任务，或按计划执行重复工作。随时掌握进度，需要时查看工具调用详情。",
+    "agentT0": "已创建 “项目周报”，每周五 17:00（北京时间）执行。",
+    "agentT1": "项目周报",
+    "agentT2": "每周五 17:00（UTC+08:00 · 中国标准时间）",
+    "agentOpen": "打开",
+    "agentPreview": "桌面 Agent · 对话预览",
+    "noWindow": "无此窗口限制",
+    "privacy": "隐私政策",
+    "terms": "使用条款",
+    "licenses": "开源许可",
+    "downloadInfo": "Windows · {v} · {size} MB"
   },
-  en: {
-    title: "Lightcode AI · Model subscription and desktop agent", preview: "Preview",
-    navHow: "How it works", navPlans: "Plans", navFaq: "FAQ", navAgent: "Desktop agent", signIn: "Sign in", signUp: "Create account", dlShort: "Download",
-    provIsland: "Plus · 7-day 38%", agentIsland: "Working · 3 steps",
-    console: "Open the console", consoleIn: "Go to console", cUsage: "Usage", cDevices: "Devices", cSubs: "Subscription", subscribe: "Subscribe in the console",
-    sample: "Sample data", yours: "Your plan", noSub: "No plan yet", resetAt: "Resets {t}", w7dShort: "7-day", nModels: "{n}", planModels: "{n} models included",
-    eyebrow: "Lightcode Provider × Lightcode Agent",
-    h1a: "One account to subscribe,", h1b: "and one agent to do the work",
-    lead: "Subscribe to models, watch usage and manage devices in the Lightcode console. The desktop agent signs in with the same account, so Claude, GPT, Gemini and leading Chinese models are ready without an API key.",
-    dlWin: "Download the agent", seePlans: "See plans", meta: "The console runs in your browser · The desktop agent supports Windows 10/11 and is in preview",
-    linked: "One account: the allowance on the left powers the agent on the right", active: "Active", renew: "Next reset: Mon 08:00", subscribed: "Current plan",
-    secure: "Browser sign-in binds this device. You never handle an API key.",
-    w7d: "7-day usage", w5h: "5-hour usage", noLimit: "No limit on Plus", ready: "Ready", cnModels: "Chinese models",
-    desktop: "Desktop", newSession: "+ New session", workspace: "Default workspace", s1: "Q3 sales review", s2: "Website redesign", s3: "Weekly report automation",
-    ask: "Read the Q3 sales sheet, summarize by region, and write a one-page review.",
-    read: " Read sheet", run: " Run analysis", write: " Write document",
-    answer: "Done. East China grew <b>18%</b> quarter over quarter; the Southwest fell <b>6%</b>. The report is saved as <b>report.docx</b>. Want me to add the charts?",
-    ph: "Describe the task, @ to reference files",
-    whyK: "Provider × Agent", whyT: "The models and the agent are built together", whyD: "Many agents make you bring your own model, and many model services only hand you an API. Lightcode builds both sides, so signing in is all it takes, and one team owns the whole path when something breaks.",
-    f1t: "One subscription, many models", f1d: "Your plan covers Claude, GPT, Gemini and leading Chinese models. Usage shows as two percentages, a 5-hour window and a 7-day window, so you can tell what is left at a glance.",
-    f2t: "A desktop agent with a local workspace", f2d: "The agent runs on your computer and works directly with the documents, spreadsheets and code in your workspace. Schedule recurring tasks and it runs them on time.",
-    f3t: "Tested together, stable out of the box", f3d: "Model catalog, reasoning effort and tool calls are tested with the agent before each release. When a new model ships, the agent can use it in your next conversation.",
-    howK: "How it works", howT: "Four steps, nothing to configure",
-    l1t: "Subscribe in the console", l1d: "Create a Lightcode account and choose GO or Plus in the console.",
-    l2t: "Download the agent", l2d: "Install the Windows desktop app and open it.",
-    l3t: "Authorize with the same account", l3d: "The agent opens the console to confirm sign-in. The device is bound automatically and you never handle a key.",
-    l4t: "Work and manage", l4d: "Do the work in the agent. Check usage, devices and your plan back in the console at any time.",
-    plansK: "Plans", plansT: "Two plans, chosen by how hard you work", plansD: "Both plans use the same desktop agent and the same models. They differ in allowance and window limits.",
-    goFor: "Daily use and light tasks", go1: "Claude, GPT, Gemini and Chinese models", go2: "5-hour and 7-day usage windows", go3: "Every desktop agent feature", go4: "Live usage percentages on the web",
-    goNote: "Fits daily documents, questions and small coding tasks.",
-    popular: "Recommended", plusFor: "Intensive, long sessions", plus1: "Everything in GO", plus2: "5× the GO 7-day allowance", plus3: "No 5-hour window, so long sessions are not interrupted", plus4: "Built for large codebases and batch document work",
-    plusNote: "Fits people who keep the agent working for long stretches every day.",
-    plansFoot: "Prices are shown on the subscription page after you sign in.",
-    faqT: "Frequently asked questions",
-    q1: "Do I need my own API key?", a1: "No. After subscribing, sign in on the desktop app through your browser and the models are ready. Neither the app nor your account issues or shows API keys.",
-    q2: "How is usage counted?", a2: "Each model's consumption is converted into one shared allowance. The app and the website show only the percentage used in the 5-hour and 7-day windows and when each resets.",
-    q3: "How many computers can one account use?", a3: "Each account can stay signed in on a limited number of devices. Beyond that, the least recently active device is signed out automatically.",
-    q4: "Are my files uploaded?", a4: "Workspace files stay on your computer. Only the content you ask the agent to work on in a conversation is sent to the model as part of the request.",
-    q5: "Which systems are supported?", a5: "Windows 10/11 is available now. A macOS version is in preparation.",
-    endT: "Start in the console", endD: "Create an account and pick a plan, then download the desktop agent and sign in with the same account.",
-    usage: "Usage", copy: "© 2026 Lightcode AI · Built on DeepSeek Harness (MIT)"
+  "en": {
+    "title": "Lightcode AI · Model subscription and desktop agent",
+    "preview": "Preview",
+    "navHow": "How it works",
+    "navPlans": "Plans",
+    "navFaq": "FAQ",
+    "navAgent": "Desktop agent",
+    "signUp": "Create account",
+    "provIsland": "Plus · 7-day 38%",
+    "agentIsland": "Working · 3 steps",
+    "console": "Open the console",
+    "consoleIn": "Go to console",
+    "cUsage": "Usage",
+    "cDevices": "Devices",
+    "cSubs": "Subscription",
+    "subscribe": "Subscribe in the console",
+    "sample": "Sample data",
+    "yours": "Your plan",
+    "noSub": "No plan yet",
+    "resetAt": "Resets {t}",
+    "w7dShort": "7-day",
+    "nModels": "{n}",
+    "planModels": "{n} models included",
+    "eyebrow": "Lightcode Provider × Lightcode Agent",
+    "h1a": "Lightcode",
+    "h1b": "Ready to use. Right now.",
+    "lead": "Everyday tasks, coding, or your own agent—it starts here. One account connects your model subscription and desktop agent, ready when you sign in.",
+    "dlWin": "Download the agent",
+    "meta": "The console runs in your browser · The desktop agent supports Windows 10/11 and is in preview",
+    "linked": "One account connects your model subscription, desktop agent and local workspace.",
+    "active": "Active",
+    "renew": "Next reset: Mon 08:00",
+    "w7d": "7-day usage",
+    "w5h": "5-hour usage",
+    "noLimit": "No limit on Plus",
+    "cnModels": "Chinese models",
+    "desktop": "Desktop",
+    "newSession": "+ New session",
+    "workspace": "Ungrouped",
+    "s1": "Q3 sales review",
+    "s2": "Website redesign",
+    "s3": "Weekly report automation",
+    "ask": "Read the Q3 sales sheet, summarize by region, and write a one-page review.",
+    "read": " Read sheet",
+    "run": " Run analysis",
+    "write": " Write document",
+    "answer": "Done. East China grew <b>18%</b> quarter over quarter; the Southwest fell <b>6%</b>. The report is saved as <b>report.docx</b>. Want me to add the charts?",
+    "ph": "Describe the task, @ to reference files",
+    "whyK": "Provider × Agent",
+    "whyT": "The models and the agent are built together",
+    "whyD": "Many agents make you bring your own model, and many model services only hand you an API. Lightcode builds both sides, so signing in is all it takes, and one team owns the whole path when something breaks.",
+    "howK": "How it works",
+    "howT": "Four steps, nothing to configure",
+    "l1t": "Subscribe in the console",
+    "l1d": "Create a Lightcode account and choose GO or Plus in the console.",
+    "l2t": "Download the agent",
+    "l2d": "Install the Windows desktop app and open it.",
+    "l3t": "Authorize with the same account",
+    "l3d": "The agent opens the console to confirm sign-in. The device is bound automatically and you never handle a key.",
+    "l4t": "Work and manage",
+    "l4d": "Do the work in the agent. Check usage, devices and your plan back in the console at any time.",
+    "plansK": "Plans",
+    "plansT": "Two plans, chosen by how hard you work",
+    "plansD": "Both plans use the same desktop agent and the same models. They differ in allowance and window limits.",
+    "goFor": "Daily use and light tasks",
+    "go1": "Claude, GPT, Gemini and Chinese models",
+    "go2": "5-hour and 7-day usage windows",
+    "go3": "Every desktop agent feature",
+    "go4": "Live usage percentages on the web",
+    "goNote": "Fits daily documents, questions and small coding tasks.",
+    "popular": "Recommended",
+    "plusFor": "Intensive, long sessions",
+    "plus1": "Everything in GO",
+    "plus2": "5× the GO 7-day allowance",
+    "plus3": "No 5-hour window, so long sessions are not interrupted",
+    "plus4": "Built for large codebases and batch document work",
+    "plusNote": "Fits people who keep the agent working for long stretches every day.",
+    "plansFoot": "Prices are shown on the subscription page after you sign in.",
+    "faqT": "Frequently asked questions",
+    "q1": "Do I need my own API key?",
+    "a1": "No. After subscribing, sign in on the desktop app through your browser and the models are ready. Neither the app nor your account issues or shows API keys.",
+    "q2": "How is usage counted?",
+    "a2": "Each model's consumption is converted into one shared allowance. The app and the website show only the percentage used in the 5-hour and 7-day windows and when each resets.",
+    "q3": "How many computers can one account use?",
+    "a3": "Each account can stay signed in on a limited number of devices. Beyond that, the least recently active device is signed out automatically.",
+    "q4": "Are my files uploaded?",
+    "a4": "Workspace files stay on your computer. Only the content you ask the agent to work on in a conversation is sent to the model as part of the request.",
+    "q5": "Which systems are supported?",
+    "a5": "Windows 10/11 is available now. A macOS version is in preparation.",
+    "endT": "Start in the console",
+    "endD": "Create an account and pick a plan, then download the desktop agent and sign in with the same account.",
+    "usage": "Usage",
+    "copy": "© 2026 Lightcode AI · Built on DeepSeek Harness (MIT)",
+    "agentWinLabel": "LightCode conversation preview",
+    "agentSNew": "New Session",
+    "agentSPlug": "Plugins",
+    "agentSProv": "Models",
+    "agentSAuto": "Automation",
+    "agentSWs": "Sessions",
+    "agentSWs2": "Ungrouped",
+    "agentSs1": "Meet LightCode",
+    "agentSs2": "Q3 summary slides",
+    "agentSs3": "Review prep",
+    "agentSs4": "Multi-agent refactor",
+    "agentSs5": "DSH plugin migration",
+    "agentQ": "Could you introduce yourself?",
+    "agentThought": "Thought for a while",
+    "agentA0": "I'm LightCode, an agent built on DeepSeek Harness, ready to use on your desktop.",
+    "agentA1": "<strong>Plugins and skills</strong> — Extend the tools and the way you work.",
+    "agentA2": "<strong>Provider integration</strong> — One account for models and the agent.",
+    "agentA3": "<strong>Any task</strong> — Docs, data, and code with live preview.",
+    "agentA4": "<strong>Workflows</strong> — Scheduled tasks and progress tracking.",
+    "agentMore": "And so much more...",
+    "agentPh": "Describe what you want to build, / commands, @ files or sessions",
+    "agentPerm": "Workspace Write",
+    "agentCapA": "Expanding capabilities.",
+    "agentCapB": "Work on your terms.",
+    "agentC1t": "DSH plugin compatible",
+    "agentC1d": "Extend tools, skills and the interface through the DeepSeek Harness plugin architecture. Choose file tools, web search and scheduled tasks, or create your own plugin through conversation in Creator mode.",
+    "agentP1": "Scheduled tasks · Official",
+    "agentP2": "Docs & sheets · Official",
+    "agentP3": "Web search · Community",
+    "agentP4t": "Create a plugin via chat",
+    "agentP4": "Creator mode",
+    "agentEnabled": "Enabled",
+    "agentCommunity": "Community",
+    "agentCreator": "Creator",
+    "agentC2t": "Providers and agents, linked",
+    "agentC2d": "The provider and agent adapt the model catalog, reasoning effort and tool calls together. Subscribe, authorize and work with one account, without entering provider addresses or API keys.",
+    "agentN1": "Client",
+    "agentN2t": "LightCode Provider",
+    "agentN2": "Model provider · built as one",
+    "agentSw1": "Models and tool calls, adapted together",
+    "agentSw2": "One integration for the catalog, streaming and reasoning effort",
+    "agentSw3": "A catalog that stays in sync",
+    "agentSw4": "Models and usage refresh after each conversation turn",
+    "agentC3t": "Complete a range of tasks",
+    "agentC3d": "Organize documents, analyze spreadsheets, and write code. Preview the results directly and refine them through conversation.",
+    "agentC4t": "Adapt to your workflow",
+    "agentC4d": "Enable the Scheduled tasks plugin to start tasks anytime and run recurring work on schedule. Stay on top of progress and inspect tool call details when needed.",
+    "agentT0": "Created “Weekly project report”, scheduled for Fridays at 17:00 Beijing time.",
+    "agentT1": "Weekly project report",
+    "agentT2": "Weekly on Fri at 17:00 (UTC+08:00 · China Standard Time)",
+    "agentOpen": "Open",
+    "agentPreview": "Desktop agent · Conversation preview",
+    "noWindow": "No window limit",
+    "privacy": "Privacy policy",
+    "terms": "Terms of use",
+    "licenses": "Open-source licenses",
+    "downloadInfo": "Windows · {v} · {size} MB"
   }
 };
 
 function setLang(lang) {
+  if (!(lang in I18N)) return;
   const d = I18N[lang];
   document.documentElement.lang = lang;
   document.title = d.title;
   document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = d[el.dataset.i18n]; });
   document.querySelectorAll("[data-i18n-html]").forEach(el => { el.innerHTML = d[el.dataset.i18nHtml]; });
+  document.querySelectorAll("[data-i18n-label]").forEach(el => el.setAttribute("aria-label", d[el.dataset.i18nLabel]));
+  document.querySelectorAll("#locale [data-value]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.value === lang)));
   try { localStorage.setItem("lc-lang", lang); } catch {}
+  setConsoleLinks();
+  renderPlans();
+  if (liveModels) showFamilies(liveModels);
+  if (liveSubscription !== undefined) showUsage(liveSubscription);
+  if (downloadInfo) renderDownloadInfo();
 }
 let saved = null; try { saved = localStorage.getItem("lc-lang"); } catch {}
 const initialLang = saved === "zh" || saved === "en" ? saved : (navigator.language.startsWith("zh") ? "zh" : "en");
@@ -664,7 +1097,7 @@ function family(id) {
 }
 function showFamilies(models) {
   const counts = { claude: 0, gpt: 0, gemini: 0, cn: 0 };
-  for (const id of models) counts[family(id)]++;
+  for (const id of models) if (typeof id === "string") counts[family(id)]++;
   document.querySelectorAll("#pvModels [data-family]").forEach(el => {
     const n = counts[el.dataset.family];
     el.textContent = I18N[document.documentElement.lang].nModels.replace("{n}", n);
@@ -673,7 +1106,6 @@ function showFamilies(models) {
 }
 
 // Plans: titles, subtitles and model families come from the gateway; prices are never shown here.
-let livePlans = null;
 function renderPlans() {
   if (!livePlans) return;
   const d = I18N[document.documentElement.lang];
@@ -687,17 +1119,20 @@ function renderPlans() {
   }
 }
 getJSON("/api/lightcode/plans").then(res => {
-  livePlans = Array.isArray(res.data) ? res.data : null;
+  livePlans = Array.isArray(res.data) ? res.data.filter(p => p && typeof p.title === "string" && Array.isArray(p.models)) : null;
   if (!livePlans || !livePlans.length) return;
   renderPlans();
   // The preview shows the plan with the widest catalog until the visitor's own usage arrives.
   const widest = livePlans.reduce((a, b) => (b.models.length > a.models.length ? b : a));
-  if (!signedIn) showFamilies(widest.models);
+  if (!liveSubscription) { liveModels = widest.models; showFamilies(liveModels); }
+  if (liveSubscription) {
+    const own = livePlans.find(p => p.title === liveSubscription.plan);
+    if (own) { liveModels = own.models; showFamilies(liveModels); }
+  }
 }).catch(() => {});
 
 // Session: the dashboard keeps its refresh token in an HttpOnly cookie. Refreshing tells the page
 // whether the visitor is signed in without the page ever storing a credential.
-let signedIn = false;
 function setConsoleLinks() {
   const d = I18N[document.documentElement.lang];
   document.querySelectorAll("[data-console]").forEach(a => {
@@ -708,20 +1143,31 @@ function setConsoleLinks() {
     a.href = signedIn ? target : `/sign-in?redirect=${encodeURIComponent(target)}`;
   });
 }
-function pct(w) { return Math.round(Math.min(100, Math.max(0, w.used_percent))); }
+function pct(w) { const value = Number(w.used_percent); return Number.isFinite(value) ? Math.round(Math.min(100, Math.max(0, value))) : 0; }
 function resetText(ts) {
   const d = new Date(ts * 1000), lang = document.documentElement.lang;
   return I18N[lang].resetAt.replace("{t}", d.toLocaleString(lang === "zh" ? "zh-CN" : "en-US", { weekday: "short", hour: "2-digit", minute: "2-digit" }));
 }
 function showUsage(sub) {
   const d = I18N[document.documentElement.lang];
+  if (!sub) {
+    document.getElementById("pvPlan").textContent = d.noSub;
+    document.getElementById("pvState").textContent = d.noSub;
+    document.getElementById("pvActive").textContent = d.noSub;
+    document.getElementById("pvReset").textContent = "";
+    document.querySelector("[data-i18n='provIsland']").textContent = d.noSub;
+    document.getElementById("pvLong").hidden = true;
+    document.getElementById("pvShort").hidden = true;
+    return;
+  }
   const meter = (el, w) => {
     const v = el.querySelector(".v"), bar = el.querySelector(".bar i");
-    if (!w) { v.textContent = d.noLimit; bar.style.width = "0"; return; }
+    if (!w) { v.textContent = d.noWindow; bar.style.width = "0"; return; }
     v.textContent = pct(w) + "%"; bar.style.width = pct(w) + "%";
   };
   document.getElementById("pvPlan").textContent = sub.plan.replace(/^Lightcode\s+/i, "");
   document.getElementById("pvState").textContent = d.yours;
+  document.getElementById("pvActive").textContent = d.active;
   meter(document.getElementById("pvLong"), sub.window_long);
   meter(document.getElementById("pvShort"), sub.window_short);
   const next = [sub.window_short, sub.window_long].filter(Boolean).sort((a, b) => a.reset_at - b.reset_at)[0];
@@ -742,18 +1188,22 @@ const withLock = fn => navigator.locks ? navigator.locks.request("new-api:auth-r
     .then(u => {
       const sub = u.data && u.data.subscription;
       // Usage lists only models already used, so the family counts keep coming from the plan catalog.
+      liveSubscription = sub || null;
       if (sub) {
         showUsage(sub);
         const own = livePlans && livePlans.find(p => p.title === sub.plan);
-        if (own) showFamilies(own.models);
+        if (own) { liveModels = own.models; showFamilies(liveModels); }
       }
-      else document.getElementById("pvState").textContent = I18N[document.documentElement.lang].noSub;
+      else showUsage(null);
     });
 }).catch(() => {});
 
-// Re-apply live text after a language switch, since setLang rewrites every data-i18n node.
-const applyLang = setLang;
-setLang = lang => { applyLang(lang); setConsoleLinks(); renderPlans(); };
+function renderDownloadInfo() {
+  const d = I18N[document.documentElement.lang];
+  const el = document.getElementById("downloadMeta");
+  el.textContent = d.downloadInfo.replace("{v}", downloadInfo.version).replace("{size}", (downloadInfo.size / 1048576).toFixed(1));
+  el.hidden = false;
+}
 
 // Prefer the published installer when the gateway reports one; otherwise keep the Releases link.
 getJSON("/api/lightcode/download")
@@ -762,9 +1212,13 @@ getJSON("/api/lightcode/download")
     if (!f || typeof f.url !== "string") return;
     const url = new URL(f.url, location.origin);
     const local = url.origin === location.origin && url.pathname.startsWith("/download/lightcode/");
-    const release = url.origin === "https://github.com" && url.pathname.startsWith("/LightCode-AI/lightcode-releases/releases/");
-    if (!local && !release) return;
+    const release = url.origin === "https://github.com" && /^\/(?:LightCode-AI|Lorry-San)\/lightcode-releases\/releases\//.test(url.pathname);
+    if ((!local && !release) || url.username || url.password) return;
     document.querySelectorAll("[data-dl]").forEach(a => { a.href = url.href; });
+    if (typeof f.version === "string" && Number.isFinite(f.size) && f.size > 0) {
+      downloadInfo = { version: f.version, size: f.size };
+      renderDownloadInfo();
+    }
   })
   .catch(() => {});
 </script>

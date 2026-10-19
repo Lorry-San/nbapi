@@ -121,7 +121,13 @@ export interface LightcodeProfileData {
   }
   /** 371 entries, oldest first, last is today in the requested timezone. */
   days: { date: string; requests: number; total_tokens: number }[]
-  models: { model: string; requests: number; total_tokens: number }[]
+  /** Catalog display name, plus the request ID for stable row identity. */
+  models: {
+    model_id?: string
+    model: string
+    requests: number
+    total_tokens: number
+  }[]
   truncated: boolean
 }
 

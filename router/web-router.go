@@ -20,7 +20,7 @@ type WebAssets struct {
 }
 
 func SetWebRouter(router *gin.Engine, assets WebAssets) {
-	// A missing site page only disables /lightcode; the dashboard still serves.
+	// Without the product homepage the dashboard still serves.
 	siteIndex, _ := assets.BuildFS.ReadFile("web/dist/lightcode/index.html")
 	setWebRouter(router, common.EmbedFolder(assets.BuildFS, "web/dist"), siteIndex, assets.IndexPage)
 }
@@ -37,10 +37,19 @@ func setWebRouter(router *gin.Engine, frontendFS static.ServeFileSystem, siteInd
 			c.Header("Cache-Control", "no-cache")
 			c.Data(http.StatusOK, "text/html; charset=utf-8", siteIndex)
 		}
-		// The product site is also the homepage.
-		for _, path := range []string{"/", "/lightcode", "/lightcode/"} {
-			router.GET(path, serveSite)
-			router.HEAD(path, serveSite)
+		router.GET("/", serveSite)
+		router.HEAD("/", serveSite)
+		redirectHome := func(c *gin.Context) {
+			c.Header("Cache-Control", "no-cache")
+			target := "/"
+			if c.Request.URL.RawQuery != "" {
+				target += "?" + c.Request.URL.RawQuery
+			}
+			c.Redirect(http.StatusPermanentRedirect, target)
+		}
+		for _, path := range []string{"/lightcode", "/lightcode/", "/lightcode/index.html"} {
+			router.GET(path, redirectHome)
+			router.HEAD(path, redirectHome)
 		}
 	}
 	router.Use(static.Serve("/", frontendFS))

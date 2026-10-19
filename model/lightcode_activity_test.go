@@ -19,6 +19,9 @@ func lcActivityLog(user int, daysAgo int, model string, tokens int) Log {
 func seedLightcodeActivity(t *testing.T, logs []Log) {
 	truncateTables(t)
 	require.NoError(t, LOG_DB.Exec("DELETE FROM logs").Error)
+	require.NoError(t, DB.AutoMigrate(&LightcodeGroupModel{}))
+	require.NoError(t, DB.Where("1 = 1").Delete(&LightcodeGroupModel{}).Error)
+	t.Cleanup(func() { DB.Where("1 = 1").Delete(&LightcodeGroupModel{}) })
 	for i := range logs {
 		require.NoError(t, LOG_DB.Create(&logs[i]).Error)
 	}
@@ -42,7 +45,7 @@ func TestGetLightcodeActivityShapeAndFiltering(t *testing.T) {
 	require.EqualValues(t, 115, res.Stats.TotalTokens)
 	require.EqualValues(t, 115, res.Days[370].TotalTokens)
 	require.False(t, res.Truncated)
-	require.Equal(t, []LightcodeUsageModel{{Model: "m-a", Requests: 1, TotalTokens: 100}, {Model: "m-b", Requests: 1, TotalTokens: 15}}, res.Models)
+	require.Equal(t, []LightcodeActivityModel{{ModelID: "m-a", Model: "m-a", Requests: 1, TotalTokens: 100}, {ModelID: "m-b", Model: "m-b", Requests: 1, TotalTokens: 15}}, res.Models)
 	for _, d := range res.Days[:370] {
 		require.Zero(t, d.Requests)
 	}
@@ -53,6 +56,32 @@ func TestGetLightcodeActivityShapeAndFiltering(t *testing.T) {
 	for _, banned := range []string{"quota", "price", "ratio", "money", "amount", "cost", "multiplier"} {
 		require.NotContains(t, body, banned)
 	}
+}
+
+func TestGetLightcodeActivityUsesTheAgentCatalogNames(t *testing.T) {
+	seedLightcodeActivity(t, []Log{
+		lcActivityLog(1, 0, "deepseek-v4.1-flash", 50),
+		lcActivityLog(1, 0, "removed-model", 10),
+	})
+	require.NoError(t, DB.Create(&[]UserSubscription{
+		{UserId: 1, Pool: SubscriptionPoolLightcode, RoutingGroup: "old", Status: "expired", StartTime: 1},
+		{UserId: 1, Pool: SubscriptionPoolLightcode, RoutingGroup: "current", Status: "active", StartTime: 2},
+	}).Error)
+	require.NoError(t, DB.Create(&[]LightcodeGroupModel{
+		{RoutingGroup: "unrelated", Model: "removed-model", DisplayName: "Other user's name"},
+		{RoutingGroup: "old", Model: "deepseek-v4.1-flash", DisplayName: "Old name"},
+		{RoutingGroup: "current", Model: "deepseek-v4.1-flash", DisplayName: "DeepSeek V4.1 Flash"},
+	}).Error)
+	res, err := GetLightcodeActivity(1, 0, lightcodeActivityNow)
+	require.NoError(t, err)
+	require.Equal(t, "DeepSeek V4.1 Flash", res.Models[0].Model)
+	require.Equal(t, "removed-model", res.Models[1].Model)
+	require.EqualValues(t, 120, res.Stats.TotalTokens)
+	// An expired subscription still provides names for its historical usage.
+	require.NoError(t, DB.Where("user_id = ? AND status = ?", 1, "active").Delete(&UserSubscription{}).Error)
+	res, err = GetLightcodeActivity(1, 0, lightcodeActivityNow)
+	require.NoError(t, err)
+	require.Equal(t, "Old name", res.Models[0].Model)
 }
 
 func TestGetLightcodeActivityTimeZone(t *testing.T) {

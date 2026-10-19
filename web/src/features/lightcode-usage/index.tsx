@@ -1,4 +1,4 @@
-﻿/*
+/*
 Copyright (C) 2023-2026 QuantumNous
 
 This program is free software: you can redistribute it and/or modify
@@ -224,7 +224,7 @@ function ActivityHeatmap(props: { days: LightcodeProfileData['days'] }) {
           ))}
         </div>
       </div>
-      <div className='overflow-x-auto pb-1'>
+      <div className='no-scrollbar overflow-x-auto pb-1'>
         <div style={{ width }} className='mx-auto'>
           <div
             role='img'
@@ -307,7 +307,7 @@ function TopModels(props: { data: LightcodeProfileData }) {
         {props.data.models.map((m) => {
           const share = total > 0 ? (m.total_tokens / total) * 100 : 0
           return (
-            <li key={m.model} className='text-sm'>
+            <li key={m.model_id || m.model} className='text-sm'>
               <div className='flex items-center justify-between gap-2'>
                 <span className='truncate font-medium'>{m.model}</span>
                 <span
