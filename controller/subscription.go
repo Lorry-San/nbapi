@@ -428,6 +428,12 @@ type AdminResetSubscriptionRequest struct {
 	AdvanceResetTime *bool `json:"advance_reset_time"`
 }
 
+// AdminSyncSubscriptionEntitlementsRequest limits a sync to one plan when PlanId > 0;
+// zero syncs every Lightcode plan.
+type AdminSyncSubscriptionEntitlementsRequest struct {
+	PlanId int `json:"plan_id"`
+}
+
 func resolveAdvanceResetTime(value *bool) bool {
 	if value == nil {
 		return true
@@ -534,6 +540,94 @@ func AdminResetPlanSubscriptions(c *gin.Context) {
 		"advance_reset_time": result.AdvanceResetTime,
 	})
 	common.ApiSuccess(c, result)
+}
+
+// AdminResetOneUserSubscription resets exactly one subscription row, clearing
+// its 5-hour and 7-day usage windows without touching any other subscription.
+func AdminResetOneUserSubscription(c *gin.Context) {
+	subId, _ := strconv.Atoi(c.Param("id"))
+	if subId <= 0 {
+		common.ApiErrorMsg(c, "无效的订阅ID")
+		return
+	}
+	var req AdminResetSubscriptionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.ApiErrorMsg(c, "参数错误")
+		return
+	}
+	advanceResetTime := resolveAdvanceResetTime(req.AdvanceResetTime)
+	result, err := model.AdminResetUserSubscription(subId, advanceResetTime)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	recordSubscriptionResetUserLogs(result, auditOperatorInfo(c))
+	recordManageAudit(c, "subscription.user_subscription_reset", map[string]interface{}{
+		"user_subscription_id": subId,
+		"plan_id":              result.PlanId,
+		"reset_count":          result.ResetCount,
+		"advance_reset_time":   result.AdvanceResetTime,
+	})
+	common.ApiSuccess(c, result)
+}
+
+// AdminResetAllSubscriptions resets the usage windows of every active
+// subscription, across every plan.
+func AdminResetAllSubscriptions(c *gin.Context) {
+	var req AdminResetSubscriptionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.ApiErrorMsg(c, "参数错误")
+		return
+	}
+	advanceResetTime := resolveAdvanceResetTime(req.AdvanceResetTime)
+	result, err := model.AdminResetAllActiveSubscriptions(advanceResetTime)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	recordSubscriptionResetUserLogs(result, auditOperatorInfo(c))
+	common.SysLog(fmt.Sprintf("admin reset all active subscriptions: reset_count=%d user_count=%d advance_reset_time=%t",
+		result.ResetCount, result.UserCount, result.AdvanceResetTime))
+	recordManageAudit(c, "subscription.all_reset", map[string]interface{}{
+		"reset_count":        result.ResetCount,
+		"user_count":         result.UserCount,
+		"advance_reset_time": result.AdvanceResetTime,
+	})
+	common.ApiSuccess(c, result)
+}
+
+// AdminSyncSubscriptionEntitlements pushes the current model list of each plan onto the
+// live subscriptions that froze an older one at purchase, without touching their quota.
+func AdminSyncSubscriptionEntitlements(c *gin.Context) {
+	var req AdminSyncSubscriptionEntitlementsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.ApiErrorMsg(c, "参数错误")
+		return
+	}
+	results, err := model.SyncLightcodeSubscriptionsToPlan(req.PlanId)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	updated, userSet := 0, make(map[int]bool)
+	for _, result := range results {
+		updated += result.UpdatedCount
+		for _, userId := range result.AffectedUserIds {
+			userSet[userId] = true
+		}
+		common.SysLog(fmt.Sprintf("admin synced subscription entitlements for plan %d: updated=%d", result.PlanId, result.UpdatedCount))
+	}
+	recordManageAudit(c, "subscription.entitlement_sync", map[string]interface{}{
+		"plan_id":       req.PlanId,
+		"updated_count": updated,
+		"user_count":    len(userSet),
+	})
+	common.ApiSuccess(c, gin.H{
+		"plan_id":       req.PlanId,
+		"updated_count": updated,
+		"user_count":    len(userSet),
+		"plans":         results,
+	})
 }
 
 // AdminInvalidateUserSubscription cancels a user subscription immediately.

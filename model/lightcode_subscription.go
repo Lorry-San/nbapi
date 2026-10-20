@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"slices"
 	"strings"
@@ -65,6 +66,84 @@ func ReplaceLightcodeGroupModels(group string, models []LightcodeGroupModel) err
 	return err
 }
 
+// LightcodeSubscriptionSyncResult reports how many live subscriptions picked up a plan's
+// current model list.
+type LightcodeSubscriptionSyncResult struct {
+	PlanId          int      `json:"plan_id"`
+	PlanTitle       string   `json:"plan_title"`
+	UpdatedCount    int      `json:"updated_count"`
+	AffectedUserIds []int    `json:"affected_user_ids"`
+	AddedModels     []string `json:"added_models"`
+	RemovedModels   []string `json:"removed_models"`
+}
+
+// SyncLightcodeSubscriptionsToPlan refreshes the frozen model list of live subscriptions
+// (optionally limited to one plan) from their plan. Quotas, windows and reset times are
+// untouched: only entitlements that the operator changed on the plan move forward.
+func SyncLightcodeSubscriptionsToPlan(planId int) ([]LightcodeSubscriptionSyncResult, error) {
+	var plans []SubscriptionPlan
+	query := DB.Where("pool = ?", SubscriptionPoolLightcode)
+	if planId > 0 {
+		query = query.Where("id = ?", planId)
+	}
+	if err := query.Find(&plans).Error; err != nil {
+		return nil, err
+	}
+	var results []LightcodeSubscriptionSyncResult
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		for i := range plans {
+			plan := &plans[i]
+			if plan.RoutingGroup == "" || len(plan.AllowedModels) == 0 {
+				continue
+			}
+			// Only subscriptions whose snapshot really differs need a write.
+			var subs []UserSubscription
+			if err := tx.Where("plan_id = ? AND pool = ? AND status IN ?", plan.Id, SubscriptionPoolLightcode, []string{"active", "pending"}).Find(&subs).Error; err != nil {
+				return err
+			}
+			result := LightcodeSubscriptionSyncResult{PlanId: plan.Id, PlanTitle: plan.Title}
+			encoded := common.GetJsonString(plan.AllowedModels)
+			added := make(map[string]bool)
+			removed := make(map[string]bool)
+			for j := range subs {
+				sub := &subs[j]
+				if slices.Equal(sub.AllowedModels, plan.AllowedModels) {
+					continue
+				}
+				// The pre-sync list is what the subscription advertises today, so the
+				// delta reports what users gain and lose from this sync.
+				for _, name := range plan.AllowedModels {
+					if !slices.Contains(sub.AllowedModels, name) {
+						added[name] = true
+					}
+				}
+				for _, name := range sub.AllowedModels {
+					if !slices.Contains(plan.AllowedModels, name) {
+						removed[name] = true
+					}
+				}
+				if err := tx.Model(&UserSubscription{}).Where("id = ?", sub.Id).
+					UpdateColumn("allowed_models", encoded).Error; err != nil {
+					return err
+				}
+				result.UpdatedCount++
+				result.AffectedUserIds = append(result.AffectedUserIds, sub.UserId)
+			}
+			if result.UpdatedCount == 0 {
+				continue
+			}
+			result.AddedModels = slices.Sorted(maps.Keys(added))
+			result.RemovedModels = slices.Sorted(maps.Keys(removed))
+			results = append(results, result)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
 // LightcodeGroupModel adds presentation and reasoning policy to a channel routing group.
 type LightcodeGroupModel struct {
 	Id              int      `json:"id"`
@@ -76,6 +155,8 @@ type LightcodeGroupModel struct {
 	ContextWindow   int      `json:"context_window"`
 	MaxOutputTokens int      `json:"max_output_tokens"`
 	Vision          bool     `json:"vision"`
+	// Hidden keeps an internal route callable without exposing it in the Lightcode model selector.
+	Hidden          bool     `json:"hidden"`
 	// Multiplier is applied to Lightcode consumption only; API pricing is unaffected. 0 means 1.
 	Multiplier float64 `json:"multiplier" gorm:"not null;default:1"`
 }
@@ -125,9 +206,29 @@ func ValidateLightcodePlan(plan *SubscriptionPlan) error {
 	return nil
 }
 
+// LightcodeAllowedModels is the live entitlement list for a subscription: the plan's current
+// model list, not a copy frozen at purchase. Editing a plan therefore reaches every active
+// subscriber on the next request, which is what makes new models appear without a sync step.
+// It reads the plan row directly rather than through the plan cache, so an entitlement change
+// is never served stale. A missing plan falls back to the stored list so an orphaned
+// subscription keeps working.
+func LightcodeAllowedModels(sub *UserSubscription) []string {
+	if sub == nil {
+		return nil
+	}
+	var plan SubscriptionPlan
+	if err := DB.Where("id = ?", sub.PlanId).First(&plan).Error; err != nil {
+		return sub.AllowedModels
+	}
+	if len(plan.AllowedModels) == 0 {
+		return sub.AllowedModels
+	}
+	return plan.AllowedModels
+}
+
 // LightcodeModelEntitlement is the shared model check for admission and catalog; reason is "" when allowed.
 func LightcodeModelEntitlement(sub *UserSubscription, name string, policies []LightcodeGroupModel) (policy *LightcodeGroupModel, reason string) {
-	if !slices.Contains(sub.AllowedModels, name) {
+	if !slices.Contains(LightcodeAllowedModels(sub), name) {
 		return nil, "subscription_model_unsupported"
 	}
 	for i := range policies {
@@ -193,7 +294,10 @@ func createLightcodeSubscriptionTx(tx *gorm.DB, userId int, plan *SubscriptionPl
 	}
 	sub := &UserSubscription{
 		UserId: userId, PlanId: plan.Id, Pool: SubscriptionPoolLightcode,
-		RoutingGroup: plan.RoutingGroup, AllowedModels: slices.Clone(plan.AllowedModels),
+		RoutingGroup: plan.RoutingGroup,
+		// Entitlements are read from the plan, so the stored copy is only a fallback for a
+		// subscription whose plan disappears later.
+		AllowedModels: slices.Clone(plan.AllowedModels),
 		PlanSnapshot: string(snapshot), AmountTotal: plan.TotalAmount, StartTime: start, EndTime: end,
 		Status: status, Source: source, LastResetTime: start,
 		NextResetTime: calcNextResetTime(time.Unix(start, 0), plan, end), AllowWalletOverflow: false,

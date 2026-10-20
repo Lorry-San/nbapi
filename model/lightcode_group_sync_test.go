@@ -14,7 +14,9 @@ func TestReplaceLightcodeGroupModelsPrunesPlanModels(t *testing.T) {
 	row := func(name string) LightcodeGroupModel {
 		return LightcodeGroupModel{Model: name, DisplayName: name, ContextWindow: 1000, MaxOutputTokens: 100, Multiplier: 1}
 	}
-	require.NoError(t, ReplaceLightcodeGroupModels("g", []LightcodeGroupModel{row("a"), row("b"), row("c")}))
+	hidden := row("c")
+	hidden.Hidden = true
+	require.NoError(t, ReplaceLightcodeGroupModels("g", []LightcodeGroupModel{row("a"), row("b"), hidden}))
 	require.NoError(t, ReplaceLightcodeGroupModels("other", []LightcodeGroupModel{row("a")}))
 
 	plan := SubscriptionPlan{Title: "p", Pool: SubscriptionPoolLightcode, RoutingGroup: "g", AllowedModels: []string{"a", "b", "c"}, DurationUnit: "month", DurationValue: 1}
@@ -22,7 +24,11 @@ func TestReplaceLightcodeGroupModelsPrunesPlanModels(t *testing.T) {
 	require.NoError(t, DB.Create(&plan).Error)
 	require.NoError(t, DB.Create(&otherPlan).Error)
 
-	require.NoError(t, ReplaceLightcodeGroupModels("g", []LightcodeGroupModel{row("a"), row("c")}))
+	require.NoError(t, ReplaceLightcodeGroupModels("g", []LightcodeGroupModel{row("a"), hidden}))
+
+	var storedHidden LightcodeGroupModel
+	require.NoError(t, DB.Where("routing_group = ? AND model = ?", "g", "c").First(&storedHidden).Error)
+	require.True(t, storedHidden.Hidden)
 
 	var got, untouched SubscriptionPlan
 	require.NoError(t, DB.First(&got, plan.Id).Error)

@@ -447,8 +447,25 @@ func getSubscriptionPlanByIdTx(tx *gorm.DB, id int) (*SubscriptionPlan, error) {
 	return &plan, nil
 }
 
-func CountUserSubscriptionsByPlan(userId int, planId int) (int64, error) {
-	if userId <= 0 || planId <= 0 {
+// freshSubscriptionPlanTx reads a plan without consulting the cache. Entitlement decisions use
+// it so a plan edit is visible on the very next request instead of after the cache expires.
+func freshSubscriptionPlanTx(tx *gorm.DB, id int) (*SubscriptionPlan, error) {
+	if id <= 0 {
+		return nil, errors.New("invalid plan id")
+	}
+	var plan SubscriptionPlan
+	query := DB
+	if tx != nil {
+		query = tx
+	}
+	if err := query.Where("id = ?", id).First(&plan).Error; err != nil {
+		return nil, err
+	}
+	plan.NormalizeDefaults()
+	return &plan, nil
+}
+
+func CountUserSubscriptionsByPlan(userId int, planId int) (int64, error) {	if userId <= 0 || planId <= 0 {
 		return 0, errors.New("invalid userId or planId")
 	}
 	var count int64
@@ -1055,6 +1072,11 @@ func resetUserSubscriptionTx(tx *gorm.DB, sub *UserSubscription, plan *Subscript
 		return errors.New("invalid reset args")
 	}
 	sub.AmountUsed = 0
+	// Lightcode limits live in the 5-hour and 7-day windows, not in AmountUsed.
+	// Clearing the start as well as the used amount reopens both windows at the
+	// next request instead of leaving a stale reset time visible to the client.
+	sub.WindowShortStart, sub.WindowShortUsed = 0, 0
+	sub.WindowLongStart, sub.WindowLongUsed = 0, 0
 	if advanceResetTime {
 		nextReset := calcNextResetTime(time.Unix(now, 0), plan, sub.EndTime)
 		sub.NextResetTime = nextReset
@@ -1162,6 +1184,88 @@ func AdminResetPlanSubscriptions(planId int, advanceResetTime bool) (*Subscripti
 		}
 		result, err = adminResetPlanSubscriptionsTx(tx, plan, now, advanceResetTime)
 		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// AdminResetUserSubscription resets one user subscription by its own id, so an
+// operator does not have to name the plan a user happens to hold.
+func AdminResetUserSubscription(subscriptionId int, advanceResetTime bool) (*SubscriptionResetResult, error) {
+	if subscriptionId <= 0 {
+		return nil, errors.New("invalid subscriptionId")
+	}
+	var result *SubscriptionResetResult
+	now := GetDBTimestamp()
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		var sub UserSubscription
+		if err := lockForUpdate(tx).First(&sub, subscriptionId).Error; err != nil {
+			return err
+		}
+		plan, err := getSubscriptionPlanByIdTx(tx, sub.PlanId)
+		if err != nil {
+			return err
+		}
+		subs := []UserSubscription{sub}
+		if err := resetUserSubscriptionTx(tx, &subs[0], plan, now, advanceResetTime); err != nil {
+			return err
+		}
+		result = buildSubscriptionResetResult(plan, subs, advanceResetTime)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// AdminResetAllActiveSubscriptions resets every active subscription across all
+// plans. It is the one-shot recovery path when windows were misconfigured.
+func AdminResetAllActiveSubscriptions(advanceResetTime bool) (*SubscriptionResetResult, error) {
+	var result *SubscriptionResetResult
+	now := GetDBTimestamp()
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		var subs []UserSubscription
+		if err := lockForUpdate(tx).
+			Where("status = ? AND end_time > ?", "active", now).
+			Order("user_id asc, end_time asc, id asc").
+			Find(&subs).Error; err != nil {
+			return err
+		}
+		if len(subs) == 0 {
+			return errors.New("没有有效的订阅")
+		}
+		planIds := make([]int, 0, len(subs))
+		seenPlans := make(map[int]struct{}, len(subs))
+		for _, sub := range subs {
+			if _, ok := seenPlans[sub.PlanId]; ok {
+				continue
+			}
+			seenPlans[sub.PlanId] = struct{}{}
+			planIds = append(planIds, sub.PlanId)
+		}
+		var plans []SubscriptionPlan
+		if err := tx.Where("id IN ?", planIds).Find(&plans).Error; err != nil {
+			return err
+		}
+		planById := make(map[int]*SubscriptionPlan, len(plans))
+		for i := range plans {
+			planById[plans[i].Id] = &plans[i]
+		}
+		for i := range subs {
+			plan := planById[subs[i].PlanId]
+			if plan == nil {
+				continue
+			}
+			if err := resetUserSubscriptionTx(tx, &subs[i], plan, now, advanceResetTime); err != nil {
+				return err
+			}
+		}
+		result = buildSubscriptionResetResult(&SubscriptionPlan{Title: "全部有效订阅"}, subs, advanceResetTime)
+		result.PlanId = 0
+		return nil
 	})
 	if err != nil {
 		return nil, err
@@ -1406,11 +1510,13 @@ func PreConsumeSubscriptionPool(requestId string, userId int, modelName string, 
 		}
 		for _, candidate := range subs {
 			sub := candidate
-			if pool == SubscriptionPoolLightcode && !slices.Contains(sub.AllowedModels, modelName) { return errors.New("subscription does not support this model") }
-			plan, err := getSubscriptionPlanByIdTx(tx, sub.PlanId)
+			plan, err := freshSubscriptionPlanTx(tx, sub.PlanId)
 			if err != nil {
 				return err
 			}
+			// Lightcode entitlements follow the plan, so a model added to a plan works for
+			// existing subscribers without a separate sync.
+			if pool == SubscriptionPoolLightcode && !slices.Contains(plan.AllowedModels, modelName) { return errors.New("subscription does not support this model") }
 			if err := maybeResetUserSubscriptionWithPlanTx(tx, &sub, plan, now); err != nil {
 				return err
 			}
