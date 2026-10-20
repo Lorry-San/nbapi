@@ -180,9 +180,10 @@ func UseLightcodeResetCard(userId, cardId int) (*LightcodeResetCard, error) {
 			}
 			return err
 		}
-		updates := map[string]interface{}{"window_short_start": 0, "window_short_used": 0}
+		// Only the used amounts are cleared: the window keeps its start, so "resets at" and the
+		// subscription end date the user already sees stay exactly as they were.
+		updates := map[string]interface{}{"window_short_used": 0}
 		if card.Kind == LightcodeResetCardFull {
-			updates["window_long_start"] = 0
 			updates["window_long_used"] = 0
 		}
 		if err := tx.Model(&UserSubscription{}).Where("id = ?", sub.Id).Updates(updates).Error; err != nil {

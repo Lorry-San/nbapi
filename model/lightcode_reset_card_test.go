@@ -138,7 +138,7 @@ func TestUseShortResetCardClearsOnlyTheFiveHourWindow(t *testing.T) {
 	assert.Equal(t, sub.Id, used.UsedSubscriptionId)
 	stored := reloadCardSubscription(t, sub.Id)
 	assert.Zero(t, stored.WindowShortUsed)
-	assert.Zero(t, stored.WindowShortStart)
+	assert.EqualValues(t, 1000, stored.WindowShortStart, "a card never moves the window start")
 	assert.EqualValues(t, 400, stored.WindowLongUsed, "a short card leaves the 7-day window alone")
 }
 
@@ -157,7 +157,10 @@ func TestUseFullResetCardClearsBothWindows(t *testing.T) {
 	stored := reloadCardSubscription(t, sub.Id)
 	assert.Zero(t, stored.WindowShortUsed)
 	assert.Zero(t, stored.WindowLongUsed)
-	assert.Zero(t, stored.WindowLongStart)
+	assert.EqualValues(t, 1000, stored.WindowLongStart, "a card never moves the window start")
+	assert.EqualValues(t, 1000, stored.WindowShortStart)
+	assert.Equal(t, sub.EndTime, stored.EndTime, "a card never moves the subscription end date")
+	assert.Equal(t, sub.NextResetTime, stored.NextResetTime)
 }
 
 func TestResetCardCannotBeSpentTwiceOrByAnotherUser(t *testing.T) {
