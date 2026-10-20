@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { Markdown } from '@/components/ui/markdown'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TitledCard } from '@/components/ui/titled-card'
 import {
@@ -265,10 +266,10 @@ export function SubscriptionPlansCard({
   }
 
   return (
-    <>
+    <div className='space-y-4 sm:space-y-5'>
       <TitledCard
-        title={t('Subscription Plans')}
-        description={t('Subscribe to a plan for model access')}
+        title={t('My Subscriptions')}
+        description={t('Your active plans, usage windows and billing preference')}
         icon={<Crown className='h-4 w-4' />}
         iconTone='warning'
         disableHoverEffect
@@ -543,16 +544,24 @@ export function SubscriptionPlansCard({
             </p>
           )}
         </div>
+      </TitledCard>
 
-        {/* Available plans grid */}
+      <TitledCard
+        title={t('Choose a plan')}
+        description={t('Subscribe to a plan for model access')}
+        icon={<Sparkles className='h-4 w-4' />}
+        iconTone='info'
+        disableHoverEffect
+      >
+        {/* One row of equal-height plan columns, as on a pricing page */}
         {plans.length > 0 ? (
-          <div className='grid grid-cols-1 gap-3 2xl:grid-cols-2 2xl:gap-4'>
-            {plans.map((p, index) => {
+          <div className='grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-4'>
+            {plans.map((p) => {
               const plan = p?.plan
               if (!plan) return null
               const totalAmount = Number(plan.total_amount || 0)
               const price = Number(plan.price_amount || 0).toFixed(2)
-              const isPopular = index === 0 && plans.length > 1
+              const isPopular = plan.recommended === true
               const limit = Number(plan.max_purchase_per_user || 0)
               const count = planPurchaseCountMap.get(plan.id) || 0
               const reached = limit > 0 && count >= limit
@@ -586,18 +595,24 @@ export function SubscriptionPlansCard({
                 <Card
                   key={plan.id}
                   data-card-hover='false'
-                  className={cn(isPopular && 'border-primary/70 shadow-sm')}
+                  className={cn(
+                    'relative',
+                    isPopular && 'border-primary ring-primary/30 shadow-md ring-2'
+                  )}
                 >
-                  <CardContent className='flex h-full flex-col p-3.5 sm:p-4'>
+                  <CardContent className='flex h-full flex-col p-4 sm:p-5'>
                     <div className='mb-2 flex items-start justify-between gap-3'>
                       <div className='min-w-0'>
-                        <h4 className='truncate font-semibold'>
+                        <h4 className='truncate text-base font-semibold'>
                           {plan.title || t('Subscription Plans')}
                         </h4>
                         {plan.subtitle && (
-                          <p className='text-muted-foreground text-xs whitespace-pre-line'>
+                          <Markdown
+                            className='text-muted-foreground mt-1 text-xs [&_p]:my-0.5 [&_li]:my-0 [&_ul]:my-0.5 [&_ul]:pl-4'
+                            breaks
+                          >
                             {plan.subtitle}
-                          </p>
+                          </Markdown>
                         )}
                       </div>
                       {isPopular && (
@@ -612,13 +627,13 @@ export function SubscriptionPlansCard({
                       )}
                     </div>
 
-                    <div className='py-2'>
-                      <span className='text-primary text-2xl font-bold'>
+                    <div className='py-3'>
+                      <span className='text-primary text-3xl font-bold'>
                         ${price}
                       </span>
                     </div>
 
-                    <div className='flex-1 space-y-1.5 pb-3'>
+                    <div className='flex-1 space-y-2 pb-4'>
                       {benefits.map((label) => (
                         <div
                           key={label}
@@ -630,7 +645,7 @@ export function SubscriptionPlansCard({
                       ))}
                     </div>
 
-                    <Separator className='mb-3' />
+                    <Separator className='mb-4' />
 
                     {reached ? (
                       <Tooltip>
@@ -645,7 +660,7 @@ export function SubscriptionPlansCard({
                       </Tooltip>
                     ) : (
                       <Button
-                        variant='outline'
+                        variant={isPopular ? 'default' : 'outline'}
                         className='w-full'
                         onClick={() => {
                           setSelectedPlan(p)
@@ -694,6 +709,6 @@ export function SubscriptionPlansCard({
             : undefined
         }
       />
-    </>
+    </div>
   )
 }

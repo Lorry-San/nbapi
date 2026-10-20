@@ -36,7 +36,7 @@ export function LightcodeSubscription() {
     <SectionPageLayout>
       <SectionPageLayout.Title>{t('Subscription')}</SectionPageLayout.Title>
       <SectionPageLayout.Content>
-        <div className='mx-auto w-full max-w-4xl'>
+        <div className='mx-auto w-full max-w-6xl'>
           <SubscriptionPlansCard
             topupInfo={topupInfo}
             userQuota={quota}
