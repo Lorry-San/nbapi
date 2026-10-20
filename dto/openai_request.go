@@ -572,10 +572,18 @@ func (m *Message) ParseContent() []MediaContent {
 		switch contentType {
 		case ContentTypeText:
 			if text, ok := contentItem["text"].(string); ok {
-				contentList = append(contentList, MediaContent{
+				media := MediaContent{
 					Type: ContentTypeText,
 					Text: text,
-				})
+				}
+				// Callers that lay out their own prompt cache send the marker here; dropping it
+				// would silently move them to the default layout.
+				if raw, ok := contentItem["cache_control"]; ok {
+					if encoded, err := common.Marshal(raw); err == nil && string(encoded) != "null" {
+						media.CacheControl = encoded
+					}
+				}
+				contentList = append(contentList, media)
 			}
 
 		case ContentTypeImageURL:

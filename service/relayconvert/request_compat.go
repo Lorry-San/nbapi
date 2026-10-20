@@ -20,6 +20,10 @@ func OpenAIChatRequestToClaudeMessages(c *gin.Context, textRequest dto.GeneralOp
 	return oaichat.OpenAIChatRequestToClaudeMessages(c, textRequest)
 }
 
+func OpenAIChatRequestToClaudeMessagesWithInfo(c *gin.Context, info *relaycommon.RelayInfo, textRequest dto.GeneralOpenAIRequest) (*dto.ClaudeRequest, error) {
+	return oaichat.OpenAIChatRequestToClaudeMessagesWithInfo(c, info, textRequest)
+}
+
 func GeminiGenerateContentRequestToOpenAIChat(geminiRequest *dto.GeminiChatRequest, info *relaycommon.RelayInfo) (*dto.GeneralOpenAIRequest, error) {
 	return geminichat.GeminiGenerateContentRequestToOpenAIChat(geminiRequest, info)
 }

@@ -961,6 +961,9 @@ func (channel *Channel) ValidateSettings() error {
 			return err
 		}
 	}
+	if !dto.ValidClaudeThinkingMode(channelOtherSettings.ClaudeThinkingMode) {
+		return fmt.Errorf("invalid claude thinking mode")
+	}
 	if channel.Type == constant.ChannelTypeAdvancedCustom {
 		if channelOtherSettings.AdvancedCustom == nil {
 			return fmt.Errorf("advanced_custom is required")

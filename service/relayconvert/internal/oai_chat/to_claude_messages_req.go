@@ -7,6 +7,7 @@ import (
 
 	"github.com/Lorry-San/nbapi/common"
 	"github.com/Lorry-San/nbapi/dto"
+	relaycommon "github.com/Lorry-San/nbapi/relay/common"
 	relaymedia "github.com/Lorry-San/nbapi/service/relayconvert/internal/media"
 	sharedclaude "github.com/Lorry-San/nbapi/service/relayconvert/internal/shared/claude"
 	"github.com/Lorry-San/nbapi/setting/model_setting"
@@ -28,6 +29,10 @@ type openRouterRequestReasoning struct {
 }
 
 func OpenAIChatRequestToClaudeMessages(c *gin.Context, textRequest dto.GeneralOpenAIRequest) (*dto.ClaudeRequest, error) {
+	return OpenAIChatRequestToClaudeMessagesWithInfo(c, nil, textRequest)
+}
+
+func OpenAIChatRequestToClaudeMessagesWithInfo(c *gin.Context, info *relaycommon.RelayInfo, textRequest dto.GeneralOpenAIRequest) (*dto.ClaudeRequest, error) {
 	claudeTools := make([]any, 0, len(textRequest.Tools))
 
 	for _, tool := range textRequest.Tools {
@@ -176,24 +181,25 @@ func OpenAIChatRequestToClaudeMessages(c *gin.Context, textRequest dto.GeneralOp
 		}
 	}
 
-	if textRequest.ReasoningEffort != "" {
-		switch textRequest.ReasoningEffort {
-		case "low":
-			claudeRequest.Thinking = &dto.Thinking{
-				Type:         "enabled",
-				BudgetTokens: common.GetPointer[int](1280),
-			}
-		case "medium":
-			claudeRequest.Thinking = &dto.Thinking{
-				Type:         "enabled",
-				BudgetTokens: common.GetPointer[int](2048),
-			}
-		case "high":
-			claudeRequest.Thinking = &dto.Thinking{
-				Type:         "enabled",
-				BudgetTokens: common.GetPointer[int](4096),
-			}
+	thinkingMode := dto.ClaudeThinkingModeInherit
+	if info != nil && info.ChannelMeta != nil {
+		thinkingMode = info.ChannelOtherSettings.ClaudeThinkingMode
+	}
+	shouldApplyThinkingMode := thinkingMode == dto.ClaudeThinkingModeDisabled ||
+		thinkingMode != dto.ClaudeThinkingModeInherit &&
+			(textRequest.ReasoningEffort != "" || claudeRequest.Thinking == nil) ||
+		thinkingMode == dto.ClaudeThinkingModeInherit &&
+			textRequest.ReasoningEffort != "" && claudeRequest.Thinking == nil
+	if shouldApplyThinkingMode {
+		if err := dto.ApplyClaudeThinking(
+			&claudeRequest,
+			thinkingMode,
+			textRequest.ReasoningEffort,
+			model_setting.GetClaudeSettings().ThinkingAdapterBudgetTokensPercentage,
+		); err != nil {
+			return nil, err
 		}
+		dto.NormalizeClaudeAdaptiveSampling(&claudeRequest)
 	}
 
 	if textRequest.Reasoning != nil {
@@ -272,8 +278,9 @@ func OpenAIChatRequestToClaudeMessages(c *gin.Context, textRequest dto.GeneralOp
 				for _, ctx := range message.ParseContent() {
 					if ctx.Type == "text" && ctx.Text != "" {
 						systemMessages = append(systemMessages, dto.ClaudeMediaMessage{
-							Type: "text",
-							Text: common.GetPointer[string](ctx.Text),
+							Type:         "text",
+							Text:         common.GetPointer[string](ctx.Text),
+							CacheControl: ctx.CacheControl,
 						})
 					}
 				}
@@ -341,8 +348,11 @@ func OpenAIChatRequestToClaudeMessages(c *gin.Context, textRequest dto.GeneralOp
 				case "text":
 					if mediaMessage.Text != "" {
 						claudeMediaMessages = append(claudeMediaMessages, dto.ClaudeMediaMessage{
-							Type: "text",
-							Text: common.GetPointer[string](mediaMessage.Text),
+							Type:         "text",
+							Text:         common.GetPointer[string](mediaMessage.Text),
+							// Preserve the caller's own cache breakpoint; ApplyClaudeCacheControl
+							// leaves a request that already carries one untouched.
+							CacheControl: mediaMessage.CacheControl,
 						})
 					}
 				default:
@@ -399,5 +409,6 @@ func OpenAIChatRequestToClaudeMessages(c *gin.Context, textRequest dto.GeneralOp
 
 	claudeRequest.Prompt = ""
 	claudeRequest.Messages = claudeMessages
+	ApplyClaudeCacheControl(&claudeRequest)
 	return &claudeRequest, nil
 }

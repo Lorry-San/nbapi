@@ -296,6 +296,8 @@ const SENSITIVE_FORM_FIELDS = [
   'allow_inference_geo',
   'allow_speed',
   'claude_beta_query',
+  'hide_reasoning_content',
+  'claude_thinking_mode',
   'disable_task_polling_sleep',
   'upstream_model_update_check_enabled',
   'upstream_model_update_auto_sync_enabled',
@@ -344,6 +346,9 @@ function hasAdvancedSettingsValues(values: ChannelFormValues): boolean {
     Boolean(values.responses_to_chat_tool_mode) ||
     values.system_prompt_override ||
     values.claude_beta_query ||
+    values.hide_reasoning_content ||
+    (values.claude_thinking_mode &&
+      values.claude_thinking_mode !== 'inherit') ||
     values.upstream_model_update_check_enabled ||
     values.upstream_model_update_auto_sync_enabled ||
     values.upstream_model_update_ignored_models?.trim()
@@ -764,6 +769,7 @@ export function ChannelMutateDrawer({
   const currentAllowInferenceGeo = form.watch('allow_inference_geo')
   const currentAllowSpeed = form.watch('allow_speed')
   const currentClaudeBetaQuery = form.watch('claude_beta_query')
+  const currentClaudeThinkingMode = form.watch('claude_thinking_mode')
   const currentUpstreamModelUpdateAutoSyncEnabled = form.watch(
     'upstream_model_update_auto_sync_enabled'
   )
@@ -1023,6 +1029,7 @@ export function ChannelMutateDrawer({
     currentPassThroughBodyEnabled ||
     currentForceResponsesToChatCompletions ||
     currentResponsesToChatToolMode ||
+    (currentClaudeThinkingMode && currentClaudeThinkingMode !== 'inherit') ||
     currentDisableTaskPollingSleep ||
     currentProxy?.trim() ||
     currentSystemPrompt?.trim() ||
@@ -4222,6 +4229,55 @@ export function ChannelMutateDrawer({
                                 />
                               )}
 
+                              {currentType === 14 && (
+                                <FormField
+                                  control={form.control}
+                                  name='claude_thinking_mode'
+                                  render={({ field }) => (
+                                    <FormItem className='flex items-center justify-between gap-3 px-4 py-3'>
+                                      <div className='space-y-0.5'>
+                                        <FormLabel>
+                                          {t('Claude thinking mode')}
+                                        </FormLabel>
+                                        <FormDescription>
+                                          {t(
+                                            'Map the client reasoning_effort to this Claude channel.'
+                                          )}
+                                        </FormDescription>
+                                      </div>
+                                      <FormControl>
+                                        <Select
+                                          value={field.value || 'inherit'}
+                                          onValueChange={field.onChange}
+                                        >
+                                          <SelectTrigger className='w-36'>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent
+                                            alignItemWithTrigger={false}
+                                          >
+                                            <SelectGroup>
+                                              <SelectItem value='inherit'>
+                                                {t('Inherit')}
+                                              </SelectItem>
+                                              <SelectItem value='adaptive'>
+                                                {t('Adaptive')}
+                                              </SelectItem>
+                                              <SelectItem value='enabled'>
+                                                {t('Enabled budget')}
+                                              </SelectItem>
+                                              <SelectItem value='disabled'>
+                                                {t('Disabled')}
+                                              </SelectItem>
+                                            </SelectGroup>
+                                          </SelectContent>
+                                        </Select>
+                                      </FormControl>
+                                    </FormItem>
+                                  )}
+                                />
+                              )}
+
                               <FormField
                                 control={form.control}
                                 name='disable_task_polling_sleep'
@@ -4549,6 +4605,31 @@ export function ChannelMutateDrawer({
                                             <FormDescription>
                                               {t(
                                                 'Pass through the anthropic-beta header for beta features'
+                                              )}
+                                            </FormDescription>
+                                          </div>
+                                          <FormControl>
+                                            <Switch
+                                              checked={field.value}
+                                              onCheckedChange={field.onChange}
+                                            />
+                                          </FormControl>
+                                        </FormItem>
+                                      )}
+                                    />
+
+                                    <FormField
+                                      control={form.control}
+                                      name='hide_reasoning_content'
+                                      render={({ field }) => (
+                                        <FormItem className='flex items-center justify-between gap-3 px-4 py-3'>
+                                          <div className='space-y-0.5'>
+                                            <FormLabel className='text-sm'>
+                                              {t('Hide reasoning content')}
+                                            </FormLabel>
+                                            <FormDescription>
+                                              {t(
+                                                'Do not return the thinking chain to clients, streaming included. The model still reasons and is billed as usual.'
                                               )}
                                             </FormDescription>
                                           </div>

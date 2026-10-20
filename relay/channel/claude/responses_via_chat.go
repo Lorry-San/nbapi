@@ -63,6 +63,12 @@ func ChatCompletionsToResponsesHandler(c *gin.Context, info *relaycommon.RelayIn
 
 	chatResp := ResponseClaude2OpenAI(&claudeResp)
 	chatResp.Usage = buildOpenAIStyleUsageFromClaudeUsage(claudeInfo.Usage)
+	// The fallback token estimate below counts reasoning, so keep the full text for it and
+	// strip only the copy that becomes the client reply.
+	fallbackText := extractClaudeChatResponseText(chatResp)
+	if shouldHideReasoning(info) {
+		stripOpenAIResponseReasoning(chatResp)
+	}
 
 	responseID := "resp_" + strings.TrimPrefix(helper.GetResponseID(c), "chatcmpl-")
 	responsesResp, _, err := service.ChatCompletionsResponseToResponsesResponseWithOptions(
@@ -76,7 +82,7 @@ func ChatCompletionsToResponsesHandler(c *gin.Context, info *relaycommon.RelayIn
 		return nil, types.NewOpenAIError(err, types.ErrorCodeBadResponseBody, http.StatusInternalServerError)
 	}
 	if responsesResp.Usage == nil || responsesResp.Usage.TotalTokens == 0 {
-		usage := service.ResponseText2Usage(c, extractClaudeChatResponseText(chatResp), info.UpstreamModelName, info.GetEstimatePromptTokens())
+		usage := service.ResponseText2Usage(c, fallbackText, info.UpstreamModelName, info.GetEstimatePromptTokens())
 		responsesResp.Usage = usage
 		claudeInfo.Usage = usage
 	}
@@ -225,6 +231,10 @@ func scanClaudeStreamAsChatCompletions(
 
 		chatChunk := StreamResponseClaude2OpenAI(&claudeResp)
 		if !FormatClaudeResponseInfo(&claudeResp, chatChunk, claudeInfo) {
+			continue
+		}
+		// Usage was accumulated above from the full chunk; only the client copy is trimmed.
+		if shouldHideReasoning(info) && !stripOpenAIStreamReasoning(chatChunk) {
 			continue
 		}
 		if err := writeChatChunk(chatChunk); err != nil {

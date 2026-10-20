@@ -125,6 +125,11 @@ func HandleStreamResponseData(c *gin.Context, info *relaycommon.RelayInfo, claud
 
 		countClaudeStreamBillableTools(c, info, &claudeResponse)
 
+		// Billing and usage above saw the full chunk; the client only gets what is left.
+		if shouldHideReasoning(info) && !stripOpenAIStreamReasoning(response) {
+			return nil
+		}
+
 		err = helper.ObjectData(c, response)
 		if err != nil {
 			logger.LogError(c, "send_stream_response_failed: "+err.Error())
@@ -243,6 +248,9 @@ func HandleClaudeResponseData(c *gin.Context, info *relaycommon.RelayInfo, claud
 	case types.RelayFormatOpenAI:
 		openaiResponse := ResponseClaude2OpenAI(&claudeResponse)
 		openaiResponse.Usage = buildOpenAIStyleUsageFromClaudeUsage(claudeInfo.Usage)
+		if shouldHideReasoning(info) {
+			stripOpenAIResponseReasoning(openaiResponse)
+		}
 		responseData, err = common.Marshal(openaiResponse)
 		if err != nil {
 			return types.NewError(err, types.ErrorCodeBadResponseBody)

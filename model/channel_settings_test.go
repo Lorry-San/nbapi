@@ -9,6 +9,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestClaudeThinkingModeValidation(t *testing.T) {
+	channel := &Channel{}
+	channel.SetOtherSettings(dto.ChannelOtherSettings{ClaudeThinkingMode: dto.ClaudeThinkingModeAdaptive})
+	require.NoError(t, channel.ValidateSettings())
+
+	channel.SetOtherSettings(dto.ChannelOtherSettings{ClaudeThinkingMode: "invalid"})
+	require.ErrorContains(t, channel.ValidateSettings(), "invalid claude thinking mode")
+}
+
 func TestAdvancedCustomChannelRequiresModelListRouteOnlyWhenUpdateChecksEnabled(t *testing.T) {
 	inferenceRoute := dto.AdvancedCustomRoute{
 		IncomingPath: "/v1/chat/completions",
