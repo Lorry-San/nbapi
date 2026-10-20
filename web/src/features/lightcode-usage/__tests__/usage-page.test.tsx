@@ -50,6 +50,12 @@ for (const key of [
   })
 }
 
+/** Optional profile extras a test can turn on: reset cards and a scheduled reset. */
+let extras: {
+  reset_cards?: { id: number; kind: 'short' | 'full'; expires_at: number }[]
+  scheduled_reset?: { run_at: number } | null
+} = {}
+
 /** A year of days ending today, shaped like the real /api/lightcode/profile response. */
 function profile() {
   const days = Array.from({ length: 371 }, (_, i) => {
@@ -70,7 +76,9 @@ function profile() {
         end_time: 1795000000,
         window_short: null,
         window_long: { seconds: 604800, used_percent: 1, reset_at: 1793000000 },
+        scheduled_reset: extras.scheduled_reset ?? null,
       },
+      reset_cards: extras.reset_cards ?? [],
       stats: {
         total_tokens: 55000,
         requests: 30,
@@ -97,6 +105,10 @@ function profile() {
 // Only the network call is replaced; the page, hooks and formatting run for real.
 await mock.module('@/features/lightcode/api', () => ({
   getLightcodeProfile: () => Promise.resolve(profile()),
+  useLightcodeResetCard: () => Promise.resolve({ success: true, data: { kind: 'short', used_at: 1 } }),
+  updateLightcodeDisplayName: () => Promise.resolve({ success: true, data: { display_name: 'x' } }),
+  uploadLightcodeAvatar: () => Promise.resolve({ success: true, data: { avatar_url: '' } }),
+  deleteLightcodeAvatar: () => Promise.resolve({ success: true, data: null }),
 }))
 
 const { act } = await import('react')
@@ -118,10 +130,72 @@ await i18n
 
 const { LightcodeUsage } = await import('../index')
 
+/** Renders the page against the current extras and returns its container once loaded. */
+async function renderPage() {
+  const errors: unknown[] = []
+  const container = document.createElement('div')
+  document.body.appendChild(container)
+  const root = createRoot(container, {
+    onUncaughtError: (e) => errors.push(e),
+    onCaughtError: (e) => errors.push(e),
+  })
+  const router = createRouter({
+    routeTree: createRootRoute({ component: LightcodeUsage }),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  await act(async () => {
+    root.render(
+      <I18nextProvider i18n={i18n}>
+        <QueryClientProvider client={client}>
+          <RouterProvider router={router} />
+        </QueryClientProvider>
+      </I18nextProvider>
+    )
+  })
+  for (let i = 0; i < 20 && !container.textContent?.includes('LorrySan'); i++) {
+    await act(() => new Promise((r) => setTimeout(r, 25)))
+  }
+  return { container, errors, unmount: () => act(() => root.unmount()) }
+}
+
 describe('Lightcode usage page', () => {
   after(() => domWindow.happyDOM.close())
 
+  test('a user holding reset cards sees how many and can spend one', async () => {
+    extras = {
+      reset_cards: [
+        { id: 7, kind: 'short', expires_at: 1795000000 },
+        { id: 8, kind: 'full', expires_at: 1795000000 },
+      ],
+    }
+    const page = await renderPage()
+    try {
+      const slot = page.container.querySelector<HTMLElement>('[data-slot="lightcode-reset-card"]')
+      assert.ok(slot, 'the card section renders where the reserved slot was')
+      assert.equal(slot.hidden, false)
+      assert.match(slot.textContent ?? '', /2/)
+      const buttons = [...slot.querySelectorAll('button')].map((b) => b.textContent)
+      assert.equal(buttons.filter((label) => label === 'Use card').length, 2, 'each card has its own button')
+    } finally {
+      page.unmount()
+      extras = {}
+    }
+  })
+
+  test('a scheduled operator reset is announced on the plan card', async () => {
+    extras = { scheduled_reset: { run_at: 1794000000 } }
+    const page = await renderPage()
+    try {
+      assert.match(page.container.textContent ?? '', /Usage will be reset at/)
+    } finally {
+      page.unmount()
+      extras = {}
+    }
+  })
+
   test('renders profile, stats, plan, heatmap and models from real-shaped data', async () => {
+    extras = {}
     const errors: unknown[] = []
     const originalError = console.error
     console.error = (...args: unknown[]) => {
@@ -172,8 +246,8 @@ describe('Lightcode usage page', () => {
         '[role="img"][aria-label="Token activity over the last 90 days"]'
       )
       assert.ok(heatmap)
-      const dates = Array.from(heatmap.querySelectorAll('[title]')).map(
-        (cell) => cell.getAttribute('title')?.slice(0, 10)
+      const dates = [...heatmap.querySelectorAll('[title]')].map((cell) =>
+        cell.getAttribute('title')?.slice(0, 10)
       )
       assert.equal(dates.length, 90)
       assert.equal(dates[0], '2026-07-22')
@@ -184,12 +258,9 @@ describe('Lightcode usage page', () => {
         scrollArea?.classList.contains('no-scrollbar'),
         'activity must hide the native horizontal scrollbar'
       )
-      const resetCard = container.querySelector<HTMLElement>(
-        '[data-slot="lightcode-reset-card"]'
-      )
-      assert.ok(resetCard)
-      assert.equal(resetCard.hidden, true)
-      assert.equal(resetCard.querySelector('button'), null)
+      // Without any card the section stays out of the page entirely.
+      assert.equal(container.querySelector('[data-slot="lightcode-reset-card"]'), null)
+      assert.doesNotMatch(text, /Usage will be reset at/)
     } finally {
       console.error = originalError
       act(() => root.unmount())

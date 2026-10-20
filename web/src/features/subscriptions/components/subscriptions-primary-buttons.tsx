@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Plus } from 'lucide-react'
+import { Gift, Plus, RotateCcw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,14 @@ export function SubscriptionsPrimaryButtons() {
   const { setOpen } = useSubscriptions()
   return (
     <div className='flex gap-2'>
+      <Button size='sm' variant='outline' onClick={() => setOpen('gift-reset-cards')}>
+        <Gift className='h-4 w-4' />
+        {t('Gift reset cards')}
+      </Button>
+      <Button size='sm' variant='outline' onClick={() => setOpen('quick-reset')}>
+        <RotateCcw className='h-4 w-4' />
+        {t('Reset usage')}
+      </Button>
       <Button size='sm' onClick={() => setOpen('create')}>
         <Plus className='h-4 w-4' />
         {t('Create Plan')}

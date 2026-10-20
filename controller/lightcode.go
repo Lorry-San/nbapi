@@ -174,10 +174,39 @@ func lightcodeSubscriptionJSON(userId int, now int64) (gin.H, error) {
 		var plan model.SubscriptionPlan
 		_ = common.UnmarshalJsonStr(sub.PlanSnapshot, &plan)
 		short, long := model.LightcodeWindowStatus(&sub, now)
-		return gin.H{"plan": plan.Title, "end_time": sub.EndTime,
-			"window_short": lightcodeWindowJSON(short, plan.WindowShortSeconds), "window_long": lightcodeWindowJSON(long, plan.WindowLongSeconds)}, nil
+		view := gin.H{"plan": plan.Title, "end_time": sub.EndTime,
+			"window_short": lightcodeWindowJSON(short, plan.WindowShortSeconds), "window_long": lightcodeWindowJSON(long, plan.WindowLongSeconds),
+			"scheduled_reset": nil}
+		// A pending operator reset is shown to the user so the cleared windows are expected.
+		if pending, err := model.LightcodePendingResetFor(&sub); err == nil && pending != nil {
+			view["scheduled_reset"] = gin.H{"run_at": pending.RunAt}
+		}
+		return view, nil
 	}
 	return nil, nil
+}
+
+// lightcodeResetCardsJSON lists the user's spendable cards without internal ids beyond the
+// one needed to spend a card.
+func lightcodeResetCardsJSON(userId int) []gin.H {
+	cards, err := model.LightcodeUsableResetCards(userId)
+	views := make([]gin.H, 0, len(cards))
+	if err != nil {
+		return views
+	}
+	for _, card := range cards {
+		views = append(views, gin.H{"id": card.Id, "kind": card.Kind, "expires_at": card.ExpiresAt})
+	}
+	return views
+}
+
+// lightcodeAvatarURL is the public, cache-busting avatar path, or empty without an avatar.
+func lightcodeAvatarURL(userId int) string {
+	version := model.UserAvatarVersion(userId)
+	if version == 0 {
+		return ""
+	}
+	return "/api/lightcode/avatar/" + strconv.Itoa(userId) + "?v=" + strconv.FormatInt(version, 10)
 }
 
 func buildLightcodeProfile(c *gin.Context) (gin.H, error) {
@@ -203,8 +232,9 @@ func buildLightcodeProfile(c *gin.Context) (gin.H, error) {
 		return nil, err
 	}
 	return gin.H{
-		"user":         gin.H{"id": user.Id, "username": user.Username, "display_name": displayName},
+		"user":         gin.H{"id": user.Id, "username": user.Username, "display_name": displayName, "avatar_url": lightcodeAvatarURL(userId)},
 		"subscription": subscription,
+		"reset_cards":  lightcodeResetCardsJSON(userId),
 		"stats":        activity.Stats,
 		"days":         activity.Days,
 		"models":       activity.Models,
@@ -232,6 +262,21 @@ func LightcodeClientProfile(c *gin.Context) {
 	c.JSON(200, data)
 }
 
+// orderCatalogNames returns the routable models in the operator's row order, with any routed
+// model that lacks a policy row appended so it still appears.
+func orderCatalogNames(policies []model.LightcodeGroupModel, routed []string) []string {
+	ordered := make([]string, 0, len(routed))
+	remaining := slices.Clone(routed)
+	for _, policy := range policies {
+		if !slices.Contains(remaining, policy.Model) {
+			continue
+		}
+		ordered = append(ordered, policy.Model)
+		remaining = slices.DeleteFunc(remaining, func(name string) bool { return name == policy.Model })
+	}
+	return append(ordered, remaining...)
+}
+
 func LightcodeCatalog(c *gin.Context) {
 	subs, err := model.LightcodeSubscriptions(c.GetInt("id"))
 	if err != nil {
@@ -248,11 +293,15 @@ func LightcodeCatalog(c *gin.Context) {
 			c.JSON(503, gin.H{"error": "catalog_unavailable"})
 			return
 		}
-		var names []string
-		if err := model.DB.Model(&model.Ability{}).Distinct("model").Where("enabled = ?", true).Where(map[string]interface{}{"group": sub.RoutingGroup}).Pluck("model", &names).Error; err != nil {
+		var routed []string
+		if err := model.DB.Model(&model.Ability{}).Distinct("model").Where("enabled = ?", true).Where(map[string]interface{}{"group": sub.RoutingGroup}).Pluck("model", &routed).Error; err != nil {
 			c.JSON(503, gin.H{"error": "catalog_unavailable"})
 			return
 		}
+		// The operator's row order in Lightcode models is the selector order. Abilities only
+		// decide whether a model is routable, so a channel-side reordering never reshuffles
+		// what users see. A routed model without a policy row is still listed at the end.
+		names := orderCatalogNames(policies, routed)
 		for _, name := range names {
 			policy := model.LightcodeGroupModel{Model: name, DisplayName: name, Efforts: []string{}}
 			for _, p := range policies {
@@ -263,7 +312,7 @@ func LightcodeCatalog(c *gin.Context) {
 			}
 			_, reason := model.LightcodeModelEntitlement(&sub, name, policies)
 			available := reason == ""
-			models = append(models, gin.H{"id": name, "display_name": policy.DisplayName, "efforts": policy.Efforts, "default_effort": policy.DefaultEffort, "available": available, "unavailable_reason": reason, "context_window": policy.ContextWindow, "max_output_tokens": policy.MaxOutputTokens, "vision": policy.Vision})
+			models = append(models, gin.H{"id": name, "display_name": policy.DisplayName, "efforts": policy.Efforts, "default_effort": policy.DefaultEffort, "available": available, "unavailable_reason": reason, "context_window": policy.ContextWindow, "max_output_tokens": policy.MaxOutputTokens, "vision": policy.Vision, "hidden": policy.Hidden})
 		}
 		break
 	}

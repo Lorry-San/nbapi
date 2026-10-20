@@ -32,6 +32,10 @@ import type {
   SelfSubscriptionData,
   LightcodeGroupModel,
   LightcodeGroupModelRecord,
+  GiftResetCardsRequest,
+  GiftResetCardsResult,
+  ScheduleResetRequest,
+  LightcodeScheduledReset,
 } from './types'
 
 // ============================================================================
@@ -129,6 +133,59 @@ export async function resetPlanSubscriptions(
     `/api/subscription/admin/plans/${planId}/subscriptions/reset`,
     data
   )
+  return res.data
+}
+
+// Resets one subscription row by its own id, clearing its 5h/7d usage windows.
+export async function resetUserSubscriptionById(
+  subId: number,
+  data: ResetPlanSubscriptionsRequest
+): Promise<ApiResponse<SubscriptionResetResult>> {
+  const res = await api.post(
+    `/api/subscription/admin/user_subscriptions/${subId}/reset`,
+    data
+  )
+  return res.data
+}
+
+// Resets the usage windows of every active subscription across all plans.
+export async function resetAllActiveSubscriptions(
+  data: ResetPlanSubscriptionsRequest
+): Promise<ApiResponse<SubscriptionResetResult>> {
+  const res = await api.post(
+    '/api/subscription/admin/subscriptions/reset',
+    data
+  )
+  return res.data
+}
+
+// Gives reset cards to every subscriber the target reaches.
+export async function giftResetCards(
+  data: GiftResetCardsRequest
+): Promise<ApiResponse<GiftResetCardsResult>> {
+  const res = await api.post('/api/subscription/admin/reset-cards', data)
+  return res.data
+}
+
+// Records a reset that runs at data.run_at instead of now.
+export async function scheduleReset(
+  data: ScheduleResetRequest
+): Promise<ApiResponse<LightcodeScheduledReset>> {
+  const res = await api.post('/api/subscription/admin/scheduled-resets', data)
+  return res.data
+}
+
+export async function getScheduledResets(): Promise<
+  ApiResponse<LightcodeScheduledReset[]>
+> {
+  const res = await api.get('/api/subscription/admin/scheduled-resets')
+  return res.data
+}
+
+export async function cancelScheduledReset(
+  id: number
+): Promise<ApiResponse<null>> {
+  const res = await api.delete(`/api/subscription/admin/scheduled-resets/${id}`)
   return res.data
 }
 

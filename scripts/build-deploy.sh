@@ -20,7 +20,9 @@ go test ./model ./router ./controller
 printf 'Compiling gateway %s\n' "$version"
 go build -trimpath -ldflags "-s -w -X github.com/Lorry-San/nbapi/common.Version=$version" -o "$release/lightcone-ai" .
 test -s "$release/lightcone-ai"
-grep -qx 'LIGHTCODE_ENFORCE_CLIENT=0' /etc/lightcone.env
+# The enforcement switch must be set explicitly either way; an absent line would silently
+# fall back to the code default.
+grep -qxE 'LIGHTCODE_ENFORCE_CLIENT=[01]' /etc/lightcone.env
 stamp=$(date +%Y%m%d%H%M%S)
 backup="/opt/lightcone/bin/lightcone-ai.before-$version-$stamp"
 cp -a /opt/lightcone/bin/lightcone-ai "$backup"

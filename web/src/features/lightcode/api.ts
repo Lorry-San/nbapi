@@ -105,11 +105,21 @@ export interface LightcodeSubscriptionStatus {
   end_time: number
   window_short: LightcodeUsageWindow | null
   window_long: LightcodeUsageWindow | null
+  /** A pending operator reset that will clear these windows; null when none. */
+  scheduled_reset?: { run_at: number } | null
+}
+
+/** A short card clears the 5-hour window; a full card clears both windows. */
+export interface LightcodeResetCard {
+  id: number
+  kind: 'short' | 'full'
+  expires_at: number
 }
 
 export interface LightcodeProfileData {
-  user: { id: number; username: string; display_name: string }
+  user: { id: number; username: string; display_name: string; avatar_url?: string }
   subscription: LightcodeSubscriptionStatus | null
+  reset_cards?: LightcodeResetCard[]
   stats: {
     total_tokens: number
     requests: number
@@ -137,6 +147,37 @@ export async function getLightcodeProfile(): Promise<
   const res = await api.get('/api/lightcode/profile', {
     params: { tz_offset_minutes: -new Date().getTimezoneOffset() },
   })
+  return res.data
+}
+
+/** Spends one reset card on the caller's active subscription. */
+export async function useLightcodeResetCard(
+  id: number
+): Promise<ApiResponse<{ kind: string; used_at: number }>> {
+  const res = await api.post(`/api/lightcode/reset-cards/${id}/use`)
+  return res.data
+}
+
+export async function updateLightcodeDisplayName(
+  displayName: string
+): Promise<ApiResponse<{ display_name: string }>> {
+  const res = await api.put('/api/lightcode/profile/display-name', {
+    display_name: displayName,
+  })
+  return res.data
+}
+
+export async function uploadLightcodeAvatar(
+  file: File
+): Promise<ApiResponse<{ avatar_url: string }>> {
+  const form = new FormData()
+  form.append('avatar', file)
+  const res = await api.put('/api/lightcode/profile/avatar', form)
+  return res.data
+}
+
+export async function deleteLightcodeAvatar(): Promise<ApiResponse<null>> {
+  const res = await api.delete('/api/lightcode/profile/avatar')
   return res.data
 }
 

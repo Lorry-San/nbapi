@@ -67,6 +67,12 @@ func runSubscriptionQuotaResetOnce() {
 			break
 		}
 	}
+	// Operator-scheduled resets run on the same minute tick as plan renewals.
+	if n, err := model.RunDueLightcodeScheduledResets(subscriptionResetBatchSize); err != nil {
+		logger.LogWarn(ctx, fmt.Sprintf("lightcode scheduled reset task failed: %v", err))
+	} else if n > 0 {
+		logger.LogInfo(ctx, fmt.Sprintf("lightcode scheduled resets executed: %d", n))
+	}
 	for {
 		n, err := model.ResetDueSubscriptions(subscriptionResetBatchSize)
 		if err != nil {

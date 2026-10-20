@@ -19,6 +19,9 @@ func SetRelayRouter(router *gin.Engine) {
 	lightcode.GET("/catalog", controller.LightcodeCatalog)
 	lightcode.GET("/account", controller.LightcodeAccount)
 	lightcode.GET("/profile", controller.LightcodeClientProfile)
+	lightcode.POST("/reset-cards/:id/use", controller.LightcodeClientUseResetCard)
+	lightcode.PUT("/profile/display-name", controller.LightcodeClientUpdateDisplayName)
+	lightcode.PUT("/profile/avatar", controller.LightcodeClientUploadAvatar)
 	lightcode.POST("/chat/completions", middleware.SystemPerformanceCheck(), middleware.LightcodeEntitlements(), middleware.ModelRequestRateLimit(), middleware.Distribute(), func(c *gin.Context) { controller.Relay(c, types.RelayFormatOpenAI) })
 	// https://platform.openai.com/docs/api-reference/introduction
 	modelsRouter := router.Group("/v1/models")

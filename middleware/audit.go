@@ -91,6 +91,12 @@ var auditRouteActions = map[string]string{
 	"POST /api/subscription/admin/plans":    "subscription.plan_create",
 	"PUT /api/subscription/admin/plans/:id": "subscription.plan_update",
 	"POST /api/subscription/admin/bind":     "subscription.bind",
+	"POST /api/subscription/admin/subscriptions/reset":            "subscription.all_reset",
+	"POST /api/subscription/admin/user_subscriptions/:id/reset":   "subscription.user_subscription_reset",
+	"POST /api/subscription/admin/plans/:id/sync_entitlements":    "subscription.entitlement_sync",
+	"POST /api/subscription/admin/reset-cards":                    "subscription.reset_card_gift",
+	"POST /api/subscription/admin/scheduled-resets":               "subscription.reset_schedule",
+	"DELETE /api/subscription/admin/scheduled-resets/:id":         "subscription.reset_schedule_cancel",
 
 	// 日志
 	"POST /api/system-task/log-cleanup": "log.cleanup_start",

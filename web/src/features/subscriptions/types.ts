@@ -78,6 +78,7 @@ export const userSubscriptionSchema = z.object({
 })
 
 export interface LightcodeGroupModel {
+  id?: number
   model: string
   display_name: string
   efforts: string[]
@@ -85,6 +86,7 @@ export interface LightcodeGroupModel {
   context_window: number
   max_output_tokens: number
   vision: boolean
+  hidden: boolean
   multiplier: number
 }
 
@@ -166,6 +168,44 @@ export interface SubscriptionResetResult {
   advance_reset_time: boolean
 }
 
+/** Who a reset card gift or a scheduled reset reaches. */
+export type LightcodeResetTarget = 'all' | 'plan' | 'user'
+
+/** A short card clears the 5-hour window; a full card clears 5-hour and 7-day. */
+export type LightcodeResetCardKind = 'short' | 'full'
+
+export interface GiftResetCardsRequest {
+  target_type: LightcodeResetTarget
+  target_id: number
+  kind: LightcodeResetCardKind
+  count: number
+}
+
+export interface GiftResetCardsResult {
+  user_count: number
+  card_count: number
+}
+
+export interface ScheduleResetRequest {
+  target_type: LightcodeResetTarget
+  target_id: number
+  /** Unix seconds. */
+  run_at: number
+  advance_reset_time: boolean
+}
+
+export interface LightcodeScheduledReset {
+  id: number
+  target_type: LightcodeResetTarget
+  target_id: number
+  run_at: number
+  advance_reset_time: boolean
+  status: 'pending' | 'running' | 'done' | 'failed' | 'cancelled'
+  reset_count: number
+  error: string
+  executed_at: number
+}
+
 // ============================================================================
 // Self Subscription Data (user-facing)
 // ============================================================================
@@ -185,3 +225,5 @@ export type SubscriptionsDialogType =
   | 'update'
   | 'toggle-status'
   | 'reset-subscriptions'
+  | 'quick-reset'
+  | 'gift-reset-cards'

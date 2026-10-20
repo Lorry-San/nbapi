@@ -28,12 +28,15 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   getLightcodeProfile,
   type LightcodeProfileData,
+  type LightcodeResetCard,
   type LightcodeUsageWindow,
 } from '@/features/lightcode/api'
 import { toIntlLocale } from '@/i18n/languages'
 import { cn } from '@/lib/utils'
 
-import { avatarHue, buildHeatmap, formatTokens, initials } from './lib/activity'
+import { ProfileHeader } from './components/profile-header'
+import { ResetCards, ScheduledResetNotice } from './components/reset-cards'
+import { buildHeatmap, formatTokens } from './lib/activity'
 
 const LEVEL_ALPHA = [0, 0.3, 0.5, 0.75, 1]
 
@@ -77,26 +80,6 @@ function WindowCard(props: { window: LightcodeUsageWindow | null }) {
   )
 }
 
-function ProfileHeader(props: { user: LightcodeProfileData['user'] }) {
-  const name = props.user.display_name || props.user.username
-  const hue = avatarHue(props.user.id)
-  return (
-    <div className='flex flex-col items-center gap-2 text-center'>
-      <div
-        className='flex size-20 items-center justify-center rounded-full text-2xl font-semibold text-white'
-        style={{ backgroundColor: `hsl(${hue} 55% 45%)` }}
-        aria-hidden='true'
-      >
-        {initials(name)}
-      </div>
-      <div className='text-xl font-semibold'>{name}</div>
-      <div className='text-muted-foreground text-sm'>
-        @{props.user.username}
-      </div>
-    </div>
-  )
-}
-
 function StatTiles(props: { stats: LightcodeProfileData['stats'] }) {
   const { t } = useTranslation()
   const s = props.stats
@@ -134,7 +117,11 @@ function StatTiles(props: { stats: LightcodeProfileData['stats'] }) {
   )
 }
 
-function PlanCard(props: { sub: LightcodeProfileData['subscription'] }) {
+function PlanCard(props: {
+  sub: LightcodeProfileData['subscription']
+  cards: LightcodeResetCard[]
+  onChanged: () => void
+}) {
   const { t } = useTranslation()
   const sub = props.sub
   return (
@@ -150,8 +137,8 @@ function PlanCard(props: { sub: LightcodeProfileData['subscription'] }) {
           <div className='grid gap-3 sm:grid-cols-2'>
             <WindowCard window={sub.window_short} />
             <WindowCard window={sub.window_long} />
-            {/* Reserved for reset-card controls; hidden until the feature is available. */}
-            <div hidden data-slot='lightcode-reset-card' />
+            {sub.scheduled_reset ? <ScheduledResetNotice runAt={sub.scheduled_reset.run_at} /> : null}
+            <ResetCards cards={props.cards} onUsed={props.onChanged} />
           </div>
         </div>
       ) : (
@@ -328,9 +315,13 @@ export function LightcodeUsage() {
   } else {
     content = (
       <>
-        <ProfileHeader user={data.user} />
+        <ProfileHeader user={data.user} onChanged={() => query.refetch()} />
         <StatTiles stats={data.stats} />
-        <PlanCard sub={data.subscription} />
+        <PlanCard
+          sub={data.subscription}
+          cards={data.reset_cards ?? []}
+          onChanged={() => query.refetch()}
+        />
         {data.stats.requests === 0 ? (
           <p className='text-muted-foreground py-6 text-center text-sm'>
             {t('No Lightcode usage yet')}
