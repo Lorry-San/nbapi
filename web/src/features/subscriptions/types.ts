@@ -35,6 +35,7 @@ export const subscriptionPlanSchema = z.object({
   quota_reset_custom_seconds: z.number().optional(),
   enabled: z.boolean(),
   sort_order: z.number(),
+  recommended: z.boolean().optional().default(false),
   allow_balance_pay: z.boolean().optional().default(true),
   allow_wallet_overflow: z.boolean().optional().default(true),
   max_purchase_per_user: z.number(),

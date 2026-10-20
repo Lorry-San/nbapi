@@ -745,6 +745,31 @@ export function SubscriptionsMutateDrawer({
 
                 <FormField
                   control={form.control}
+                  name='recommended'
+                  render={({ field }) => (
+                    <FormItem className={sideDrawerSwitchItemClassName()}>
+                      <div className='grid gap-0.5'>
+                        <FormLabel className='!mt-0'>
+                          {t('Recommended plan')}
+                        </FormLabel>
+                        <FormDescription>
+                          {t(
+                            'Highlighted on the purchase page. Only one plan per pool is recommended; turning this on clears the others.'
+                          )}
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name='allow_balance_pay'
                   render={({ field }) => (
                     <FormItem className={sideDrawerSwitchItemClassName()}>

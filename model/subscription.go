@@ -164,6 +164,9 @@ type SubscriptionPlan struct {
 
 	Enabled   bool `json:"enabled" gorm:"default:true"`
 	SortOrder int  `json:"sort_order" gorm:"type:int;default:0"`
+	// Recommended highlights the plan on the purchase page. At most one plan per pool carries
+	// it; saving a recommended plan clears the flag on the others.
+	Recommended bool `json:"recommended"`
 
 	AllowBalancePay *bool `json:"allow_balance_pay"`
 

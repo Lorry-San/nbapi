@@ -218,7 +218,12 @@ func AdminCreateSubscriptionPlan(c *gin.Context) {
 	// The column defaults to true and GORM omits a false bool on insert, so a
 	// plan created as disabled would otherwise go on sale immediately.
 	enabled := req.Plan.Enabled
-	err := model.DB.Create(&req.Plan).Error
+	err := model.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&req.Plan).Error; err != nil {
+			return err
+		}
+		return model.ClearOtherRecommendedPlans(tx, req.Plan.Id, req.Plan.Pool, req.Plan.Recommended)
+	})
 	if err == nil && !enabled {
 		err = model.DB.Model(&model.SubscriptionPlan{}).Where("id = ?", req.Plan.Id).Update("enabled", false).Error
 		req.Plan.Enabled = false
@@ -312,6 +317,7 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 			"custom_seconds":             req.Plan.CustomSeconds,
 			"enabled":                    req.Plan.Enabled,
 			"sort_order":                 req.Plan.SortOrder,
+			"recommended":                req.Plan.Recommended,
 			"stripe_price_id":            req.Plan.StripePriceId,
 			"creem_product_id":           req.Plan.CreemProductId,
 			"waffo_pancake_product_id":   req.Plan.WaffoPancakeProductId,
@@ -339,7 +345,7 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 		if err := tx.Model(&model.SubscriptionPlan{}).Where("id = ?", id).Updates(updateMap).Error; err != nil {
 			return err
 		}
-		return nil
+		return model.ClearOtherRecommendedPlans(tx, id, req.Plan.Pool, req.Plan.Recommended)
 	})
 	if err != nil {
 		common.ApiError(c, err)
