@@ -6,7 +6,7 @@ python3 - <<'PY'
 import hashlib, io, pathlib, tarfile, urllib.request, zipfile
 root = pathlib.Path('/opt/lightcone/toolchains')
 tools = [
-    ('go', 'https://go.dev/dl/go1.25.1.linux-amd64.tar.gz', '7716a0d940a0f6ae8e1f3b3f4f36299dc53e31b16840dbd171254312c41ca12e', 'go/bin/go'),
+    ('go', 'https://go.dev/dl/go1.27.3.linux-amd64.tar.gz', '65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40', 'go/bin/go'),
     ('node', 'https://nodejs.org/dist/v24.10.0/node-v24.10.0-linux-x64.tar.xz', '2642f4428869aca32443660fd71b3918e2be1277a899bdcaeb64c93b54b5af17', 'node/bin/node'),
     ('bun', 'https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-linux-x64.zip', '36368faef7527875d5ffa52e53cd48021741f2a83eb6208a8dd64068d422a913', 'bun/bun'),
 ]
