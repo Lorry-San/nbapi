@@ -19,6 +19,14 @@ for name, url, checksum, executable in tools:
     data = urllib.request.urlopen(url, timeout=180).read()
     if hashlib.sha256(data).hexdigest() != checksum:
         raise RuntimeError(name + ' archive checksum mismatch')
+    # An upgrade extracts over the previous tree, so files dropped between releases survive and
+    # break the build (Go 1.27 adds map_swiss.go while the old map.go still declares ctrlEmpty).
+    # Replace the tool's own directory instead of merging into it.
+    import shutil
+    target = root / name
+    if target.exists():
+        shutil.rmtree(target)
+    marker.unlink(missing_ok=True)
     if name == 'bun':
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             target = root / executable
