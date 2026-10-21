@@ -5352,6 +5352,23 @@
     "Recommended plan": "Gói đề xuất",
     "Highlighted on the purchase page. Only one plan per pool is recommended; turning this on clears the others.": "Được làm nổi bật trên trang mua. Mỗi nhóm chỉ có một gói đề xuất; bật mục này sẽ bỏ đề xuất của các gói khác.",
     "Choose a plan": "Chọn gói",
-    "Your active plans, usage windows and billing preference": "Gói đang dùng, khung sử dụng và tùy chọn thanh toán của bạn"
+    "Your active plans, usage windows and billing preference": "Gói đang dùng, khung sử dụng và tùy chọn thanh toán của bạn",
+    "Lightcode Client": "Ứng dụng Lightcode",
+    "API Status": "Trạng thái API",
+    "Built for heavy daily use": "Dành cho nhu cầu sử dụng hằng ngày",
+    "One subscription, every flagship model. Pick the plan that matches your workload.": "Một gói đăng ký, đầy đủ các mô hình hàng đầu. Chọn gói phù hợp với nhu cầu.",
+    "Lightcode GO": "Lightcode GO",
+    "Lightcode Plus": "Lightcode Plus",
+    "per month": "mỗi tháng",
+    "The entry point for everyday coding assistance.": "Lựa chọn khởi đầu cho hỗ trợ lập trình hằng ngày.",
+    "Five times the GO quota, no five-hour cap, flagship models unlocked.": "Hạn mức gấp 5 lần GO, không giới hạn 5 giờ, mở khóa mô hình hàng đầu.",
+    "Most popular": "Được chọn nhiều nhất",
+    "{{amount}} quota every {{window}}, {{multiple}} times the GO plan.": "Hạn mức {{amount}} mỗi {{window}}, gấp {{multiple}} lần gói GO.",
+    "7 天": "7 ngày",
+    "10 倍于 Lightcode GO 的用量额度": "Hạn mức gấp 10 lần Lightcode GO",
+    "更高的并发，长任务不再排队": "Độ song song cao hơn, tác vụ dài không còn phải chờ",
+    "优先接入最新发布的模型": "Ưu tiên truy cập các mô hình mới phát hành",
+    "开放 Claude Fable、GPT Astra 等全部旗舰模型": "Toàn bộ mô hình hàng đầu gồm Claude Fable và GPT Astra",
+    "无五小时限制，额度按周统一结算": "Không giới hạn 5 giờ, hạn mức chốt theo tuần"
   }
 }

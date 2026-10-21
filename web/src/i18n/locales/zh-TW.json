@@ -5371,7 +5371,6 @@
     "Home Page Background": "首页背景",
     "Image URL used as the default frontend home page background. Leave empty to use the built-in background.": "用作前端首页默认背景的图片地址。留空则使用内置背景。",
     "Included": "已包含",
-    "Lightcode": "Lightcode",
     "Loose mode converts named unsupported Responses tools such as namespace into chat function tools. Strict mode drops unsupported tool types.": "宽松模式会把 namespace 等不支持具名 Responses 工具转换为 chat 函数工具。严格模式会丢弃不支持的工具类型。",
     "Lorry-San": "Lorry-San",
     "Mofang": "魔方",
@@ -5422,6 +5421,23 @@
     "footer.columns.related.links.nbapiKeyTool": "nbapi 金鑰工具",
     "https://mofang.example.com": "https://mofang.example.com",
     "https://mofang.example.com/loginAccessToken": "https://mofang.example.com/loginAccessToken",
-    "{{count}} days": "{{count}} 天"
+    "{{count}} days": "{{count}} 天",
+    "Lightcode Client": "Lightcode 用戶端",
+    "API Status": "API 狀態",
+    "Built for heavy daily use": "為高強度日常使用而設計",
+    "One subscription, every flagship model. Pick the plan that matches your workload.": "一次訂閱，涵蓋全部旗艦模型。選擇與你用量相符的方案。",
+    "Lightcode GO": "Lightcode GO",
+    "Lightcode Plus": "Lightcode Plus",
+    "per month": "每月",
+    "The entry point for everyday coding assistance.": "日常編碼輔助的入門之選。",
+    "Five times the GO quota, no five-hour cap, flagship models unlocked.": "五倍於 GO 的額度，無五小時限制，解鎖旗艦模型。",
+    "Most popular": "最受歡迎",
+    "{{amount}} quota every {{window}}, {{multiple}} times the GO plan.": "每 {{window}} {{amount}} 額度，是 GO 方案的 {{multiple}} 倍。",
+    "7 天": "7 天",
+    "10 倍于 Lightcode GO 的用量额度": "10 倍於 Lightcode GO 的用量額度",
+    "更高的并发，长任务不再排队": "更高的並發，長任務不再排隊",
+    "优先接入最新发布的模型": "優先接入最新發布的模型",
+    "开放 Claude Fable、GPT Astra 等全部旗舰模型": "開放 Claude Fable、GPT Astra 等全部旗艦模型",
+    "无五小时限制，额度按周统一结算": "無五小時限制，額度按週統一結算"
   }
 }

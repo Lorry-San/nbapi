@@ -5385,7 +5385,6 @@
     "Home Page Background": "首页背景",
     "Image URL used as the default frontend home page background. Leave empty to use the built-in background.": "用作前端首页默认背景的图片地址。留空则使用内置背景。",
     "Included": "已包含",
-    "Lightcode": "Lightcode",
     "Loose mode converts named unsupported Responses tools such as namespace into chat function tools. Strict mode drops unsupported tool types.": "宽松模式会把 namespace 等不支持具名 Responses 工具转换为 chat 函数工具。严格模式会丢弃不支持的工具类型。",
     "Notes": "备注",
     "OAuth": "OAuth",
@@ -5423,6 +5422,23 @@
     "{{count}} announcements deleted. Click \"Save Settings\" to apply.": "已删除 {{count}} 条公告。点击「保存设置」生效。",
     "{{count}} groups deleted. Click \"Save Settings\" to apply.": "已删除 {{count}} 个分组。点击「保存设置」生效。",
     "{{count}} model(s)": "{{count}} 个模型",
-    "| Maintained by": "| 维护者"
+    "| Maintained by": "| 维护者",
+    "Lightcode Client": "Lightcode 客户端",
+    "API Status": "API 状态",
+    "Built for heavy daily use": "为高强度日常使用而设计",
+    "One subscription, every flagship model. Pick the plan that matches your workload.": "一次订阅，覆盖全部旗舰模型。选择与你用量匹配的套餐。",
+    "Lightcode GO": "Lightcode GO",
+    "Lightcode Plus": "Lightcode Plus",
+    "per month": "每月",
+    "The entry point for everyday coding assistance.": "日常编码辅助的入门之选。",
+    "Five times the GO quota, no five-hour cap, flagship models unlocked.": "五倍于 GO 的额度，无五小时限制，解锁旗舰模型。",
+    "Most popular": "最受欢迎",
+    "{{amount}} quota every {{window}}, {{multiple}} times the GO plan.": "每 {{window}} {{amount}} 额度，是 GO 套餐的 {{multiple}} 倍。",
+    "7 天": "7 天",
+    "10 倍于 Lightcode GO 的用量额度": "10 倍于 Lightcode GO 的用量额度",
+    "更高的并发，长任务不再排队": "更高的并发，长任务不再排队",
+    "优先接入最新发布的模型": "优先接入最新发布的模型",
+    "开放 Claude Fable、GPT Astra 等全部旗舰模型": "开放 Claude Fable、GPT Astra 等全部旗舰模型",
+    "无五小时限制，额度按周统一结算": "无五小时限制，额度按周统一结算"
   }
 }

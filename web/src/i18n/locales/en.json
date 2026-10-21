@@ -5363,6 +5363,23 @@
     "Recommended plan": "Recommended plan",
     "Highlighted on the purchase page. Only one plan per pool is recommended; turning this on clears the others.": "Highlighted on the purchase page. Only one plan per pool is recommended; turning this on clears the others.",
     "Choose a plan": "Choose a plan",
-    "Your active plans, usage windows and billing preference": "Your active plans, usage windows and billing preference"
+    "Your active plans, usage windows and billing preference": "Your active plans, usage windows and billing preference",
+    "Lightcode Client": "Lightcode Client",
+    "API Status": "API Status",
+    "Built for heavy daily use": "Built for heavy daily use",
+    "One subscription, every flagship model. Pick the plan that matches your workload.": "One subscription, every flagship model. Pick the plan that matches your workload.",
+    "Lightcode GO": "Lightcode GO",
+    "Lightcode Plus": "Lightcode Plus",
+    "per month": "per month",
+    "The entry point for everyday coding assistance.": "The entry point for everyday coding assistance.",
+    "Five times the GO quota, no five-hour cap, flagship models unlocked.": "Five times the GO quota, no five-hour cap, flagship models unlocked.",
+    "Most popular": "Most popular",
+    "{{amount}} quota every {{window}}, {{multiple}} times the GO plan.": "{{amount}} quota every {{window}}, {{multiple}} times the GO plan.",
+    "7 天": "7 days",
+    "10 倍于 Lightcode GO 的用量额度": "10x the usage quota of Lightcode GO",
+    "更高的并发，长任务不再排队": "Higher concurrency, long tasks stop queueing",
+    "优先接入最新发布的模型": "First access to newly released models",
+    "开放 Claude Fable、GPT Astra 等全部旗舰模型": "All flagship models including Claude Fable and GPT Astra",
+    "无五小时限制，额度按周统一结算": "No five-hour window, quota settles weekly"
   }
 }

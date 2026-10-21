@@ -33,6 +33,12 @@ export type TopNavLink = {
 }
 
 /**
+ * Public status page. It runs as a separate service on its own domain, so this
+ * is a plain external link and must not be routed through the app.
+ */
+const API_STATUS_URL = 'https://status.lcapi.online/'
+
+/**
  * Generate top navigation links based on HeaderNavModules configuration from backend /api/status
  * Backend format example (stringified JSON):
  * {
@@ -69,7 +75,14 @@ export function useTopNavLinks(): TopNavLink[] {
   }
 
   // Lightcode product site: a static page the gateway serves itself, not an app route
-  links.push({ title: t('Lightcode'), href: '/lightcode', document: true })
+  links.push({ title: t('Lightcode Client'), href: '/lightcode', document: true })
+
+  // Public API status page, served by a separate status service on its own domain
+  links.push({
+    title: t('API Status'),
+    href: API_STATUS_URL,
+    external: true,
+  })
 
   // Console -> /dashboard (new console path)
   if (modules?.console !== false) {

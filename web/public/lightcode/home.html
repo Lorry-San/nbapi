@@ -187,8 +187,8 @@ h2 { margin: 12px 0 0; font-size: clamp(26px, 3.4vw, 38px); line-height: 1.25; f
 .loop p { margin: 0; font-size: 13px; line-height: 1.7; color: var(--muted); }
 
 /* 套餐 */
-.plans { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 56px; max-width: 880px; margin-inline: auto; }
-@media (max-width: 760px) { .plans { grid-template-columns: 1fr; } }
+.plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 56px; max-width: 1180px; margin-inline: auto; }
+@media (max-width: 980px) { .plans { grid-template-columns: 1fr; max-width: 520px; } }
 .plan { padding: 32px; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); text-align: left; }
 .plan.hot { border-color: rgba(103,153,254,.5); background: linear-gradient(180deg, rgba(103,153,254,.08), var(--panel) 60%); }
 .plan .top { display: flex; align-items: center; justify-content: space-between; }
@@ -247,6 +247,7 @@ footer a:hover { color: var(--text); }
       <a href="#how" data-i18n="navHow"></a>
       <a href="/lightcode" data-i18n="navAgent"></a>
       <a href="#faq" data-i18n="navFaq"></a>
+      <a href="https://status.lcapi.online/" target="_blank" rel="noopener noreferrer" data-i18n="navStatus"></a>
     </nav>
     <div class="actions">
       <div class="locale" id="locale" role="group" aria-label="Language">
@@ -371,6 +372,13 @@ footer a:hover { color: var(--text); }
           <p class="note" data-i18n="plusNote"></p>
           <a class="btn btn-primary plan-cta" data-console-link="/lightcode/subscription" href="/sign-in?redirect=%2Flightcode%2Fsubscription" data-i18n="subscribe"></a>
         </article>
+        <article class="plan reveal" data-plan="pro">
+          <div class="top"><span class="title">Pro</span></div>
+          <p class="for" data-i18n="proFor"></p>
+          <ul><li data-i18n="pro1"></li><li data-i18n="pro2"></li><li data-i18n="pro3"></li><li data-i18n="pro4"></li></ul>
+          <p class="note" data-i18n="proNote"></p>
+          <a class="btn btn-ghost plan-cta" data-console-link="/lightcode/subscription" href="/sign-in?redirect=%2Flightcode%2Fsubscription" data-i18n="subscribe"></a>
+        </article>
       </div>
       <p class="plans-foot reveal" data-i18n="plansFoot"></p>
     </div>
@@ -418,7 +426,7 @@ footer a:hover { color: var(--text); }
 const I18N = {
   zh: {
     title: "Lightcode AI · 模型订阅与桌面 Agent", preview: "预览版",
-    navHow: "如何运作", navPlans: "套餐", navFaq: "常见问题", navAgent: "桌面 Agent", signIn: "登录", signUp: "注册账号", dlShort: "下载",
+    navHow: "如何运作", navPlans: "套餐", navFaq: "常见问题", navAgent: "桌面 Agent", navStatus: "API 状态", signIn: "登录", signUp: "注册账号", dlShort: "下载",
     provIsland: "Plus · 7 天 38%", agentIsland: "正在执行 · 3 步",
     console: "进入控制台", consoleIn: "打开控制台", cUsage: "用量看板", cDevices: "设备管理", cSubs: "订阅管理", subscribe: "在控制台订阅",
     sample: "示例数据", yours: "你的订阅", noSub: "尚未订阅", resetAt: "{t} 重置", w7dShort: "7 天", nModels: "{n} 个", planModels: "包含 {n} 个模型",
@@ -443,11 +451,13 @@ const I18N = {
     l2t: "下载桌面 Agent", l2d: "下载 Windows 桌面端，安装后打开。",
     l3t: "用同一账号授权", l3d: "Agent 跳转到控制台确认授权，设备自动绑定，全程不接触密钥。",
     l4t: "工作和管理", l4d: "在 Agent 里干活；用量、设备和订阅随时回控制台查看和调整。",
-    plansK: "套餐", plansT: "两档套餐，按使用强度选", plansD: "两档套餐使用同一个桌面 Agent，可用的模型相同，区别在额度和窗口限制。",
+    plansK: "套餐", plansT: "三档套餐，按使用强度选", plansD: "三档套餐使用同一个桌面 Agent，可用的模型相同，区别在额度、窗口限制与并发优先级。",
     goFor: "日常使用、轻量任务", go1: "Claude、GPT、Gemini 与国产模型", go2: "5 小时与 7 天双窗口额度", go3: "桌面 Agent 全部功能", go4: "网页实时查看用量百分比",
     goNote: "适合每天处理文档、问答和小型编码任务。",
     popular: "推荐", plusFor: "高强度、长时间工作", plus1: "包含 GO 的全部内容", plus2: "7 天额度为 GO 的 5 倍", plus3: "不设 5 小时窗口，连续工作不被打断", plus4: "适合大型代码库与批量文档任务",
     plusNote: "适合每天长时间让 Agent 连续工作的用户。",
+    proFor: "团队与重度自动化", pro1: "包含 Plus 的全部内容", pro2: "7 天额度为 GO 的 10 倍", pro3: "更高的并发，长任务不再排队", pro4: "优先接入最新发布的旗舰模型",
+    proNote: "适合把 Agent 当作主要生产力工具、需要同时跑多个任务的重度用户。",
     plansFoot: "具体价格在登录后的订阅页面查看。",
     faqT: "常见问题",
     q1: "需要自己准备 API 密钥吗？", a1: "不需要。订阅后在桌面端用网页授权登录，模型直接可用。客户端和账号都不会向你发放或展示 API 密钥。",
@@ -460,7 +470,7 @@ const I18N = {
   },
   en: {
     title: "Lightcode AI · Model subscription and desktop agent", preview: "Preview",
-    navHow: "How it works", navPlans: "Plans", navFaq: "FAQ", navAgent: "Desktop agent", signIn: "Sign in", signUp: "Create account", dlShort: "Download",
+    navHow: "How it works", navPlans: "Plans", navFaq: "FAQ", navAgent: "Desktop agent", navStatus: "API status", signIn: "Sign in", signUp: "Create account", dlShort: "Download",
     provIsland: "Plus · 7-day 38%", agentIsland: "Working · 3 steps",
     console: "Open the console", consoleIn: "Go to console", cUsage: "Usage", cDevices: "Devices", cSubs: "Subscription", subscribe: "Subscribe in the console",
     sample: "Sample data", yours: "Your plan", noSub: "No plan yet", resetAt: "Resets {t}", w7dShort: "7-day", nModels: "{n}", planModels: "{n} models included",
@@ -485,11 +495,13 @@ const I18N = {
     l2t: "Download the agent", l2d: "Install the Windows desktop app and open it.",
     l3t: "Authorize with the same account", l3d: "The agent opens the console to confirm sign-in. The device is bound automatically and you never handle a key.",
     l4t: "Work and manage", l4d: "Do the work in the agent. Check usage, devices and your plan back in the console at any time.",
-    plansK: "Plans", plansT: "Two plans, chosen by how hard you work", plansD: "Both plans use the same desktop agent and the same models. They differ in allowance and window limits.",
+    plansK: "Plans", plansT: "Three plans, chosen by how hard you work", plansD: "All three use the same desktop agent and the same models. They differ in allowance, window limits and concurrency priority.",
     goFor: "Daily use and light tasks", go1: "Claude, GPT, Gemini and Chinese models", go2: "5-hour and 7-day usage windows", go3: "Every desktop agent feature", go4: "Live usage percentages on the web",
     goNote: "Fits daily documents, questions and small coding tasks.",
     popular: "Recommended", plusFor: "Intensive, long sessions", plus1: "Everything in GO", plus2: "5× the GO 7-day allowance", plus3: "No 5-hour window, so long sessions are not interrupted", plus4: "Built for large codebases and batch document work",
     plusNote: "Fits people who keep the agent working for long stretches every day.",
+    proFor: "Teams and heavy automation", pro1: "Everything in Plus", pro2: "10× the GO 7-day allowance", pro3: "Higher concurrency, so long tasks stop queueing", pro4: "First access to newly released flagship models",
+    proNote: "Fits heavy users who run several long tasks at once and treat the agent as their main tool.",
     plansFoot: "Prices are shown on the subscription page after you sign in.",
     faqT: "Frequently asked questions",
     q1: "Do I need my own API key?", a1: "No. After subscribing, sign in on the desktop app through your browser and the models are ready. Neither the app nor your account issues or shows API keys.",
@@ -681,11 +693,20 @@ function showFamilies(models) {
 }
 
 // Plans: titles, subtitles and model families come from the gateway; prices are never shown here.
+// Map a plan title onto its card. Check Pro before Plus: "Lightcode Pro" must not
+// fall through to the GO card the way an unknown title used to.
+const planKey = title => {
+  const t = String(title || "").toLowerCase();
+  if (t.includes("pro")) return "pro";
+  if (t.includes("plus")) return "plus";
+  return "go";
+};
+
 function renderPlans() {
   if (!livePlans) return;
   const d = I18N[document.documentElement.lang];
   for (const p of livePlans) {
-    const card = document.querySelector(`[data-plan="${/plus/i.test(p.title) ? "plus" : "go"}"]`);
+    const card = document.querySelector(`[data-plan="${planKey(p.title)}"]`);
     if (!card) continue;
     card.querySelector(".title").textContent = p.title.replace(/^Lightcode\s+/i, "");
     let line = card.querySelector(".models-line");

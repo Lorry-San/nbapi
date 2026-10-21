@@ -5352,6 +5352,23 @@
     "Recommended plan": "Рекомендуемый тариф",
     "Highlighted on the purchase page. Only one plan per pool is recommended; turning this on clears the others.": "Выделяется на странице покупки. В каждом пуле рекомендуется один тариф; включение снимает отметку с остальных.",
     "Choose a plan": "Выберите тариф",
-    "Your active plans, usage windows and billing preference": "Ваши активные тарифы, окна использования и настройки оплаты"
+    "Your active plans, usage windows and billing preference": "Ваши активные тарифы, окна использования и настройки оплаты",
+    "Lightcode Client": "Клиент Lightcode",
+    "API Status": "Статус API",
+    "Built for heavy daily use": "Создано для интенсивной ежедневной работы",
+    "One subscription, every flagship model. Pick the plan that matches your workload.": "Одна подписка — все флагманские модели. Выберите подходящий тариф.",
+    "Lightcode GO": "Lightcode GO",
+    "Lightcode Plus": "Lightcode Plus",
+    "per month": "в месяц",
+    "The entry point for everyday coding assistance.": "Начальный уровень для повседневной помощи в коде.",
+    "Five times the GO quota, no five-hour cap, flagship models unlocked.": "Пятикратная квота GO, без пятичасового лимита, флагманские модели.",
+    "Most popular": "Популярный выбор",
+    "{{amount}} quota every {{window}}, {{multiple}} times the GO plan.": "Квота {{amount}} раз в {{window}} — в {{multiple}} раз больше тарифа GO.",
+    "7 天": "7 дней",
+    "10 倍于 Lightcode GO 的用量额度": "В 10 раз больше квота, чем у Lightcode GO",
+    "更高的并发，长任务不再排队": "Повышенная параллельность: длинные задачи больше не ждут в очереди",
+    "优先接入最新发布的模型": "Приоритетный доступ к новым моделям",
+    "开放 Claude Fable、GPT Astra 等全部旗舰模型": "Все флагманские модели, включая Claude Fable и GPT Astra",
+    "无五小时限制，额度按周统一结算": "Без пятичасового окна, квота рассчитывается раз в неделю"
   }
 }

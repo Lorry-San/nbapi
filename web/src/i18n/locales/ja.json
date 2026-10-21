@@ -5352,6 +5352,23 @@
     "Recommended plan": "おすすめプラン",
     "Highlighted on the purchase page. Only one plan per pool is recommended; turning this on clears the others.": "購入ページで強調表示されます。プールごとに1つだけ推奨でき、有効にすると他のプランの推奨は解除されます。",
     "Choose a plan": "プランを選択",
-    "Your active plans, usage windows and billing preference": "有効なプラン、使用量の枠、課金設定"
+    "Your active plans, usage windows and billing preference": "有効なプラン、使用量の枠、課金設定",
+    "Lightcode Client": "Lightcode クライアント",
+    "API Status": "API ステータス",
+    "Built for heavy daily use": "毎日のヘビーユースのために",
+    "One subscription, every flagship model. Pick the plan that matches your workload.": "ひとつのサブスクリプションで全フラッグシップモデルを。用途に合うプランを選べます。",
+    "Lightcode GO": "Lightcode GO",
+    "Lightcode Plus": "Lightcode Plus",
+    "per month": "月額",
+    "The entry point for everyday coding assistance.": "日常のコーディング支援の入門プラン。",
+    "Five times the GO quota, no five-hour cap, flagship models unlocked.": "GO の5倍の枠、5時間制限なし、フラッグシップモデルを解放。",
+    "Most popular": "一番人気",
+    "{{amount}} quota every {{window}}, {{multiple}} times the GO plan.": "{{window}}ごとに {{amount}} の枠。GO プランの {{multiple}} 倍。",
+    "7 天": "7日間",
+    "10 倍于 Lightcode GO 的用量额度": "Lightcode GO の10倍の利用枠",
+    "更高的并发，长任务不再排队": "同時実行数が増え、長時間タスクも待たされない",
+    "优先接入最新发布的模型": "新リリースのモデルにいち早くアクセス",
+    "开放 Claude Fable、GPT Astra 等全部旗舰模型": "Claude Fable や GPT Astra を含む全フラッグシップモデル",
+    "无五小时限制，额度按周统一结算": "5時間の制限なし、枠は週単位でまとめて計算"
   }
 }
