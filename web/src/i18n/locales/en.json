@@ -5380,6 +5380,11 @@
     "更高的并发，长任务不再排队": "Higher concurrency, long tasks stop queueing",
     "优先接入最新发布的模型": "First access to newly released models",
     "开放 Claude Fable、GPT Astra 等全部旗舰模型": "All flagship models including Claude Fable and GPT Astra",
-    "无五小时限制，额度按周统一结算": "No five-hour window, quota settles weekly"
+    "无五小时限制，额度按周统一结算": "No five-hour window, quota settles weekly",
+    "Failed to update display name": "Failed to update display name",
+    "Failed to update avatar": "Failed to update avatar",
+    "Avatar removed": "Avatar removed",
+    "Only PNG, JPEG, WebP or GIF images are supported": "Only PNG, JPEG, WebP or GIF images are supported",
+    "This name and avatar appear in the desktop client and on this page.": "This name and avatar appear in the desktop client and on this page."
   }
 }

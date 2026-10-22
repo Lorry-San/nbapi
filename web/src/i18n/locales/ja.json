@@ -5369,6 +5369,11 @@
     "更高的并发，长任务不再排队": "同時実行数が増え、長時間タスクも待たされない",
     "优先接入最新发布的模型": "新リリースのモデルにいち早くアクセス",
     "开放 Claude Fable、GPT Astra 等全部旗舰模型": "Claude Fable や GPT Astra を含む全フラッグシップモデル",
-    "无五小时限制，额度按周统一结算": "5時間の制限なし、枠は週単位でまとめて計算"
+    "无五小时限制，额度按周统一结算": "5時間の制限なし、枠は週単位でまとめて計算",
+    "Failed to update display name": "表示名の更新に失敗しました",
+    "Failed to update avatar": "アバターの更新に失敗しました",
+    "Avatar removed": "アバターを削除しました",
+    "Only PNG, JPEG, WebP or GIF images are supported": "PNG、JPEG、WebP、GIF 画像のみ対応しています",
+    "This name and avatar appear in the desktop client and on this page.": "この名前とアバターはデスクトップクライアントとこのページに表示されます。"
   }
 }

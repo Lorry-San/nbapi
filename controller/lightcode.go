@@ -116,7 +116,15 @@ func LightcodeAccount(c *gin.Context) {
 		views = append(views, gin.H{"id": sub.Id, "status": sub.Status, "plan": plan.Title, "start_time": sub.StartTime, "end_time": sub.EndTime, "next_reset_time": sub.NextResetTime,
 			"window_short": lightcodeWindowJSON(short, plan.WindowShortSeconds), "window_long": lightcodeWindowJSON(long, plan.WindowLongSeconds)})
 	}
-	c.JSON(200, gin.H{"user": gin.H{"id": user.Id, "name": user.Username}, "subscriptions": views})
+	// The sidebar identity reads this endpoint, so it carries the same display name and
+	// avatar as the profile page. Without them a renamed account still shows its login name.
+	// A failed display-name read degrades to the username rather than making the whole
+	// account view unavailable: this endpoint also decides whether the user looks signed in.
+	displayName := user.Username
+	if name, nameErr := model.GetUserDisplayName(c.GetInt("id")); nameErr == nil && name != "" {
+		displayName = name
+	}
+	c.JSON(200, gin.H{"user": gin.H{"id": user.Id, "name": displayName, "avatar_url": lightcodeAvatarURL(c.GetInt("id"))}, "subscriptions": views})
 }
 
 // lightcodeWindowJSON exposes utilization without disclosing the monetary quota.

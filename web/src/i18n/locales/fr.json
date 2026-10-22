@@ -5369,6 +5369,11 @@
     "更高的并发，长任务不再排队": "Concurrence plus élevée, les tâches longues ne font plus la queue",
     "优先接入最新发布的模型": "Accès prioritaire aux modèles nouvellement publiés",
     "开放 Claude Fable、GPT Astra 等全部旗舰模型": "Tous les modèles phares, dont Claude Fable et GPT Astra",
-    "无五小时限制，额度按周统一结算": "Aucune fenêtre de cinq heures, quota consolidé chaque semaine"
+    "无五小时限制，额度按周统一结算": "Aucune fenêtre de cinq heures, quota consolidé chaque semaine",
+    "Failed to update display name": "Échec de la mise à jour du nom affiché",
+    "Failed to update avatar": "Échec de la mise à jour de l’avatar",
+    "Avatar removed": "Avatar supprimé",
+    "Only PNG, JPEG, WebP or GIF images are supported": "Seules les images PNG, JPEG, WebP ou GIF sont prises en charge",
+    "This name and avatar appear in the desktop client and on this page.": "Ce nom et cet avatar apparaissent dans le client de bureau et sur cette page."
   }
 }

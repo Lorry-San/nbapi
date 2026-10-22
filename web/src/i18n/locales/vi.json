@@ -5369,6 +5369,11 @@
     "更高的并发，长任务不再排队": "Độ song song cao hơn, tác vụ dài không còn phải chờ",
     "优先接入最新发布的模型": "Ưu tiên truy cập các mô hình mới phát hành",
     "开放 Claude Fable、GPT Astra 等全部旗舰模型": "Toàn bộ mô hình hàng đầu gồm Claude Fable và GPT Astra",
-    "无五小时限制，额度按周统一结算": "Không giới hạn 5 giờ, hạn mức chốt theo tuần"
+    "无五小时限制，额度按周统一结算": "Không giới hạn 5 giờ, hạn mức chốt theo tuần",
+    "Failed to update display name": "Không cập nhật được tên hiển thị",
+    "Failed to update avatar": "Không cập nhật được ảnh đại diện",
+    "Avatar removed": "Đã xoá ảnh đại diện",
+    "Only PNG, JPEG, WebP or GIF images are supported": "Chỉ hỗ trợ ảnh PNG, JPEG, WebP hoặc GIF",
+    "This name and avatar appear in the desktop client and on this page.": "Tên và ảnh đại diện này hiển thị trong ứng dụng máy tính và trên trang này."
   }
 }

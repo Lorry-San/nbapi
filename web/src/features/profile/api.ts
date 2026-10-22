@@ -27,6 +27,9 @@ import type {
   DeleteAccountRequest,
   CheckinStatusResponse,
   CheckinResponse,
+  LightcodeProfileData,
+  UpdateDisplayNameResponse,
+  UploadAvatarResponse,
 } from './types'
 
 // ============================================================================
@@ -88,6 +91,64 @@ export async function deleteUserAccount(
  */
 export async function generateAccessToken(): Promise<ApiResponse<string>> {
   const res = await api.get('/api/user/token')
+  return res.data
+}
+
+// ============================================================================
+// Identity APIs (Lightcode profile)
+// ============================================================================
+
+/**
+ * Get the identity profile (display name and avatar) from the gateway.
+ * The dashboard user payload has no avatar, so `avatar_url` only exists here.
+ * Business errors are surfaced by the caller, hence `skipBusinessError`.
+ */
+export async function getLightcodeProfile(): Promise<
+  ApiResponse<LightcodeProfileData>
+> {
+  const res = await api.get('/api/lightcode/profile', {
+    skipBusinessError: true,
+    skipErrorHandler: true,
+  })
+  return res.data
+}
+
+/**
+ * Update the display name (1-20 characters, trimmed by the server).
+ * The server falls back to the username only for display, so the response
+ * carries the stored value.
+ */
+export async function updateLightcodeDisplayName(
+  displayName: string
+): Promise<ApiResponse<UpdateDisplayNameResponse>> {
+  const res = await api.put(
+    '/api/lightcode/profile/display-name',
+    { display_name: displayName },
+    { skipBusinessError: true }
+  )
+  return res.data
+}
+
+/**
+ * Upload an avatar as multipart/form-data under the field name `avatar`.
+ * The server sniffs the bytes and accepts PNG/JPEG/WebP/GIF up to 256KB.
+ */
+export async function uploadLightcodeAvatar(
+  file: File
+): Promise<ApiResponse<UploadAvatarResponse>> {
+  const form = new FormData()
+  form.append('avatar', file)
+  const res = await api.put('/api/lightcode/profile/avatar', form, {
+    skipBusinessError: true,
+  })
+  return res.data
+}
+
+/**
+ * Delete the current user's avatar; the next profile fetch returns an empty URL.
+ */
+export async function deleteLightcodeAvatar(): Promise<ApiResponse<null>> {
+  const res = await api.delete('/api/lightcode/profile/avatar')
   return res.data
 }
 

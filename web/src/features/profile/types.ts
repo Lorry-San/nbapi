@@ -81,8 +81,40 @@ export interface UserProfile {
   telegram_id?: string
   /** LinuxDO ID (OAuth) */
   linux_do_id?: string
+  /**
+   * Gateway-relative avatar URL served by GET /api/lightcode/avatar/:id.
+   * Provided by GET /api/lightcode/profile and merged into this profile;
+   * an empty string means the user never uploaded an avatar.
+   */
+  avatar_url?: string
 }
 
+/**
+ * The `user` object of GET /api/lightcode/profile. The dashboard user payload
+ * has no avatar, so identity fields come from this lighter endpoint.
+ */
+export interface LightcodeProfileUser {
+  id: number
+  username: string
+  /** Display name, already falling back to the username on the server. */
+  display_name: string
+  /** Relative avatar URL with a cache-busting `?v=` suffix, or '' without an avatar. */
+  avatar_url: string
+}
+
+export interface LightcodeProfileData {
+  user: LightcodeProfileUser
+}
+
+/** Response data of PUT /api/lightcode/profile/display-name. */
+export interface UpdateDisplayNameResponse {
+  display_name: string
+}
+
+/** Response data of PUT /api/lightcode/profile/avatar. */
+export interface UploadAvatarResponse {
+  avatar_url: string
+}
 /**
  * Notification type
  */
