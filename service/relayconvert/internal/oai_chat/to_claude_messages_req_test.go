@@ -41,6 +41,62 @@ func TestOpenAIChatRequestToClaudeMessagesDefaultsInvalidToolSchemaType(t *testi
 	assert.Equal(t, map[string]any{}, tool.InputSchema["properties"])
 }
 
+func TestOpenAIChatRequestToClaudeMessagesKeepsToolSchemaRequiredOnlyWhenPresent(t *testing.T) {
+	cases := []struct {
+		name       string
+		parameters map[string]any
+		wantKey    bool
+		wantValue  any
+	}{
+		{
+			name:       "absent required is omitted",
+			parameters: map[string]any{"type": "object", "properties": map[string]any{}},
+		},
+		{
+			name:       "explicit null required is omitted",
+			parameters: map[string]any{"type": "object", "properties": map[string]any{}, "required": nil},
+		},
+		{
+			name:       "empty required array is kept",
+			parameters: map[string]any{"type": "object", "properties": map[string]any{}, "required": []any{}},
+			wantKey:    true,
+			wantValue:  []any{},
+		},
+		{
+			name:       "populated required array is kept",
+			parameters: map[string]any{"type": "object", "properties": map[string]any{}, "required": []any{"goal"}},
+			wantKey:    true,
+			wantValue:  []any{"goal"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			request := dto.GeneralOpenAIRequest{
+				Model:    "claude-opus-5",
+				Messages: []dto.Message{{Role: "user", Content: "hi"}},
+				Tools: []dto.ToolCallRequest{{
+					Type:     "function",
+					Function: dto.FunctionRequest{Name: "get_goal", Parameters: tc.parameters},
+				}},
+			}
+
+			claudeRequest, err := OpenAIChatRequestToClaudeMessages(nil, request)
+			require.NoError(t, err)
+
+			tools, ok := claudeRequest.Tools.([]any)
+			require.True(t, ok)
+			require.Len(t, tools, 1)
+			tool, ok := tools[0].(*dto.Tool)
+			require.True(t, ok)
+			value, present := tool.InputSchema["required"]
+			assert.Equal(t, tc.wantKey, present)
+			if tc.wantKey {
+				assert.Equal(t, tc.wantValue, value)
+			}
+		})
+	}
+}
+
 func TestOpenAIChatRequestToClaudeMessagesAdaptiveChannelReflectsClientEffort(t *testing.T) {
 	request := dto.GeneralOpenAIRequest{
 		Model:           "claude-opus-4-7",

@@ -47,8 +47,13 @@ func OpenAIChatRequestToClaudeMessagesWithInfo(c *gin.Context, info *relaycommon
 			} else if params["type"] != nil {
 				claudeTool.InputSchema["type"] = "object"
 			}
-			claudeTool.InputSchema["properties"] = params["properties"]
-			claudeTool.InputSchema["required"] = params["required"]
+			// JSON null is not a valid JSON Schema keyword value; omit absent keywords.
+			if properties := params["properties"]; properties != nil {
+				claudeTool.InputSchema["properties"] = properties
+			}
+			if required := params["required"]; required != nil {
+				claudeTool.InputSchema["required"] = required
+			}
 			for key, value := range params {
 				if key == "type" || key == "properties" || key == "required" {
 					continue
