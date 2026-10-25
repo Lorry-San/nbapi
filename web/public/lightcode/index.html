@@ -535,27 +535,22 @@ void main(){
   requestAnimationFrame(() => heroBg.classList.add("ready"));
 })();
 
-// Download links use the public Releases page until installer metadata arrives.
-(function download() {
+// Point every download button at the newest Lightcode Windows installer on the public releases repo; the Releases page stays as fallback.
+(function latestInstaller() {
   const links = document.querySelectorAll("[data-dl]");
   const mb = n => (n / 1048576).toFixed(0) + " MB";
-  fetch("/api/lightcode/download", { credentials: "same-origin", headers: { Accept: "application/json" } })
+  fetch("https://api.github.com/repos/LightCode-AI/lightcode-releases/releases/latest", { headers: { Accept: "application/vnd.github+json" } })
     .then(r => r.ok ? r.json() : null)
-    .then(res => {
-      const f = res && res.success && res.data;
-      if (!f || typeof f.url !== "string") return;
-      const url = new URL(f.url, location.origin);
-      const local = url.origin === location.origin && url.pathname.startsWith("/download/lightcode/");
-      const release = url.origin === "https://github.com" && /^\/(?:LightCode-AI|Lorry-San)\/lightcode-releases\/releases\//.test(url.pathname);
-      if ((!local && !release) || url.username || url.password) return;
-      const details = [];
-      if (typeof f.version === "string" && f.version) details.push("v" + f.version);
-      if (Number.isFinite(f.size) && f.size > 0) details.push(mb(f.size));
-      if (typeof f.sha256 === "string" && /^[a-f0-9]{64}$/i.test(f.sha256)) details.push("SHA-256 " + f.sha256);
+    .then(release => {
+      const asset = release && Array.isArray(release.assets)
+        && release.assets.find(a => /^Lightcode-.*-win-x64(?:-unsigned)?\.exe$/.test(a.name));
+      if (!asset || typeof asset.browser_download_url !== "string") return;
+      const url = new URL(asset.browser_download_url);
+      if (url.origin !== "https://github.com" || !url.pathname.startsWith("/LightCode-AI/lightcode-releases/releases/download/")) return;
       links.forEach(a => {
         a.href = url.href;
-        if (local && typeof f.name === "string" && f.name) a.setAttribute("download", f.name);
-        if (details.length) a.title = details.join(" · ");
+        a.setAttribute("download", asset.name);
+        a.title = [release.tag_name, mb(asset.size)].join(" · ");
       });
     })
     .catch(() => {});
