@@ -107,6 +107,10 @@ func ClaudeHelper(c *gin.Context, info *relaycommon.RelayInfo) (nbapiError *type
 		info.UpstreamModelName = request.Model
 	}
 
+	if info.ChannelMeta != nil {
+		dto.ApplyClaudeThinkingDisplay(request, info.ChannelOtherSettings.ClaudeThinkingDisplay)
+	}
+
 	if info.ChannelSetting.SystemPrompt != "" {
 		if request.System == nil {
 			request.SetStringSystem(info.ChannelSetting.SystemPrompt)

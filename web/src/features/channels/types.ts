@@ -105,6 +105,7 @@ export interface ChannelOtherSettings {
   claude_beta_query?: boolean
   hide_reasoning_content?: boolean
   claude_thinking_mode?: 'inherit' | 'adaptive' | 'enabled' | 'disabled'
+  claude_thinking_display?: '' | 'summarized' | 'omitted'
   disable_task_polling_sleep?: boolean
   upstream_model_update_check_enabled?: boolean
   upstream_model_update_auto_sync_enabled?: boolean

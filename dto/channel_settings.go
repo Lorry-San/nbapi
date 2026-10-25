@@ -41,6 +41,7 @@ type ChannelOtherSettings struct {
 	OpenRouterEnterprise                  *bool                 `json:"openrouter_enterprise,omitempty"`
 	ClaudeBetaQuery                       bool                  `json:"claude_beta_query,omitempty"`           // Claude 渠道是否强制追加 ?beta=true
 	ClaudeThinkingMode                    string                `json:"claude_thinking_mode,omitempty"`        // Claude thinking strategy: inherit, adaptive, enabled, or disabled
+	ClaudeThinkingDisplay                 string                `json:"claude_thinking_display,omitempty"`     // Claude thinking.display: empty keeps the model default, summarized or omitted
 	HideReasoningContent                  bool                  `json:"hide_reasoning_content,omitempty"`      // 是否不向客户端返回思维链（上游照常思考并计费，仅在回包时剥离）
 	ResponsesToChatToolMode               string                `json:"responses_to_chat_tool_mode,omitempty"` // Responses -> Chat 工具转换模式的渠道级覆盖
 	AllowServiceTier                      bool                  `json:"allow_service_tier,omitempty"`          // 是否允许 service_tier 透传（默认过滤以避免额外计费）

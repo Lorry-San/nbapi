@@ -246,6 +246,7 @@ export const channelFormSchema = z
     claude_thinking_mode: z
       .enum(['inherit', 'adaptive', 'enabled', 'disabled'])
       .optional(), // Anthropic: normal reasoning_effort translation
+    claude_thinking_display: z.enum(['', 'summarized', 'omitted']).optional(), // Anthropic: thinking.display; empty keeps the model default
     disable_task_polling_sleep: z.boolean().optional(),
     // Upstream model update settings (stored in settings JSON)
     upstream_model_update_check_enabled: z.boolean().optional(),
@@ -400,6 +401,7 @@ export const CHANNEL_FORM_DEFAULT_VALUES: ChannelFormValues = {
   claude_beta_query: false,
   hide_reasoning_content: false,
   claude_thinking_mode: 'inherit',
+  claude_thinking_display: '',
   disable_task_polling_sleep: false,
   upstream_model_update_check_enabled: false,
   upstream_model_update_auto_sync_enabled: false,
@@ -463,6 +465,7 @@ export function transformChannelToFormDefaults(
   let hideReasoningContent = false
   let claudeThinkingMode: 'inherit' | 'adaptive' | 'enabled' | 'disabled' =
     'inherit'
+  let claudeThinkingDisplay: '' | 'summarized' | 'omitted' = ''
   let disableTaskPollingSleep = false
   let upstreamModelUpdateCheckEnabled = false
   let upstreamModelUpdateAutoSyncEnabled = false
@@ -497,6 +500,11 @@ export function transformChannelToFormDefaults(
       ].includes(parsed.claude_thinking_mode)
         ? parsed.claude_thinking_mode
         : 'inherit'
+      claudeThinkingDisplay =
+        parsed.claude_thinking_display === 'summarized' ||
+        parsed.claude_thinking_display === 'omitted'
+          ? parsed.claude_thinking_display
+          : ''
       disableTaskPollingSleep = parsed.disable_task_polling_sleep === true
       upstreamModelUpdateCheckEnabled =
         parsed.upstream_model_update_check_enabled === true
@@ -558,6 +566,7 @@ export function transformChannelToFormDefaults(
     claude_beta_query: claudeBetaQuery,
     hide_reasoning_content: hideReasoningContent,
     claude_thinking_mode: claudeThinkingMode,
+    claude_thinking_display: claudeThinkingDisplay,
     disable_task_polling_sleep: disableTaskPollingSleep,
     allow_safety_identifier: allowSafetyIdentifier,
     upstream_model_update_check_enabled: upstreamModelUpdateCheckEnabled,
@@ -679,6 +688,14 @@ function buildSettingsJSON(formData: ChannelFormValues): string {
       formData.hide_reasoning_content === true
     settingsObj.claude_thinking_mode =
       formData.claude_thinking_mode || 'inherit'
+    if (
+      formData.claude_thinking_display === 'summarized' ||
+      formData.claude_thinking_display === 'omitted'
+    ) {
+      settingsObj.claude_thinking_display = formData.claude_thinking_display
+    } else if ('claude_thinking_display' in settingsObj) {
+      delete settingsObj.claude_thinking_display
+    }
   } else {
     if ('hide_reasoning_content' in settingsObj) {
       delete settingsObj.hide_reasoning_content
@@ -691,6 +708,9 @@ function buildSettingsJSON(formData: ChannelFormValues): string {
     }
     if ('claude_thinking_mode' in settingsObj) {
       delete settingsObj.claude_thinking_mode
+    }
+    if ('claude_thinking_display' in settingsObj) {
+      delete settingsObj.claude_thinking_display
     }
   }
 

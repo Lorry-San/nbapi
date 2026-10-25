@@ -18,6 +18,17 @@ func TestClaudeThinkingModeValidation(t *testing.T) {
 	require.ErrorContains(t, channel.ValidateSettings(), "invalid claude thinking mode")
 }
 
+func TestClaudeThinkingDisplayValidation(t *testing.T) {
+	channel := &Channel{}
+	for _, display := range []string{"", dto.ClaudeThinkingDisplaySummarized, dto.ClaudeThinkingDisplayOmitted} {
+		channel.SetOtherSettings(dto.ChannelOtherSettings{ClaudeThinkingDisplay: display})
+		require.NoError(t, channel.ValidateSettings(), display)
+	}
+
+	channel.SetOtherSettings(dto.ChannelOtherSettings{ClaudeThinkingDisplay: "full"})
+	require.ErrorContains(t, channel.ValidateSettings(), "invalid claude thinking display")
+}
+
 func TestAdvancedCustomChannelRequiresModelListRouteOnlyWhenUpdateChecksEnabled(t *testing.T) {
 	inferenceRoute := dto.AdvancedCustomRoute{
 		IncomingPath: "/v1/chat/completions",

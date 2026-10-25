@@ -74,6 +74,44 @@ func TestOpenAIChatRequestToClaudeMessagesDisabledChannelRemovesClientThinking(t
 	require.Empty(t, claudeRequest.OutputConfig)
 }
 
+func TestOpenAIChatRequestToClaudeMessagesAppliesChannelThinkingDisplay(t *testing.T) {
+	tests := []struct {
+		name        string
+		mode        string
+		display     string
+		wantType    string
+		wantDisplay string
+	}{
+		{name: "adaptive with summarized", mode: dto.ClaudeThinkingModeAdaptive, display: dto.ClaudeThinkingDisplaySummarized, wantType: "adaptive", wantDisplay: "summarized"},
+		{name: "adaptive with omitted", mode: dto.ClaudeThinkingModeAdaptive, display: dto.ClaudeThinkingDisplayOmitted, wantType: "adaptive", wantDisplay: "omitted"},
+		{name: "adaptive keeps model default when unset", mode: dto.ClaudeThinkingModeAdaptive, display: "", wantType: "adaptive", wantDisplay: ""},
+		{name: "enabled budget with summarized", mode: dto.ClaudeThinkingModeEnabled, display: dto.ClaudeThinkingDisplaySummarized, wantType: "enabled", wantDisplay: "summarized"},
+		{name: "disabled has nothing to display", mode: dto.ClaudeThinkingModeDisabled, display: dto.ClaudeThinkingDisplaySummarized},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			request := dto.GeneralOpenAIRequest{
+				Model:           "claude-sonnet-5.5",
+				ReasoningEffort: "medium",
+				Messages:        []dto.Message{{Role: "user", Content: "hi"}},
+			}
+			info := &relaycommon.RelayInfo{ChannelMeta: &relaycommon.ChannelMeta{}}
+			info.ChannelOtherSettings.ClaudeThinkingMode = tt.mode
+			info.ChannelOtherSettings.ClaudeThinkingDisplay = tt.display
+
+			claudeRequest, err := OpenAIChatRequestToClaudeMessagesWithInfo(nil, info, request)
+			require.NoError(t, err)
+			if tt.wantType == "" {
+				assert.Nil(t, claudeRequest.Thinking)
+				return
+			}
+			require.NotNil(t, claudeRequest.Thinking)
+			assert.Equal(t, tt.wantType, claudeRequest.Thinking.Type)
+			assert.Equal(t, tt.wantDisplay, claudeRequest.Thinking.Display)
+		})
+	}
+}
+
 func TestOpenAIChatRequestToClaudeMessagesPreservesValidToolSchemaType(t *testing.T) {
 	request := dto.GeneralOpenAIRequest{
 		Model: "claude-opus-5",

@@ -18,6 +18,38 @@ const (
 	ClaudeThinkingModeDisabled = "disabled"
 )
 
+const (
+	// ClaudeThinkingDisplaySummarized asks Anthropic for readable summarized thinking.
+	ClaudeThinkingDisplaySummarized = "summarized"
+	// ClaudeThinkingDisplayOmitted asks Anthropic to return empty thinking blocks with signatures only.
+	ClaudeThinkingDisplayOmitted = "omitted"
+)
+
+// ValidClaudeThinkingDisplay reports whether display is a value the channel
+// setting accepts. Empty keeps the upstream model default.
+func ValidClaudeThinkingDisplay(display string) bool {
+	switch strings.TrimSpace(display) {
+	case "", ClaudeThinkingDisplaySummarized, ClaudeThinkingDisplayOmitted:
+		return true
+	default:
+		return false
+	}
+}
+
+// ApplyClaudeThinkingDisplay sets thinking.display on a request that thinks.
+// An empty display leaves the request unchanged so the model default applies;
+// a request without thinking, or with disabled thinking, has nothing to display.
+func ApplyClaudeThinkingDisplay(request *ClaudeRequest, display string) {
+	display = strings.TrimSpace(display)
+	if request == nil || request.Thinking == nil || display == "" {
+		return
+	}
+	if request.Thinking.Type != "adaptive" && request.Thinking.Type != "enabled" {
+		return
+	}
+	request.Thinking.Display = display
+}
+
 // claudeEnabledThinkingMinimumBudget is the smallest enabled-thinking budget
 // Anthropic accepts.
 const claudeEnabledThinkingMinimumBudget = 1280

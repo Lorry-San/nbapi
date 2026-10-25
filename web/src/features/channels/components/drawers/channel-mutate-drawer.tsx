@@ -298,6 +298,7 @@ const SENSITIVE_FORM_FIELDS = [
   'claude_beta_query',
   'hide_reasoning_content',
   'claude_thinking_mode',
+  'claude_thinking_display',
   'disable_task_polling_sleep',
   'upstream_model_update_check_enabled',
   'upstream_model_update_auto_sync_enabled',
@@ -349,6 +350,7 @@ function hasAdvancedSettingsValues(values: ChannelFormValues): boolean {
     values.hide_reasoning_content ||
     (values.claude_thinking_mode &&
       values.claude_thinking_mode !== 'inherit') ||
+    Boolean(values.claude_thinking_display) ||
     values.upstream_model_update_check_enabled ||
     values.upstream_model_update_auto_sync_enabled ||
     values.upstream_model_update_ignored_models?.trim()
@@ -770,6 +772,7 @@ export function ChannelMutateDrawer({
   const currentAllowSpeed = form.watch('allow_speed')
   const currentClaudeBetaQuery = form.watch('claude_beta_query')
   const currentClaudeThinkingMode = form.watch('claude_thinking_mode')
+  const currentClaudeThinkingDisplay = form.watch('claude_thinking_display')
   const currentUpstreamModelUpdateAutoSyncEnabled = form.watch(
     'upstream_model_update_auto_sync_enabled'
   )
@@ -1030,6 +1033,7 @@ export function ChannelMutateDrawer({
     currentForceResponsesToChatCompletions ||
     currentResponsesToChatToolMode ||
     (currentClaudeThinkingMode && currentClaudeThinkingMode !== 'inherit') ||
+    Boolean(currentClaudeThinkingDisplay) ||
     currentDisableTaskPollingSleep ||
     currentProxy?.trim() ||
     currentSystemPrompt?.trim() ||
@@ -4268,6 +4272,56 @@ export function ChannelMutateDrawer({
                                               </SelectItem>
                                               <SelectItem value='disabled'>
                                                 {t('Disabled')}
+                                              </SelectItem>
+                                            </SelectGroup>
+                                          </SelectContent>
+                                        </Select>
+                                      </FormControl>
+                                    </FormItem>
+                                  )}
+                                />
+                              )}
+
+                              {currentType === 14 && (
+                                <FormField
+                                  control={form.control}
+                                  name='claude_thinking_display'
+                                  render={({ field }) => (
+                                    <FormItem className='flex items-center justify-between gap-3 px-4 py-3'>
+                                      <div className='space-y-0.5'>
+                                        <FormLabel>
+                                          {t('Claude thinking display')}
+                                        </FormLabel>
+                                        <FormDescription>
+                                          {t(
+                                            'Set thinking.display on requests that think. Claude 5 models hide thinking by default; Summarized returns a readable summary, never the raw chain of thought. Billing is the same either way.'
+                                          )}
+                                        </FormDescription>
+                                      </div>
+                                      <FormControl>
+                                        <Select
+                                          value={field.value || 'default'}
+                                          onValueChange={(value) =>
+                                            field.onChange(
+                                              value === 'default' ? '' : value
+                                            )
+                                          }
+                                        >
+                                          <SelectTrigger className='w-36'>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent
+                                            alignItemWithTrigger={false}
+                                          >
+                                            <SelectGroup>
+                                              <SelectItem value='default'>
+                                                {t('Model default')}
+                                              </SelectItem>
+                                              <SelectItem value='summarized'>
+                                                {t('Summarized')}
+                                              </SelectItem>
+                                              <SelectItem value='omitted'>
+                                                {t('Omitted')}
                                               </SelectItem>
                                             </SelectGroup>
                                           </SelectContent>

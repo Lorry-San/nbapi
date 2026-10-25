@@ -217,6 +217,10 @@ func OpenAIChatRequestToClaudeMessagesWithInfo(c *gin.Context, info *relaycommon
 		}
 	}
 
+	if info != nil && info.ChannelMeta != nil {
+		dto.ApplyClaudeThinkingDisplay(&claudeRequest, info.ChannelOtherSettings.ClaudeThinkingDisplay)
+	}
+
 	if textRequest.Stop != nil {
 		switch stop := textRequest.Stop.(type) {
 		case string:
