@@ -81,6 +81,12 @@ func GetLightcodeActivity(userId int, tzOffsetMinutes int, now int64) (*Lightcod
 			continue
 		}
 		total := int64(r.PromptTokens) + int64(r.CompletionTokens)
+		// Anthropic /v1/messages reports input_tokens without cache read/write,
+		// so total input adds them back. Other protocols already include cache
+		// in prompt_tokens and must not be counted twice.
+		if semantic, _ := otherMap["usage_semantic"].(string); semantic == "anthropic" {
+			total += activityOtherInt(otherMap, "cache_tokens") + activityOtherInt(otherMap, "cache_write_tokens")
+		}
 		res.Days[idx].Requests++
 		res.Days[idx].TotalTokens += total
 		res.Stats.Requests++
@@ -190,4 +196,15 @@ func GetUserDisplayName(userId int) (string, error) {
 	var name string
 	err := DB.Model(&User{}).Select("display_name").Where("id = ?", userId).Limit(1).Scan(&name).Error
 	return name, err
+}
+
+// activityOtherInt reads an integer token count from the log other JSON, returning 0 when absent or non-numeric.
+func activityOtherInt(other map[string]interface{}, key string) int64 {
+	switch v := other[key].(type) {
+	case float64:
+		return int64(v)
+	case int:
+		return int64(v)
+	}
+	return 0
 }

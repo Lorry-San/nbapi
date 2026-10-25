@@ -165,3 +165,24 @@ func TestGetLightcodeActivityPeakAndTopModels(t *testing.T) {
 	require.Equal(t, "", empty.Stats.PeakDay)
 	require.NotNil(t, empty.Models)
 }
+
+func TestGetLightcodeActivityCountsAnthropicCacheInTotal(t *testing.T) {
+	truncateTables(t)
+	now := int64(1800000000)
+	logs := []Log{
+		{UserId: 1, Type: LogTypeConsume, CreatedAt: now - 10, ModelName: "claude-x", PromptTokens: 100, CompletionTokens: 50, TokenName: "Lightcode", Other: `{"lightcode":true,"usage_semantic":"anthropic","cache_tokens":30,"cache_write_tokens":20}`},
+		{UserId: 1, Type: LogTypeConsume, CreatedAt: now - 20, ModelName: "gpt-x", PromptTokens: 100, CompletionTokens: 50, TokenName: "Lightcode", Other: `{"lightcode":true,"cache_tokens":30}`},
+	}
+	for i := range logs {
+		require.NoError(t, LOG_DB.Create(&logs[i]).Error)
+	}
+
+	res, err := GetLightcodeActivity(1, 0, now)
+	require.NoError(t, err)
+	byModel := map[string]int64{}
+	for _, m := range res.Models {
+		byModel[m.Model] = m.TotalTokens
+	}
+	require.EqualValues(t, 200, byModel["claude-x"])
+	require.EqualValues(t, 150, byModel["gpt-x"])
+}

@@ -381,6 +381,15 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 	upstreamRequestId := c.GetString(common.UpstreamRequestIdKey)
 	createdAt := common.GetTimestamp()
 	otherStr := common.MapToJsonStr(params.Other)
+	// Anthropic /v1/messages reports input_tokens without cache read/write, so
+	// usage counting adds them back. Other protocols already include cache in
+	// prompt_tokens and must not be counted twice.
+	cacheTokens := 0
+	if semantic, _ := params.Other["usage_semantic"].(string); semantic == "anthropic" {
+		cacheRead, _ := params.Other["cache_tokens"].(int)
+		cacheWrite, _ := params.Other["cache_write_tokens"].(int)
+		cacheTokens = cacheRead + cacheWrite
+	}
 	// Always record client IP for consume logs.
 	log := &Log{
 		UserId:            userId,
@@ -414,7 +423,7 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 			ModelName: params.ModelName,
 			Quota:     params.Quota,
 			CreatedAt: createdAt,
-			TokenUsed: params.PromptTokens + params.CompletionTokens,
+			TokenUsed: params.PromptTokens + params.CompletionTokens + cacheTokens,
 			UseGroup:  params.Group,
 			TokenID:   params.TokenId,
 			ChannelID: params.ChannelId,

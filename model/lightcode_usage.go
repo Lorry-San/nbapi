@@ -116,6 +116,19 @@ func GetLightcodeUsage(userId int, days int, tzOffsetMinutes int, now int64) (*L
 		}
 		in, out := int64(r.PromptTokens), int64(r.CompletionTokens)
 		total := in + out
+		// Anthropic /v1/messages reports input_tokens without cache read/write,
+		// so total input adds them back. Other protocols already include cache
+		// in prompt_tokens and must not be counted twice.
+		if semantic, _ := otherMap["usage_semantic"].(string); semantic == "anthropic" {
+			var cacheWrite int64
+			switch v := otherMap["cache_write_tokens"].(type) {
+			case float64:
+				cacheWrite = int64(v)
+			case int:
+				cacheWrite = int64(v)
+			}
+			total += cache + cacheWrite
+		}
 		d := &res.Days[idx]
 		d.Requests++
 		d.InputTokens += in
